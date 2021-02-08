@@ -517,7 +517,14 @@ var GempLotrGameUI = Class.extend({
         };
         
         var displayChatListener = function(title, message) {
-            this.showErrorDialog(title, message);
+
+            var dialog = $("<div></div>").dialog({
+                title: title,
+                resizable: false,
+                height: 160,
+                modal: true,
+                buttons: {}
+            }).text(message);
         }
 
         var chatRoomName = (this.replayMode ? null : ("Game" + getUrlParam("gameId")));
