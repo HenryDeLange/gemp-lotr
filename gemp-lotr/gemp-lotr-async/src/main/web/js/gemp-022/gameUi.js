@@ -520,11 +520,11 @@ var GempLotrGameUI = Class.extend({
 
             var dialog = $("<div></div>").dialog({
                 title: title,
-                resizable: false,
-                height: 160,
+                resizable: true,
+                height: 200,
                 modal: true,
                 buttons: {}
-            }).text(message);
+            }).html(message);
         }
 
         var chatRoomName = (this.replayMode ? null : ("Game" + getUrlParam("gameId")));
