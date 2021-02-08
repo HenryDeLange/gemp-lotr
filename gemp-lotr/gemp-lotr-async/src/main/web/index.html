@@ -5,8 +5,18 @@
     <title>Gemp-LotR</title>
 
     <style type="text/css">
+        html {
+            height: 100%;
+        }
         body {
             font-size: 12px;
+            height: 100%; 
+            background-image: url('images/dwarrowdelf.jpg'); 
+            background-size: auto 100%; 
+            background-repeat:no-repeat; 
+            background-position: center center;
+            overflow-x: hidden;
+            overflow-y: hidden;
         }
 
         .ui-button-text-only .ui-button-text {
@@ -162,18 +172,39 @@
                         $(".status").append(html);
                     });
                 loginScreen();
-                $(".centerContainer").center();
+                //$(".centerContainer").center();
             });
     </script>
 
 </head>
-<body bgcolor="#000000">
-<div style="float: left;height: 98%"><img src="images/troll-bak.png" height="98%"/></div>
-<div style="float: right;height: 98%"><img src="images/man-bak.png" height="98%"/></div>
-<div class="centerContainer">
-    <div class="status" style="color:#ffffff;"></div>
-    <div class="error" style="color: #ff0000;"></div>
-    <div class="interaction" style="color: #ffffff;"></div>
-</div>
+<body bgcolor="#000000" >
+<!-- <div style="float: left;height: 98%"><img src="images/troll-bak.png" height="98%"/></div>
+<div style="float: right;height: 98%"><img src="images/man-bak.png" height="98%"/></div> -->
+    <div style="float: top; ">
+        <img src="images/PC_banner.png" height="98%" style="display: block; margin-left: auto; margin-right: auto; width: 15%">
+        
+        
+        
+        <div class="centerContainer" style="
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  -ms-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);">
+            <div style="text-align: center; background-color: #333333AA; margin-bottom: 10%; width: 100vw;
+  margin-left: calc(-50vw + 50%);">
+                <h1 style="color:#E65014; font-size: 500% ">Public Playtest Server</h1>
+            </div>
+            <div style="margin: 0;
+  position: absolute;
+  left: 50%;
+  -ms-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);">
+                <div class="status" style="color:#ffffff;"></div>
+                <div class="error" style="color: #ff0000;"></div>
+                <div class="interaction" style="color: #ffffff;"></div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

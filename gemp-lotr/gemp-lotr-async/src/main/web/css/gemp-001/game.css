@@ -2,6 +2,10 @@ body {
     font-size: 12px;
 }
 
+.main {
+    border: 5px solid #E65014 !important;
+}
+
 .deckSize {
     display: table-cell;
     text-align: center;

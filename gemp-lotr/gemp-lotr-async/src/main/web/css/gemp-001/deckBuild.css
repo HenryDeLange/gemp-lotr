@@ -36,9 +36,27 @@ body {
     width: 350px;
 }
 
+.ui-layout-container {
+    border: 5px solid #E65014 !important;
+}
+
 #manageDecks {
     color: #ffffff;
     font-size: 180%;
+}
+
+a:link {
+  color: red;
+}
+
+/* visited link */
+a:visited {
+  color: green;
+}
+
+/* mouse over link */
+a:hover {
+  color: hotpink;
 }
 
 #editingDeck {

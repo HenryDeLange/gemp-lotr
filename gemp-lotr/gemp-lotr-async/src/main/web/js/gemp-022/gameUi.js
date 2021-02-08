@@ -515,9 +515,13 @@ var GempLotrGameUI = Class.extend({
             $("a[href='#playersInRoomBox']").html("Players(" + players.length + ")");
             $("#playersInRoomBox").html(val);
         };
+        
+        var displayChatListener = function(title, message) {
+            this.showErrorDialog(title, message);
+        }
 
         var chatRoomName = (this.replayMode ? null : ("Game" + getUrlParam("gameId")));
-        this.chatBox = new ChatBoxUI(chatRoomName, $("#chatBox"), this.communication.url, false, playerListener, false, true);
+        this.chatBox = new ChatBoxUI(chatRoomName, $("#chatBox"), this.communication.url, false, playerListener, false, true, displayChatListener);
         this.chatBox.chatUpdateInterval = 3000;
 
         if (!this.spectatorMode && !this.replayMode) {
@@ -1055,6 +1059,7 @@ var GempLotrGameUI = Class.extend({
         };
     },
 
+    //TODO
     showErrorDialog: function (title, text, reloadButton, mainPageButton, gameHallButton) {
         var buttons = {};
         if (reloadButton) {

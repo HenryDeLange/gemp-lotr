@@ -87,6 +87,14 @@ var GempLotrDeckBuildingUI = Class.extend({
         collectionSelect.append("<option value='permanent'>My cards</option>");
         collectionSelect.append("<option value='trophy'>Trophies</option>");
         this.manageDecksDiv.append(collectionSelect);
+        
+        var pcSplash = $(`<span id="pc-splash" style="float: right; margin-right:30px;background-color: #444444AA;border: 3px solid #E65014; vertical-align: top; top:-20%; position: relative;">
+    <img src="images/pc_icon.png" style="width: 1.25em;vertical-align: text-top;margin-right:10px;">
+    <span style="color:#FFFFFF;">
+        <span style="color:#E65014;">Public Playtest Server - </span>Feedback, bugs, or issues?  Please <a href="https://lotrtcgpc.net/bugreport.html">report it on the PC website</a> or on <a href="https://lotrtcgpc.net/discord">the PC Discord server.</a>
+    </span>
+<span>`)
+        this.manageDecksDiv.append(pcSplash);
 
         var newDeckBut = $("<button title='New deck'><span class='ui-icon ui-icon-document'></span></button>").button();
         this.manageDecksDiv.append(newDeckBut);
