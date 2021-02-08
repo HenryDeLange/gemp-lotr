@@ -155,7 +155,9 @@ var ChatBoxUI = Class.extend({
     
     checkForEnd:function (message, msgClass) {
         if(msgClass != "systemMessage")
+        {
             return;
+        }
         
         if(message.includes("Thank you for playtesting!")) {
             if (this.dialogListener != null) {
