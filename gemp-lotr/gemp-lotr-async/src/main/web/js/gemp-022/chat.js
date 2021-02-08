@@ -164,7 +164,7 @@ var ChatBoxUI = Class.extend({
                 this.dialogListener("Give us feedback!", message);
             }
         }
-    }
+    },
 
     appendMessage:function (message, msgClass) {
         if (msgClass == undefined)
