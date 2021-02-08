@@ -65,8 +65,8 @@ public class GameRecorder {
                 _gameHistoryService.addGameHistory(winner, loser, winReason, loseReason, playerRecordingId.get(winner), playerRecordingId.get(loser), formatName, tournament, deckNames.get(winner), deckNames.get(loser), startData, new Date());
 
                 String url = "https://docs.google.com/forms/d/e/1FAIpQLSdKJrCmjoyUqDTusDcpNoWAmvkGdzQqTxWGpdNIFX9biCee-A/viewform?usp=pp_url&entry.1592109986=";
-                String winnerURL = "https://gemp.lotrtcgpc.net/gemp-lotr/game.html?replayId%3D" + winner + "$" + playerRecordingId.get(winner);
-                String loserURL = "https://gemp.lotrtcgpc.net/gemp-lotr/game.html?replayId%3D" + loser + "$" + playerRecordingId.get(loser);
+                String winnerURL = "https://playtest.lotrtcgpc.net/gemp-lotr/game.html?replayId%3D" + winner + "$" + playerRecordingId.get(winner);
+                String loserURL = "https://playtest.lotrtcgpc.net/gemp-lotr/game.html?replayId%3D" + loser + "$" + playerRecordingId.get(loser);
                 url += winnerURL + "%20" + loserURL;
                 lotroGame.sendMessageToPlayers("Thank you for playtesting!  If you have any feedback, bugs, or other issues to report about this match, <a href= '" + url + "'>please do so using this form.</a>");
             }
