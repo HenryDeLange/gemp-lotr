@@ -22,8 +22,11 @@ public class Gimli_DotMrErrataTests
         return new GenericCardTestHelper(
                 new HashMap<String, String>()
                 {{
-                    put("gimli", "21_20121");
-                }}
+                    put("gimli", "51_20121");
+                }},
+                GenericCardTestHelper.FellowshipSites,
+                GenericCardTestHelper.FOTRFrodo,
+                GenericCardTestHelper.FOTRRing
         );
     }
 
@@ -86,8 +89,8 @@ public class Gimli_DotMrErrataTests
 
         assertFalse(scn.FreepsActionAvailable("Optional"));
         //scn.FreepsAcceptOptionalTrigger();
-        assertEquals(2, scn.GetWoundsOn(gimli));
-        assertTrue(scn.HasKeyword(frodo, Keyword.CONCEALED));
+        assertEquals(1, scn.GetWoundsOn(gimli));
+        assertFalse(scn.HasKeyword(frodo, Keyword.CONCEALED));
     }
 
 }
