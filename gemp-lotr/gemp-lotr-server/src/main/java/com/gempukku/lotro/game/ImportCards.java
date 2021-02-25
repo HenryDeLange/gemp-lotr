@@ -7,13 +7,12 @@ import java.util.*;
 
 public class ImportCards {
     //For a deck to be legal in a Pre-shadows format, it must contain one of these sites
-    private Set<String> fellowshipSiteCheck = new HashSet<>(Arrays.asList("Council Courtyard",
-            "Ford of Bruinen", "Frodo's Bedroom", "Rivendell Terrace", "Rivendell Valley", "Rivendell Waterfall",
-            "House of Elrond"));
-    private Set<String> towersSiteCheck = new HashSet<>(Arrays.asList("Derndingle", "Eastfold",
-            "Fangorn Forest", "Plains of Rohan Camp", "Rohirrim Village", "Uruk Camp", "Wold of Rohan"));
-    private Set<String> kingSiteCheck = new HashSet<>(Arrays.asList("King's Tent", "Rohirrim Camp",
-            "West Road"));
+    private Set<String> fellowshipSiteCheck = new HashSet<>(Arrays.asList("council courtyard",
+            "ford of bruinen", "frodo's bedroom", "rivendell terrace", "rivendell valley", "rivendell waterfall",
+            "house of elrond"));
+    private Set<String> towersSiteCheck = new HashSet<>(Arrays.asList("derndingle", "eastfold",
+            "fangorn forest", "plains of rohan camp", "rohirrim village", "uruk camp", "wold of rohan"));
+    private Set<String> kingSiteCheck = new HashSet<>(Arrays.asList("king's tent", "rohirrim camp", "west road"));
 
     public List<CardCollection.Item> process(String rawDecklist, LotroCardBlueprintLibrary cardLibrary) {
         List<CardCount> decklist = getDecklist(rawDecklist);
@@ -62,30 +61,38 @@ public class ImportCards {
     }
 
     private boolean isFromOfficialSet(String id) {
-        return Integer.parseInt(id.split("_")[0]) < 20;
+        try {
+            return Integer.parseInt(id.split("_")[0]) < 20;
+        } catch (NumberFormatException exp) {
+            return false;
+        }
     }
 
     private List<CardCount> getDecklist(String rawDecklist) {
+        int quantity;
+        String cardLine;
+
         List<CardCount> result = new ArrayList<>();
         for (String line : rawDecklist.split("~")) {
             if (line.length() == 0)
                 continue;
 
             line = line.toLowerCase();
-            int quantity;
-
-            String cardLine;
-            if (Character.isDigit(line.charAt(0))) {
-                quantity = Character.getNumericValue(line.charAt(0));
-                cardLine = line.substring(line.indexOf(" "));
-            } else if (Character.isDigit(line.charAt(line.length() - 1))) {
-                quantity = Character.getNumericValue(line.charAt(line.length() - 1));
-                cardLine = line.substring(0, line.indexOf(" ", line.length() - 3));
-            } else {
-                quantity = 1;
-                cardLine = line;
+            try {
+                if (Character.isDigit(line.charAt(0))) {
+                    quantity = Character.getNumericValue(line.charAt(0));
+                    cardLine = line.substring(line.indexOf(" "));
+                } else if (Character.isDigit(line.charAt(line.length() - 1))) {
+                    quantity = Character.getNumericValue(line.charAt(line.length() - 1));
+                    cardLine = line.substring(0, line.indexOf(" ", line.length() - 3));
+                } else {
+                    quantity = 1;
+                    cardLine = line;
+                }
+                result.add(new CardCount(SortAndFilterCards.replaceSpecialCharacters(cardLine).trim(), quantity));
+            } catch (Exception exp) {
+                // Ignore the card
             }
-            result.add(new CardCount(SortAndFilterCards.replaceSpecialCharacters(cardLine).trim(), quantity));
         }
         return result;
     }
