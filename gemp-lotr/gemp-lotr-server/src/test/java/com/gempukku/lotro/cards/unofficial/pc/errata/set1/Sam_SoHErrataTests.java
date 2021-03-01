@@ -16,7 +16,7 @@ public class Sam_SoHErrataTests
         return new GenericCardTestHelper(
                 new HashMap<String, String>()
                 {{
-                    put("sam", "51_10311");
+                    put("sam", "51_311");
 
                     put("orc", "1_272");
                 }}
@@ -38,11 +38,13 @@ public class Sam_SoHErrataTests
         assertTrue(scn.FreepsCardActionAvailable(sam));
 
         assertEquals(0, scn.GetWoundsOn(sam));
+        assertEquals(0, scn.GetWoundsOn(frodo));
         assertEquals(1, scn.GetBurdens());
 
         scn.FreepsUseCardAction(sam);
 
-        assertEquals(2, scn.GetWoundsOn(sam));
+        assertEquals(1, scn.GetWoundsOn(sam));
+        assertEquals(1, scn.GetWoundsOn(frodo));
         assertEquals(0, scn.GetBurdens());
     }
 

@@ -1,5 +1,5 @@
 {
- "51_3042": {
+ "53_42": {
     "side": "free_people",
     "cost": 0,
     "culture": "Gondor",
@@ -8,31 +8,21 @@
     "target": "name(Boromir)",
     "effects": {
       "type": "activated",
-      "phase": "assignment",
-      "condition": {
-        "type": "canSpot",
-        "filter": "bearer,notAssignedToSkirmish"
-      },
+      "phase": "maneuver",
       "cost": [
         {
           "type": "exert",
-          "filter": "bearer"
+          "filter": "bearer",
+          "times": 1
+        },
+        {
+          "type": "exert",
+          "filter": "choose(ally)",
+          "memorize": "summonedAlly",
+          "times": 1
         }        
       ],
       "effect":[
-        {
-          "type": "assignFpCharacterToSkirmish",
-          "player": "fp",
-          "fpCharacter": "bearer",
-          "against": "choose(minion)"
-        },
-        {
-          "type": "modifyStrength",
-          "filter": "choose(ally,allyInCurrentRegion)",
-          "amount": 3,
-          "until": "start(regroup)",
-          "memorize": "summonedAlly"
-        },
         {
           "type": "allyCanParticipateInArcheryFireAndSkirmishes",
           "filter": "memory(summonedAlly)",
@@ -42,7 +32,7 @@
     }
   },
   
-  "51_3068": {
+  "53_68": {
     "side": "shadow",
     "site": 4,
     "cost": 4,
@@ -83,21 +73,147 @@
           "filter": "self",
           "times": 1
         },
-        "effect": [
-          {
-            "type": "preventWound",
-            "filter": "choose(uruk-hai)",
-            "memorize": "uruk"
-          },
-          {
-            "type": "addKeyword",
-            "filter": "memory(uruk)",
-            "keyword": "fierce"
-          }
-        ]
+        "effect":
+        {
+          "type": "preventWound",
+          "filter": "choose(uruk-hai)"
+        }
+      },
+      {
+        "type": "activated",
+        "phase": "maneuver",
+        "cost": {
+          "type": "exert",
+          "filter": "self",
+          "times": 1
+        },
+        "effect": {
+          "type": "addKeyword",
+          "filter": "choose(uruk-hai)",
+          "keyword": "fierce"
+        }
       },
     ]
   },
   
+  "53_38": {
+    "side": "free_people",
+    "title": "*Aragorn",
+    "subtitle": "Heir to the White City",
+    "culture": "Gondor",
+    "type": "companion",
+    "race": "Man",
+    "cost": 4,
+    "strength": 8,
+    "vitality": 4,
+    "resistance": 6,
+    "signet": "frodo",
+    "keyword": [
+      "Ranger",
+    ],
+    "effects": {
+      "type": "trigger",
+      "optional": true,
+      "trigger": {
+        "type": "movesfrom"
+      },
+      "condition": {
+        "type": "phase",
+        "phase": "fellowship"
+      },
+      "effect": {
+        "type": "preventable",
+        "effect": [
+          {
+            "type": "addKeyword",
+            "filter": "choose(another,companion)",
+            "keyword": "concealed",
+            "until": "start(regroup)"
+          },
+          {
+            "type": "addKeyword",
+            "filter": "self",
+            "keyword": "concealed",
+            "until": "start(regroup)"
+          },
+        ],
+        "text": "Would you like to discard a minion (or reveal a tracker) from hand to prevent a companion becoming concealed?",
+        "player": "shadowPlayer",
+        "cost": {
+          "type": "choice",
+          "player": "shadowPlayer",
+          "texts": [
+            "Discard a minion from hand",
+            "Reveal a tracker from hand"
+          ],
+          "effects": [
+            {
+              "type": "revealCardsFromHand",
+              "filter": "choose(tracker)",
+              "hand": "shadowPlayer"
+            },
+            {
+              "type": "discardFromHand",
+              "filter": "choose(minion)",
+              "forced": false,
+              "hand": "shadowPlayer",
+            }
+          ]
+        }
+
+      },
+    }
+  },
   
+ 
+  "53_106": {
+    "title": "*Bill the Pony",
+    "culture": "Shire",
+    "side": "free_people",
+    "cost": 0,
+    "type": "possession",
+    "possession": "Pony",
+    "target": "name(Sam)",
+    "effects": [
+      {
+        "type": "trigger",
+        "trigger": {
+          "type": "played",
+          "filter": "self"
+        },
+        "effect": {
+          "type": "heal",
+          "filter": "bearer"
+        }
+      },
+      {
+        "type": "modifier",
+        "modifier": {
+          "type": "addKeyword",
+          "filter": "bearer",
+          "keyword": "concealed"
+        }
+      },
+      {
+        "type": "trigger",
+        "trigger": {
+          "type": "condition",
+          "condition": [
+            {
+              "type": "location",
+              "filter": "underground"
+            },
+            {
+              "type": "canSpot",
+              "filter": "self,attachedTo(companion)"
+            }
+          ]
+        },
+        "effect": {
+          "type": "discard",
+          "filter": "self"
+        }
+      }
+    ] 
+  }, 
 }
