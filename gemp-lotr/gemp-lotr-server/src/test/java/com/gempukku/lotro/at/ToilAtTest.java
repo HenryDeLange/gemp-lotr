@@ -1,5 +1,6 @@
 package com.gempukku.lotro.at;
 
+import com.gempukku.lotro.common.Token;
 import com.gempukku.lotro.common.Zone;
 import com.gempukku.lotro.game.CardNotFoundException;
 import com.gempukku.lotro.game.PhysicalCard;
@@ -147,8 +148,8 @@ public class ToilAtTest extends AbstractAtTest {
 
         AwaitingDecision toilExertion = _userFeedback.getAwaitingDecision(P2);
         assertEquals(AwaitingDecisionType.CARD_SELECTION, toilExertion.getDecisionType());
-        assertEquals("0", (String) toilExertion.getDecisionParameters().get("min"));
-        assertEquals("1", (String) toilExertion.getDecisionParameters().get("max"));
+        assertEquals("0", toilExertion.getDecisionParameters().get("min")[0]);
+        assertEquals("1", toilExertion.getDecisionParameters().get("max")[0]);
         validateContents(new String[]{"" + corpsOfHarad.getCardId()}, (String[]) toilExertion.getDecisionParameters().get("cardId"));
 
         playerDecided(P2, "" + corpsOfHarad.getCardId());
@@ -186,8 +187,8 @@ public class ToilAtTest extends AbstractAtTest {
 
         AwaitingDecision toilExertion = _userFeedback.getAwaitingDecision(P2);
         assertEquals(AwaitingDecisionType.CARD_SELECTION, toilExertion.getDecisionType());
-        assertEquals("0", (String) toilExertion.getDecisionParameters().get("min"));
-        assertEquals("1", (String) toilExertion.getDecisionParameters().get("max"));
+        assertEquals("0", toilExertion.getDecisionParameters().get("min")[0]);
+        assertEquals("1", (String) toilExertion.getDecisionParameters().get("max")[0]);
         validateContents(new String[]{"" + corpsOfHarad.getCardId()}, (String[]) toilExertion.getDecisionParameters().get("cardId"));
 
         playerDecided(P2, "");
@@ -227,8 +228,8 @@ public class ToilAtTest extends AbstractAtTest {
 
         AwaitingDecision toilExertion = _userFeedback.getAwaitingDecision(P2);
         assertEquals(AwaitingDecisionType.CARD_SELECTION, toilExertion.getDecisionType());
-        assertEquals("0", (String) toilExertion.getDecisionParameters().get("min"));
-        assertEquals("2", (String) toilExertion.getDecisionParameters().get("max"));
+        assertEquals("0", (String) toilExertion.getDecisionParameters().get("min")[0]);
+        assertEquals("2", (String) toilExertion.getDecisionParameters().get("max")[0]);
         validateContents(new String[]{"" + corpsOfHarad1.getCardId(), "" + corpsOfHarad2.getCardId()}, (String[]) toilExertion.getDecisionParameters().get("cardId"));
 
         playerDecided(P2, corpsOfHarad1.getCardId() + "," + corpsOfHarad2.getCardId());
@@ -269,8 +270,8 @@ public class ToilAtTest extends AbstractAtTest {
 
         AwaitingDecision toilExertion = _userFeedback.getAwaitingDecision(P2);
         assertEquals(AwaitingDecisionType.CARD_SELECTION, toilExertion.getDecisionType());
-        assertEquals("0", (String) toilExertion.getDecisionParameters().get("min"));
-        assertEquals("2", (String) toilExertion.getDecisionParameters().get("max"));
+        assertEquals("0", (String) toilExertion.getDecisionParameters().get("min")[0]);
+        assertEquals("2", (String) toilExertion.getDecisionParameters().get("max")[0]);
         validateContents(new String[]{"" + corpsOfHarad1.getCardId(), "" + corpsOfHarad2.getCardId()}, (String[]) toilExertion.getDecisionParameters().get("cardId"));
 
         playerDecided(P2, "" + corpsOfHarad1.getCardId());
@@ -317,8 +318,8 @@ public class ToilAtTest extends AbstractAtTest {
 
         AwaitingDecision toilExertion = _userFeedback.getAwaitingDecision(P2);
         assertEquals(AwaitingDecisionType.CARD_SELECTION, toilExertion.getDecisionType());
-        assertEquals("0", (String) toilExertion.getDecisionParameters().get("min"));
-        assertEquals("5", (String) toilExertion.getDecisionParameters().get("max"));
+        assertEquals("0", (String) toilExertion.getDecisionParameters().get("min")[0]);
+        assertEquals("5", (String) toilExertion.getDecisionParameters().get("max")[0]);
         validateContents(new String[]{"" + corpsOfHarad1.getCardId(), "" + corpsOfHarad2.getCardId(), "" + corpsOfHarad3.getCardId(), "" + corpsOfHarad4.getCardId(), "" + corpsOfHarad5.getCardId()}, (String[]) toilExertion.getDecisionParameters().get("cardId"));
 
         playerDecided(P2, corpsOfHarad1.getCardId() + "," + corpsOfHarad2.getCardId() + "," + corpsOfHarad3.getCardId() + "," + corpsOfHarad4.getCardId() + "," + corpsOfHarad5.getCardId());
@@ -331,5 +332,28 @@ public class ToilAtTest extends AbstractAtTest {
         assertEquals(1, _game.getGameState().getWounds(corpsOfHarad5));
         // It's 6 not 8, because of roaming penalty
         assertEquals(6, _game.getGameState().getTwilightPool());
+    }
+
+    @Test
+    public void berserkerTorchPlaysCorrectly() throws DecisionResultInvalidException, CardNotFoundException {
+        initializeSimplestGame();
+
+        PhysicalCardImpl urukDominator = createCard(P2, "12_152");
+        PhysicalCardImpl berserkerTorch = createCard(P2, "12_136");
+
+        skipMulligans();
+
+        moveCardToZone(urukDominator, Zone.HAND);
+        moveCardToZone(berserkerTorch, Zone.HAND);
+
+        _game.getGameState().setTwilight(6);
+
+        playerDecided(P1, "");
+
+        playerDecided(P2, getCardActionId(P2, "Play"));
+        playerDecided(P2, getCardActionId(P2, "Play"));
+        assertEquals(Zone.ATTACHED, berserkerTorch.getZone());
+        assertEquals(1, _game.getGameState().getTokenCount(urukDominator, Token.WOUND));
+        assertEquals(0, _game.getGameState().getTwilightPool());
     }
 }

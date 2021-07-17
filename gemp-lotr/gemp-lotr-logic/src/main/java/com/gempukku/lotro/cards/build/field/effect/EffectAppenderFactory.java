@@ -23,12 +23,14 @@ public class EffectAppenderFactory {
         effectAppenderProducers.put("modifystrength", new ModifyStrength());
         effectAppenderProducers.put("addkeyword", new AddKeyword());
         effectAppenderProducers.put("modifyarcherytotal", new ModifyArcheryTotal());
+        effectAppenderProducers.put("modifysitenumber", new ModifySiteNumber());
         effectAppenderProducers.put("addburdens", new AddBurdens());
         effectAppenderProducers.put("discardtopcardsfromdeck", new DiscardTopCardFromDeck());
         effectAppenderProducers.put("addtwilight", new AddTwilight());
         effectAppenderProducers.put("wound", new Wound());
         effectAppenderProducers.put("heal", new Heal());
         effectAppenderProducers.put("replaceinskirmish", new ReplaceInSkirmish());
+        effectAppenderProducers.put("replaceinassignment", new ReplaceInAssignment());
         effectAppenderProducers.put("canttakemorewoundsthan", new CantTakeMoreWoundsThan());
         effectAppenderProducers.put("canttakewounds", new CantTakeWounds());
         effectAppenderProducers.put("choice", new Choice());
@@ -98,6 +100,7 @@ public class EffectAppenderFactory {
         effectAppenderProducers.put("revealcards", new RevealCards());
         effectAppenderProducers.put("addtokens", new AddTokens());
         effectAppenderProducers.put("removetokens", new RemoveTokens());
+        effectAppenderProducers.put("chooseandremovetokens", new ChooseAndRemoveTokens());
         effectAppenderProducers.put("transfer", new Transfer());
         effectAppenderProducers.put("transfertosupport", new TransferToSupport());
         effectAppenderProducers.put("transferfromdiscard", new TransferFromDiscard());

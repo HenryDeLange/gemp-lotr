@@ -55,6 +55,8 @@ public class ModifierSourceFactory {
         modifierProducers.put("allycanparticipateinarcheryfireandskirmishes", new AllyCanParticipateInArcheryFireAndSkirmishes());
         modifierProducers.put("cantlookorrevealhand", new CantLookOrRevealHand());
         modifierProducers.put("cantbeassignedtoskirmish", new CantBeAssignedToSkirmish());
+        modifierProducers.put("shadowhasinitiative", new ShadowHasInitiative());
+
     }
 
     public ModifierSource getModifier(JSONObject object, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {

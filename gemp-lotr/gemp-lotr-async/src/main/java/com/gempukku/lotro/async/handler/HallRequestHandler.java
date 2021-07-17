@@ -30,9 +30,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.lang.reflect.Type;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class HallRequestHandler extends LotroServerRequestHandler implements UriRequestHandler {
     private CollectionsManager _collectionManager;
@@ -255,6 +253,11 @@ public class HallRequestHandler extends LotroServerRequestHandler implements Uri
             }
             result.append("</li>");
         }
+        if (!lotroFormat.getErrataCardMap().isEmpty()) {
+            result.append("<li>Errata: ");
+            appendCards(result, new ArrayList<>(new LinkedHashSet<>(lotroFormat.getErrataCardMap().values())));
+            result.append("</li>");
+        }
         if (lotroFormat.getValidCards().size() > 0) {
             result.append("<li>Additional valid: ");
             List<String> additionalValidCards = lotroFormat.getValidCards();
@@ -286,11 +289,17 @@ public class HallRequestHandler extends LotroServerRequestHandler implements Uri
 
             Document doc = documentBuilder.newDocument();
 
+            Player player = getResourceOwnerSafely(request, null);
+
             Element hall = doc.createElement("hall");
             hall.setAttribute("currency", String.valueOf(_collectionManager.getPlayerCollection(resourceOwner, CollectionType.MY_CARDS.getCode()).getCurrency()));
 
             _hallServer.signupUserForHall(resourceOwner, new SerializeHallInfoVisitor(doc, hall));
             for (Map.Entry<String, LotroFormat> format : _formatLibrary.getHallFormats().entrySet()) {
+                //playtest formats are opt-in
+                if (format.getKey().startsWith("test") && !player.getType().contains("p"))
+                    continue;
+
                 Element formatElem = doc.createElement("format");
                 formatElem.setAttribute("type", format.getKey());
                 formatElem.appendChild(doc.createTextNode(format.getValue().getName()));

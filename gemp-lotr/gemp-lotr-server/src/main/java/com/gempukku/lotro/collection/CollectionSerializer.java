@@ -55,6 +55,10 @@ public class CollectionSerializer {
         loadSet("30");
         loadSet("31");
         loadSet("32");
+
+        //April 2021 PC Promos
+        _singleByteCountItems.add("11_267");
+        _singleByteCountItems.add("11_268");
     }
 
     private void fillDoubleByteItems() throws IOException {
@@ -137,7 +141,7 @@ public class CollectionSerializer {
         }
 
         Map<String, Object> extraInformation = collection.getExtraInformation();
-        JSONObject json= new JSONObject();
+        JSONObject json = new JSONObject();
         json.putAll(extraInformation);
 
         OutputStreamWriter writer = new OutputStreamWriter(outputStream, "UTF-8");
@@ -168,7 +172,7 @@ public class CollectionSerializer {
         DefaultCardCollection collection = new DefaultCardCollection();
 
         byte[] packs = new byte[packTypes];
-        int read = inputStream.read(packs);
+        int read = readWholeArray(inputStream, packs);
         if (read != packTypes)
             throw new IllegalStateException("Under-read the packs information");
         for (int i = 0; i < packs.length; i++)
@@ -177,7 +181,7 @@ public class CollectionSerializer {
 
         int cardBytes = convertToInt(inputStream.read(), inputStream.read());
         byte[] cards = new byte[cardBytes];
-        read = inputStream.read(cards);
+        read = readWholeArray(inputStream, cards);
         if (read != cardBytes)
             throw new IllegalArgumentException("Under-read the cards information");
         for (int i = 0; i < cards.length; i++)
@@ -202,7 +206,7 @@ public class CollectionSerializer {
         collection.addCurrency(currency);
 
         byte[] packs = new byte[packTypes];
-        int read = inputStream.read(packs);
+        int read = readWholeArray(inputStream, packs);
         if (read != packTypes)
             throw new IllegalStateException("Under-read the packs information");
         for (int i = 0; i < packs.length; i++)
@@ -211,7 +215,7 @@ public class CollectionSerializer {
 
         int cardBytes = convertToInt(inputStream.read(), inputStream.read());
         byte[] cards = new byte[cardBytes];
-        read = inputStream.read(cards);
+        read = readWholeArray(inputStream, cards);
         if (read != cardBytes)
             throw new IllegalArgumentException("Under-read the cards information");
         for (int i = 0; i < cards.length; i++)
@@ -237,7 +241,7 @@ public class CollectionSerializer {
 
         byte[] packs = new byte[packTypes * 2];
 
-        int read = inputStream.read(packs);
+        int read = readWholeArray(inputStream, packs);
         if (read != packTypes * 2)
             throw new IllegalStateException("Under-read the packs information");
         for (int i = 0; i < packTypes; i++) {
@@ -248,7 +252,7 @@ public class CollectionSerializer {
 
         int cardBytes = convertToInt(inputStream.read(), inputStream.read());
         byte[] cards = new byte[cardBytes];
-        read = inputStream.read(cards);
+        read = readWholeArray(inputStream, cards);
         if (read != cardBytes)
             throw new IllegalArgumentException("Under-read the cards information");
         for (int i = 0; i < cards.length; i++)
@@ -273,7 +277,7 @@ public class CollectionSerializer {
 
         byte[] packs = new byte[packTypes * 2];
 
-        int read = inputStream.read(packs);
+        int read = readWholeArray(inputStream, packs);
         if (read != packTypes * 2)
             throw new IllegalStateException("Under-read the packs information");
         for (int i = 0; i < packTypes; i++) {
@@ -284,7 +288,7 @@ public class CollectionSerializer {
 
         int cardBytes = convertToInt(inputStream.read(), inputStream.read());
         byte[] cards = new byte[cardBytes];
-        read = inputStream.read(cards);
+        read = readWholeArray(inputStream, cards);
         if (read != cardBytes)
             throw new IllegalArgumentException("Under-read the cards information");
         for (int i = 0; i < cards.length; i++) {
@@ -311,7 +315,7 @@ public class CollectionSerializer {
 
         byte[] packs = new byte[packTypes * 2];
 
-        int read = inputStream.read(packs);
+        int read = readWholeArray(inputStream, packs);
         if (read != packTypes * 2)
             throw new IllegalStateException("Under-read the packs information");
         for (int i = 0; i < packTypes; i++) {
@@ -322,7 +326,7 @@ public class CollectionSerializer {
 
         int cardBytes = convertToInt(inputStream.read(), inputStream.read());
         byte[] cards = new byte[cardBytes];
-        read = inputStream.read(cards);
+        read = readWholeArray(inputStream, cards);
         if (read != cardBytes)
             throw new IllegalArgumentException("Under-read the cards information");
         for (int i = 0; i < cards.length; i++) {
@@ -360,5 +364,17 @@ public class CollectionSerializer {
     private void printInt(OutputStream outputStream, int value, int byteCount) throws IOException {
         for (int i = 0; i < byteCount; i++)
             outputStream.write((value >> (8 * (byteCount - i - 1))) & 0x000000ff);
+    }
+
+    private static int readWholeArray(InputStream stream, byte[] array) throws IOException {
+        int readCount = 0;
+        while (true) {
+            int readAmount = stream.read(array, readCount, array.length - readCount);
+            if (readAmount < 0)
+                return readCount;
+            readCount += readAmount;
+            if (readCount == array.length)
+                return readCount;
+        }
     }
 }

@@ -2,11 +2,11 @@ var cardCache = {};
 var cardScale = 357 / 497;
 var fixedImages = {
     // "Forth the Three Hunters!" cards, separate special images
-    "15_204": "http://lotrtcgwiki.com/images/LOTR15060D.jpg",
-    "15_205": "http://lotrtcgwiki.com/images/LOTR15060E.jpg",
-    "15_206": "http://lotrtcgwiki.com/images/LOTR15060G.jpg",
+    "15_204": "https://lotrtcgwiki.com/images/LOTR15060D.jpg",
+    "15_205": "https://lotrtcgwiki.com/images/LOTR15060E.jpg",
+    "15_206": "https://lotrtcgwiki.com/images/LOTR15060G.jpg",
     // Holidays Gandalf
-    "15_207": "http://lotrtcgwiki.com/images/LOTR15029H.jpg",
+    "15_207": "https://lotrtcgwiki.com/images/LOTR15029H.jpg",
     // Gemp-LotR promos
     "gl_theOneRing": "/gemp-lotr/images/cards/gl_theOneRing.png"
 };
@@ -234,7 +234,7 @@ var Card = Class.extend({
         var separator = this.blueprintId.indexOf("_");
         var setNo = parseInt(this.blueprintId.substr(0, separator));
         
-        if(setNo >= 50 && setNo <= 69)
+        if(setNo >= 50 && setNo <= 89)
             return true;
         
         return this.errata;
@@ -293,6 +293,14 @@ var Card = Class.extend({
             return (cardNo >= 55 && cardNo <= 58);
         if (setNo == 40)
             return (cardNo >= 273 && cardNo <= 309);
+        if (setNo == 63 || setNo == 83)
+            return (cardNo == 188);
+        if (setNo == 73 || setNo == 93)
+            return (cardNo == 120);
+        if (setNo == 77 || setNo == 97)
+            return (cardNo == 359);
+        if (setNo == 101 || setNo == 151)
+            return (cardNo >= 93 && cardNo <= 94);
 
         return false;
     },
@@ -359,7 +367,7 @@ var Card = Class.extend({
     },
 
     getMainLocation: function (setNo, cardNo) {
-        return "http://lotrtcgwiki.com/images/";
+        return "https://lotrtcgwiki.com/images/";
     },
 
     getMasterworksOffset: function (setNo) {

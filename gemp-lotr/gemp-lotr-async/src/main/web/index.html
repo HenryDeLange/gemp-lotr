@@ -9,7 +9,7 @@
             height: 100%;
         }
         body {
-            font-size: 12px;
+            font-size: 100%;
             height: 100%; 
             background-image: url('images/dwarrowdelf.jpg'); 
             background-size: auto 100%; 
@@ -22,6 +22,58 @@
         .ui-button-text-only .ui-button-text {
             font-size: 70%;
             padding: .2em .5em;
+        }
+        
+        .centerContainer {
+            margin: 0;
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            width: 70%;
+            -ms-transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%);
+        }
+        
+        .interaction {
+            margin: 0;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .status, .error {
+            margin: 0;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        h1 {
+            color:#f2541a; 
+            font-size: 500%
+        }
+        
+        .banner {
+            text-align: center; 
+            background-color: #444444CC; 
+            margin-bottom: 150px; 
+            width: 100vw;
+            margin-left: calc(-50vw + 50%);
+        }
+        
+        .login {
+            margin: 10px;
+            padding: 10px;
+            width: 90%;
+            position: absolute;
+            left: 50%;
+            -ms-transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%);
+            font-size: 125%;
+            display:grid;
+            grid-row-gap: 10px;
+        }
+        
+        input {
+            font-size: 90%;
         }
     </style>
 
@@ -172,39 +224,22 @@
                         $(".status").append(html);
                     });
                 loginScreen();
-                //$(".centerContainer").center();
             });
     </script>
 
 </head>
 <body bgcolor="#000000" >
-<!-- <div style="float: left;height: 98%"><img src="images/troll-bak.png" height="98%"/></div>
-<div style="float: right;height: 98%"><img src="images/man-bak.png" height="98%"/></div> -->
-    <div style="float: top; ">
-        <img src="images/pc_banner.png" height="98%" style="display: block; margin-left: auto; margin-right: auto; width: 15%">
-        
-        
-        
-        <div class="centerContainer" style="
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  -ms-transform: translate(-50%, -50%);
-  transform: translate(-50%, -50%);">
-            <div style="text-align: center; background-color: #333333AA; margin-bottom: 10%; width: 100vw;
-  margin-left: calc(-50vw + 50%);">
-                <h1 style="color:#E65014; font-size: 500% ">Public Playtest Server</h1>
-            </div>
-            <div style="margin: 0;
-  position: absolute;
-  left: 50%;
-  -ms-transform: translate(-50%, -50%);
-  transform: translate(-50%, -50%);">
-                <div class="status" style="color:#ffffff;"></div>
-                <div class="error" style="color: #ff0000;"></div>
-                <div class="interaction" style="color: #ffffff;"></div>
-            </div>
+    <div class="dim"></div>
+    <div class="centerContainer">
+        <div class="banner">
+            <h1>GEMP: Play the LotR-TCG</h1>
+        </div>
+        <div class="login">
+            <div class="status" style="color:#ffffff; overflow:visible"></div>
+            <div class="error" style="color: #ff0000;"></div>
+            <div class="interaction" style="color: #ffffff;"></div>
         </div>
     </div>
+
 </body>
 </html>

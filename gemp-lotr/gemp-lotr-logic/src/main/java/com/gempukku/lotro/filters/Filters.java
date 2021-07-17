@@ -431,6 +431,18 @@ public class Filters {
         }
     };
 
+    public static final Filter inFierceSkirmish = new Filter() {
+        @Override
+        public boolean accepts(LotroGame game, PhysicalCard physicalCard) {
+            Skirmish skirmish = game.getGameState().getSkirmish();
+            if (skirmish != null && game.getGameState().isFierceSkirmishes()) {
+                return (skirmish.getFellowshipCharacter() == physicalCard)
+                        || skirmish.getShadowCharacters().contains(physicalCard);
+            }
+            return false;
+        }
+    };
+
     public static final Filter inPlay = new Filter() {
         @Override
         public boolean accepts(LotroGame game, PhysicalCard physicalCard) {
@@ -1048,6 +1060,7 @@ public class Filters {
         };
     }
 
+    public static final Filter ringBoundCompanion = Filters.and(CardType.COMPANION, Keyword.RING_BOUND);
     public static final Filter unboundCompanion = Filters.and(CardType.COMPANION, Filters.not(Keyword.RING_BOUND));
     public static final Filter roamingMinion = Filters.and(CardType.MINION, Keyword.ROAMING);
     public static final Filter mounted = Filters.or(Filters.hasAttached(PossessionClass.MOUNT), Keyword.MOUNTED);
