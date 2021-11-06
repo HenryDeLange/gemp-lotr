@@ -237,7 +237,13 @@ public class GenericCardTestHelper extends AbstractAtTest {
     }
 
 
-    public void AttachCard(PhysicalCardImpl card, PhysicalCardImpl bearer) { _game.getGameState().attachCard(_game, card, bearer); }
+    public void AttachCardsTo(PhysicalCardImpl bearer, PhysicalCardImpl...cards) {
+        Arrays.stream(cards).forEach(card -> _game.getGameState().attachCard(_game, card, bearer));
+    }
+
+    public void StackCardsOn(PhysicalCardImpl on, PhysicalCardImpl...cards) {
+        Arrays.stream(cards).forEach(card -> _game.getGameState().stackCard(_game, card, on));
+    }
 
     public void FreepsMoveCardToDeck(String...cardNames) {
         Arrays.stream(cardNames).forEach(cardName -> FreepsMoveCardToDeck(GetFreepsCard(cardName)));
@@ -270,14 +276,16 @@ public class GenericCardTestHelper extends AbstractAtTest {
         Arrays.stream(cards).forEach(card -> MoveCardToZone(P1, card, Zone.SUPPORT));
     }
 
-    public void FreepsMoveCardToDiscard(String cardName) { FreepsMoveCardToSupportArea(GetFreepsCard(cardName)); }
+    public void FreepsMoveCardToDiscard(String cardName) { FreepsMoveCardToDiscard(GetFreepsCard(cardName)); }
     public void FreepsMoveCardToDiscard(PhysicalCardImpl...cards) {
         Arrays.stream(cards).forEach(card -> MoveCardToZone(P1, card, Zone.DISCARD));
     }
-    public void ShadowMoveCardToDiscard(String cardName) { ShadowMoveCardToSupportArea(GetShadowCard(cardName)); }
+    public void ShadowMoveCardToDiscard(String cardName) { ShadowMoveCardToDiscard(GetShadowCard(cardName)); }
     public void ShadowMoveCardToDiscard(PhysicalCardImpl...cards) {
         Arrays.stream(cards).forEach(card -> MoveCardToZone(P1, card, Zone.DISCARD));
     }
+
+
 
     public void MoveCardToZone(String player, PhysicalCardImpl card, Zone zone) {
         if(card.getZone() != null)
@@ -298,6 +306,8 @@ public class GenericCardTestHelper extends AbstractAtTest {
 
     public int GetTwilight() { return _game.getGameState().getTwilightPool(); }
     public void SetTwilight(int amount) { _game.getGameState().setTwilight(amount); }
+
+    public int GetMoveLimit() { return _game.getGameState().getMoveCount(); }
 
     public PhysicalCardImpl GetRingBearer() { return (PhysicalCardImpl)_game.getGameState().getRingBearer(P1); }
 
@@ -368,8 +378,15 @@ public class GenericCardTestHelper extends AbstractAtTest {
 
 
     public List<PhysicalCardImpl> FreepsGetAttachedCards(String name) { return GetAttachedCards(GetFreepsCard(name)); }
+    public List<PhysicalCardImpl> ShadowGetAttachedCards(String name) { return GetAttachedCards(GetShadowCard(name)); }
     public List<PhysicalCardImpl> GetAttachedCards(PhysicalCardImpl card) {
         return (List<PhysicalCardImpl>)(List<?>)_game.getGameState().getAttachedCards(card);
+    }
+
+    public List<PhysicalCardImpl> FreepsGetStackedCards(String name) { return GetStackedCards(GetFreepsCard(name)); }
+    public List<PhysicalCardImpl> ShadowGetStackedCards(String name) { return GetStackedCards(GetShadowCard(name)); }
+    public List<PhysicalCardImpl> GetStackedCards(PhysicalCardImpl card) {
+        return (List<PhysicalCardImpl>)(List<?>)_game.getGameState().getStackedCards(card);
     }
 
     public void FreepsResolveSkirmish(String name) throws DecisionResultInvalidException { FreepsResolveSkirmish(GetFreepsCard(name)); }
@@ -417,14 +434,20 @@ public class GenericCardTestHelper extends AbstractAtTest {
         return _game.getModifiersQuerying().hasKeyword(_game, card, keyword);
     }
 
+    public int GetKeywordCount(PhysicalCardImpl card, Keyword keyword)
+    {
+        return _game.getModifiersQuerying().getKeywordCount(_game, card, keyword);
+    }
 
-    public void InsertAdHocModifier(Modifier mod)
+
+    public void ApplyAdHocModifier(Modifier mod)
     {
         _game.getModifiersEnvironment().addUntilEndOfTurnModifier(mod);
     }
 
     public void FreepsChoose(String choice) throws DecisionResultInvalidException { playerDecided(P1, choice); }
     public void ShadowChoose(String choice) throws DecisionResultInvalidException { playerDecided(P2, choice); }
+
 
     public void FreepsChooseToMove() throws DecisionResultInvalidException { playerDecided(P1, "0"); }
     public void FreepsChooseToStay() throws DecisionResultInvalidException { playerDecided(P1, "1"); }

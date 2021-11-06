@@ -79,7 +79,7 @@
                 $("#latestNews").append(
                     `<span style=''><img src="images/pc_icon.png" style="float:left; display: block;width: 5em;vertical-align: text-top;margin-right:10px;"><span style="float: left;vertical-align:middle; font-size: 180%; background-color: #444444AA; border: 3px solid #E65014;"><span style="color:#E65014">Welcome to the Player's Council Private Playtest Server!</span><br>If you have any feedback, bugs, or other issues to report, please <a class="news" href="https://lotrtcgpc.net/bugreport.html">report it on the PC website</a> or on <a class="news" href="https://lotrtcgpc.net/discord">the PC Discord server.</a></span></span>`);
 
-                chat = new ChatBoxUI("Game Hall", $("#chat"), "/gemp-lotr-server", true, null, false, true, null);
+                chat = new ChatBoxUI("Game Hall", $("#chat"), "/gemp-lotr-server", true, null, false, true, null, true);
                 chat.setBounds(2, 2, 780 - 4, 200 - 4);
                 chat.showTimestamps = true;
 
@@ -204,8 +204,30 @@
         <div id="motd" style="width:780px;height:30px;"></div>
         <div id="hall" class="ui-widget-content"
              style="width:780px;height:260px;"></div>
-        <div id="chat" class="ui-widget-content"
-             style="position:relative;width:780px;height:200px;"></div>
+        <div id="chat" class="ui-widget-content grid-container" >
+            <div id="chatarea" class="grid-item">
+                <div id="legacyChat" class="grid-container">
+                    <div id="chatMessages" class="grid-item"></div>
+                    <div id="legacyChatInput" class="grid-item">
+                        <input type="text" id="chatTalk" class=""/>
+                        <button id="showSystemButton" class="ui-icon-zoomin"></button>
+                        <button id="lockChatButton" class="ui-icon-locked">Toggle lock chat</button>
+                        
+                    </div>
+                </div>
+                
+                
+                <div id="discordChat"> 
+                    <!-- This is now generated on-demand to prevent any potential performance issues if users elect not to use it-->
+                    <!--<script src='https://cdn.jsdelivr.net/npm/@widgetbot/html-embed'></script>
+                    <widgetbot id="widgetbot" server='699957633121255515' channel='873065954609881140' shard='https://e.widgetbot.co' username=""/> -->
+                </div>
+            </div>
+            <div id="userListColumn" class="grid-item">
+                <div id="userList" class="grid-item"></div> 
+                <button id='toggleChatButt' class="grid-item">Switch to Discord</button>
+            </div>
+        </div>
     </div>
 </div>
 <div id="disclaimer">

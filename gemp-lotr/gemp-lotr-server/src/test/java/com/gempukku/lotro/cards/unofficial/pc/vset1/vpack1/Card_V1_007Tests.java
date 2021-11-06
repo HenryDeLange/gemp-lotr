@@ -1,110 +1,81 @@
+
 package com.gempukku.lotro.cards.unofficial.pc.vset1.vpack1;
 
 import com.gempukku.lotro.cards.GenericCardTestHelper;
-import com.gempukku.lotro.common.Keyword;
+import com.gempukku.lotro.common.*;
 import com.gempukku.lotro.game.CardNotFoundException;
 import com.gempukku.lotro.game.PhysicalCardImpl;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
+import com.gempukku.lotro.logic.modifiers.MoveLimitModifier;
 import org.junit.Test;
 
 import java.util.HashMap;
 
 import static junit.framework.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static junit.framework.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class Card_V1_007Tests
 {
 
-    protected GenericCardTestHelper GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
-        return new GenericCardTestHelper(
-                new HashMap<String, String>()
-                {{
-                    put("stealth1", "2_106");
-                    put("stealth2", "2_106");
+	protected GenericCardTestHelper GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
+		return new GenericCardTestHelper(
+				new HashMap<String, String>()
+				{{
+					put("card", "151_7");
+					// put other cards in here as needed for the test case
+				}},
+				GenericCardTestHelper.FellowshipSites,
+				GenericCardTestHelper.FOTRFrodo,
+				GenericCardTestHelper.FOTRRing
+		);
+	}
 
-                    put("snarler", "101_7");
+	// Uncomment both @Test markers below once this is ready to be used
 
-                }}
-        );
-    }
+	//@Test
+	public void TheCounseloftheWiseStatsAndKeywordsAreCorrect() throws DecisionResultInvalidException, CardNotFoundException {
 
+		/**
+		* Set: V1
+		* Title: The Counsel of the Wise
+		* Side: Free Peoples
+		* Culture: elven
+		* Twilight Cost: 0
+		* Type: event
+		* Subtype: Fellowship
+		* Game Text: Add x to take an [elven] ally with a twilight cost of x into hand from your draw deck.
+		*/
 
-    @Test
-    public void SnarlerStatsAndKeywordsAreCorrect() throws DecisionResultInvalidException, CardNotFoundException {
+		//Pre-game setup
+		GenericCardTestHelper scn = GetScenario();
 
-        /**
-         * Set: VSet1, VPack1
-         * Title: Hollin Snarler
-         * Side: Shadow
-         * Culture: Sauron
-         * Twilight Cost: 3
-         * Type: Minion
-         * Subtype: Warg
-         * Strength: 4
-         * Vitality: 2
-         * Home Site: 6
-         * Game Text: Tracker.  Fierce.  The site number of this minion is -1 for each stealth card you can spot.
-         * This minion is strength +1 for each wounded companion or stealth card you can spot.
-         */
+		PhysicalCardImpl card = scn.GetFreepsCard("card");
 
-        //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+		assertFalse(card.getBlueprint().isUnique());
+		assertTrue(scn.HasKeyword(card, Keyword.SUPPORT_AREA)); // test for keywords as needed
+		assertEquals(0, card.getBlueprint().getTwilightCost());
+		//assertEquals(, card.getBlueprint().getStrength());
+		//assertEquals(, card.getBlueprint().getVitality());
+		//assertEquals(, card.getBlueprint().getResistance());
+		//assertEquals(Signet., card.getBlueprint().getSignet()); 
+		//assertEquals(, card.getBlueprint().getSiteNumber()); // Change this to getAllyHomeSiteNumbers for allies
+		assertEquals(CardType.EVENT, card.getBlueprint().getCardType());
+		assertEquals(Culture.ELVEN, card.getBlueprint().getCulture());
+		assertEquals(Side.FREE_PEOPLE, card.getBlueprint().getSide());
+	}
 
-        PhysicalCardImpl snarler = scn.GetFreepsCard("snarler");
+	//@Test
+	public void TheCounseloftheWiseTest1() throws DecisionResultInvalidException, CardNotFoundException {
+		//Pre-game setup
+		GenericCardTestHelper scn = GetScenario();
 
-        assertFalse(snarler.getBlueprint().isUnique());
-        assertEquals(3, snarler.getBlueprint().getTwilightCost());
-        assertEquals(4, snarler.getBlueprint().getStrength());
-        assertEquals(3, snarler.getBlueprint().getVitality());
-        assertEquals(6, snarler.getBlueprint().getSiteNumber());
-        assertTrue(scn.HasKeyword(snarler, Keyword.TRACKER));
-        assertTrue(scn.HasKeyword(snarler, Keyword.FIERCE));
-    }
+		PhysicalCardImpl card = scn.GetFreepsCard("card");
+		scn.FreepsMoveCardToHand(card);
 
-    @Test
-    public void SnarlerSiteNumberReducedForEachStealthCard() throws DecisionResultInvalidException, CardNotFoundException {
-        //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+		scn.StartGame();
+		scn.FreepsPlayCard(card);
 
-        PhysicalCardImpl stealth1 = scn.GetFreepsCard("stealth1");
-        PhysicalCardImpl stealth2 = scn.GetFreepsCard("stealth2");
-
-        scn.FreepsMoveCardToSupportArea(stealth1, stealth2);
-
-        PhysicalCardImpl snarler = scn.GetShadowCard("snarler");
-
-        scn.ShadowMoveCharToTable(snarler);
-
-        scn.StartGame();
-
-        // 6 base, -2 for the 2 Nice Imitations on the table.
-        assertEquals(4, scn.GetSiteNumber(snarler));
-    }
-
-    @Test
-    public void SnarlerStrengthIncreasesWithWoundedCompanionsAndStealth() throws DecisionResultInvalidException, CardNotFoundException {
-        //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
-
-        PhysicalCardImpl frodo = scn.GetRingBearer();
-        PhysicalCardImpl stealth1 = scn.GetFreepsCard("stealth1");
-        PhysicalCardImpl stealth2 = scn.GetFreepsCard("stealth2");
-
-        scn.FreepsMoveCardToSupportArea(stealth1,stealth2);
-
-        PhysicalCardImpl snarler = scn.GetShadowCard("snarler");
-
-        scn.ShadowMoveCharToTable(snarler);
-
-        scn.StartGame();
-
-        scn.AddWoundsToChar(frodo, 1);
-        scn.FreepsSkipCurrentPhaseAction();
-
-        // Base of 4, +2 for stealth cards, +1 for wounded frodo
-        assertEquals(7, scn.GetStrength(snarler));
-    }
-
-
+		assertEquals(0, scn.GetTwilight());
+	}
 }
