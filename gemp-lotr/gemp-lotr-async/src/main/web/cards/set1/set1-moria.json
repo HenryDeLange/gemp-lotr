@@ -181,7 +181,8 @@
         },
         {
           "type": "putCardsFromDeckIntoHand",
-          "filter": "memory(revealedCards)"
+          "filter": "memory(revealedCards)",
+          "shuffle": false
         }
       ]
     }
@@ -196,7 +197,7 @@
       "type": "event",
       "effect": {
         "type": "assignFpCharacterToSkirmish",
-        "fpCharacter": "choose(exhausted,not(ring bearer))",
+        "fpCharacter": "choose(exhausted,companion,not(ring bearer))",
         "against": "choose(culture(moria),orc)"
       }
     }
@@ -912,7 +913,8 @@
         },
         {
           "type": "putCardsFromDeckIntoHand",
-          "filter": "all(memory(revealedCards),culture(moria),orc)"
+          "filter": "all(memory(revealedCards),culture(moria),orc)",
+          "shuffle": false
         },
         {
           "type": "discardCardsFromDrawDeck",

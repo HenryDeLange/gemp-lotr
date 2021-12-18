@@ -9,6 +9,8 @@ import com.gempukku.lotro.filters.Filters;
 import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.GameUtils;
+import com.gempukku.lotro.logic.modifiers.evaluator.Evaluator;
+import com.gempukku.lotro.logic.modifiers.evaluator.SingleMemoryEvaluator;
 import com.gempukku.lotro.logic.timing.results.CharacterLostSkirmishResult;
 
 import java.util.*;
@@ -178,9 +180,11 @@ public class FilterFactory {
                     return actionContext -> {
                         final Filterable sourceFilterable = filterableSource.getFilterable(actionContext);
                         return (Filter) (game, physicalCard) -> {
-                            for (PhysicalCard cardToCompareTo : Filters.filterActive(game, sourceFilterable)) {
-                                if (cardToCompareTo.getBlueprint().getTitle().equals(physicalCard.getBlueprint().getTitle()))
-                                    return true;
+                            for (PhysicalCard cardWithStack : Filters.filterActive(game, sourceFilterable)) {
+                                for (PhysicalCard stackedCard : game.getGameState().getStackedCards(cardWithStack)) {
+                                    if (stackedCard.getBlueprint().getTitle().equals(physicalCard.getBlueprint().getTitle()))
+                                        return true;
+                                }
                             }
                             return false;
                         };
@@ -294,8 +298,13 @@ public class FilterFactory {
                     if (parameter.startsWith("memory(") && parameter.endsWith(")")) {
                         String memory = parameter.substring(parameter.indexOf("(") + 1, parameter.lastIndexOf(")"));
                         return actionContext -> {
-                            final int value = Integer.parseInt(actionContext.getValueFromMemory(memory));
-                            return Filters.maxPrintedTwilightCost(value);
+                            try{
+                                final int value = Integer.parseInt(actionContext.getValueFromMemory(memory));
+                                return Filters.maxPrintedTwilightCost(value);
+                            }
+                            catch(IllegalArgumentException ex) {
+                                return Filters.maxPrintedTwilightCost(100);
+                            }
                         };
                     } else {
                         final ValueSource valueSource = ValueResolver.resolveEvaluator(parameter, environment);
@@ -310,8 +319,13 @@ public class FilterFactory {
                     if (parameter.startsWith("memory(") && parameter.endsWith(")")) {
                         String memory = parameter.substring(parameter.indexOf("(") + 1, parameter.lastIndexOf(")"));
                         return actionContext -> {
-                            final int value = Integer.parseInt(actionContext.getValueFromMemory(memory));
-                            return Filters.minPrintedTwilightCost(value);
+                            try {
+                                final int value = Integer.parseInt(actionContext.getValueFromMemory(memory));
+                                return Filters.minPrintedTwilightCost(value);
+                            }
+                            catch(IllegalArgumentException ex) {
+                                return Filters.minPrintedTwilightCost(0);
+                            }
                         };
                     } else {
                         final ValueSource valueSource = ValueResolver.resolveEvaluator(parameter, environment);
@@ -320,6 +334,28 @@ public class FilterFactory {
                             return Filters.minPrintedTwilightCost(value);
                         };
                     }
+                });
+        parameterFilters.put("lowestStrength",
+                (parameter, environment) -> {
+                    final FilterableSource filterableSource = environment.getFilterFactory().generateFilter(parameter, environment);
+                    return actionContext -> {
+                        final Filterable sourceFilterable = filterableSource.getFilterable(actionContext);
+                        return Filters.and(
+                            sourceFilterable, Filters.strengthEqual(
+                                new SingleMemoryEvaluator(
+                                    new Evaluator() {
+                                        @Override
+                                        public int evaluateExpression(LotroGame game, PhysicalCard cardAffected) {
+                                            int minStrength = Integer.MAX_VALUE;
+                                            for (PhysicalCard card : Filters.filterActive(game, sourceFilterable))
+                                                minStrength = Math.min(minStrength, game.getModifiersQuerying().getStrength(game, card));
+                                            return minStrength;
+                                        }
+                                    }
+                                )
+                            )
+                        );
+                    };
                 });
         parameterFilters.put("assignableToSkirmishAgainst",
                 (parameter, environment) -> {

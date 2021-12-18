@@ -17,6 +17,7 @@ public class TriggerCheckerFactory {
         triggerCheckers.put("abouttoexert", new AboutToExert());
         triggerCheckers.put("abouttoheal", new AboutToHeal());
         triggerCheckers.put("abouttotakewound", new AboutToTakeWound());
+        triggerCheckers.put("activated", new ActivatedTriggerCheckerProducer());
         triggerCheckers.put("addsburden", new AddsBurden());
         triggerCheckers.put("addsthreat", new AddsThreat());
         triggerCheckers.put("assignedtoskirmish", new AssignedToSkirmish());
@@ -25,9 +26,13 @@ public class TriggerCheckerFactory {
         triggerCheckers.put("discarded", new Discarded());
         triggerCheckers.put("discardfromdeck", new DiscardFromDeck());
         triggerCheckers.put("discardfromhand", new DiscardFromHand());
+        triggerCheckers.put("discardfromhandby", new DiscardFromHandBy());
         triggerCheckers.put("endofphase", new EndOfPhase());
         triggerCheckers.put("endofturn", new EndOfTurn());
+        triggerCheckers.put("exertedby", new ExertedBy());
         triggerCheckers.put("exerts", new Exerts());
+        triggerCheckers.put("freeplayerstartedassigning", new FreePlayerStartedAssigning());
+        triggerCheckers.put("heals", new Heals());
         triggerCheckers.put("killed", new Killed());
         triggerCheckers.put("losesinitiative", new LosesInitiative());
         triggerCheckers.put("losesskirmish", new LosesSkirmish());
@@ -42,11 +47,11 @@ public class TriggerCheckerFactory {
         triggerCheckers.put("revealcardfromtopofdrawdeck", new RevealCardFromTopOfDrawDeck());
         triggerCheckers.put("startofphase", new StartOfPhase());
         triggerCheckers.put("startofturn", new StartOfTurn());
+        triggerCheckers.put("takesoffring", new TakesOffRing());
         triggerCheckers.put("takeswound", new TakesWound());
         triggerCheckers.put("transferred", new Transferred());
         triggerCheckers.put("usesspecialability", new UsesSpecialAbility());
         triggerCheckers.put("winsskirmish", new WinsSkirmish());
-
     }
 
     public TriggerChecker getTriggerChecker(JSONObject object, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
