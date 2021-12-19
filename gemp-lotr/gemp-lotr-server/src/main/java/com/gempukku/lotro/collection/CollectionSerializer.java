@@ -28,6 +28,15 @@ public class CollectionSerializer {
     }
 
     private void fillSingleByteItems() throws IOException {
+
+        /*
+
+        DO NOT add things to the middle of this function. Everything new needs added to the end, even if it
+        breaks the symmetry of how its sorted.  Otherwise the old serialized data will fail to line up with
+        new serialized data, and it will break existing trophies and collections.
+
+         */
+
         loadSet("1");
         loadSet("2");
         loadSet("3");
@@ -55,7 +64,6 @@ public class CollectionSerializer {
         loadSet("30");
         loadSet("31");
         loadSet("32");
-        loadSet("33");
 
         //April 2021 PC Promos
         _singleByteCountItems.add("11_267");
@@ -76,6 +84,8 @@ public class CollectionSerializer {
         //November 2021 PC Promos
         _singleByteCountItems.add("8_123");
         _singleByteCountItems.add("9_54");
+
+        loadSet("33");
     }
 
     private void fillDoubleByteItems() throws IOException {
