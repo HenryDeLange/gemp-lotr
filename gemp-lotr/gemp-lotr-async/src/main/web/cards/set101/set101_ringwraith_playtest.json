@@ -148,23 +148,23 @@
           "filter": "ring bearer",
           "amount": 1
         },
-        "effect": {
-          "type": "conditional",
-          "condition": {
-            "type": "canSpot",
-            "filter": "exhausted,ring bearer"
-          },
-          "effect": [
-            {
-		          "type": "drawCards",
-		          "count": 2
+        "effect": [
+					{
+					  "type": "drawCards",
+					  "count": 1
+					},
+        	{
+	          "type": "conditional",
+	          "condition": {
+	            "type": "canSpot",
+	            "filter": "exhausted,ring bearer"
+	          },
+	          "effect": {
+			          "type": "drawCards",
+			          "count": 1
 		        }
-            {
-		          "type": "drawCards",
-		          "count": 1
-		        }
-          ]
-        }
+					}
+				]
       }
 		]
 	},
@@ -181,11 +181,11 @@
         "type": "trigger",
         "trigger": {
           "type": "winsSkirmish",
-          "filter": "twilight,nazgul"
+          "filter": "and(twilight,nazgul)"
         },
         "cost": {
           "type": "exert",
-          "filter": "bearer"
+          "filter": "choose(twilight,nazgul)"
         },
         "effect": {
           "type": "shufflecardsfromdiscardintodrawdeck",
