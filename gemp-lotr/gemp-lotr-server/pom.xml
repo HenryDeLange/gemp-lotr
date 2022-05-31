@@ -10,6 +10,7 @@
     <artifactId>gemp-lotr-server</artifactId>
     <packaging>jar</packaging>
     <!-- TODO: Fix broken unit tests (some break when upgrading past Java 8, confirmed broken on 11, 15 and 18) -->
+    <!-- TODO: Maybe use a Maven Profile to toggle between the MySQL and H2 database dependencies? -->
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -36,6 +37,11 @@
             <artifactId>mysql-connector-java</artifactId>
             <version>5.1.17</version>
             <!-- <version>8.0.29</version> -->
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>2.1.212</version>
         </dependency>
         <dependency>
             <groupId>com.googlecode.json-simple</groupId>

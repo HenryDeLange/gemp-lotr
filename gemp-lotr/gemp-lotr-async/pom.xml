@@ -29,15 +29,33 @@
     <build>
         <finalName>web</finalName>
         <plugins>
+            <!-- Setup the Manifest file with the Main Class and other useful information -->
+            <!-- Exclude the configuration resources from the JAR file -->
+            <!-- Add the config folder to the classpath -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.2.0</version>
+                <version>3.2.2</version>
                 <configuration>
+                    <excludes>
+                        <exclude>**/gemp-lotr.properties</exclude>
+                        <exclude>**/database-initial-user.sql</exclude>
+                    </excludes>
                     <archive>
                         <manifest>
                             <mainClass>com.gempukku.lotro.async.LotroAsyncServer</mainClass>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
                         </manifest>
+                        <manifestEntries>
+                            <Class-Path>config/</Class-Path>
+                            <Implementation-Title>${project.name}</Implementation-Title>
+                            <Implementation-Version>${project.version} ${maven.build.timestamp}</Implementation-Version>
+                            <Implementation-Vendor>GEMP LOTR</Implementation-Vendor>
+                            <Java-Version>${java.version}</Java-Version>
+                            <Build-Time>${maven.build.timestamp}</Build-Time>
+                            <Build-OS>${os.name}</Build-OS>
+                        </manifestEntries>
                     </archive>
                 </configuration>
             </plugin>
@@ -52,6 +70,34 @@
                         <goals>
                             <goal>shade</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Copy the configuration resources to target folder -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-resources</id>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <phase>package</phase>
+                        <configuration>
+                            <outputDirectory>${basedir}/target/config</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/resources</directory>
+                                    <filtering>true</filtering>
+                                    <includes>
+                                        <include>**/gemp-lotr.properties</include>
+                                        <include>**/database-initial-user.sql</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -76,6 +122,33 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <!-- Add Git info -->
+            <plugin>
+                <groupId>pl.project13.maven</groupId>
+                <artifactId>git-commit-id-plugin</artifactId>
+                <version>4.9.10</version>
+                <executions>
+                    <execution>
+                        <id>get-the-git-infos</id>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
+                    <prefix>git</prefix>
+                    <verbose>false</verbose>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                    <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
+                    <format>json</format>
+                    <gitDescribe>
+                        <skip>false</skip>
+                        <always>false</always>
+                        <dirty>-dirty</dirty>
+                    </gitDescribe>
+                </configuration>
             </plugin>
         </plugins>
     </build>
