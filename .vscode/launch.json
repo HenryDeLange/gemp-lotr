@@ -1,0 +1,85 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Launch Current File",
+            "request": "launch",
+            "mainClass": "${file}"
+        },
+        {
+            "type": "java",
+            "name": "Launch LotroAsyncServer",
+            "request": "launch",
+            "mainClass": "com.gempukku.lotro.async.LotroAsyncServer",
+            "projectName": "gemp-lotr-async",
+            "console": "internalConsole"
+        },
+        {
+            "type": "java",
+            "name": "Launch CreateCardStubs",
+            "request": "launch",
+            "mainClass": "CreateCardStubs",
+            "projectName": "gemp-lotr-cards"
+        },
+        {
+            "type": "java",
+            "name": "Launch LotroCardBlueprintLibraryTest",
+            "request": "launch",
+            "mainClass": "com.gempukku.lotro.cards.LotroCardBlueprintLibraryTest",
+            "projectName": "gemp-lotr-cards"
+        },
+        {
+            "type": "java",
+            "name": "Launch ImageGenerator",
+            "request": "launch",
+            "mainClass": "com.gempukku.lotro.images.ImageGenerator",
+            "projectName": "gemp-lotr-images"
+        },
+        {
+            "type": "java",
+            "name": "Launch ValidateCards",
+            "request": "launch",
+            "mainClass": "ValidateCards",
+            "projectName": "gemp-lotr-logic"
+        },
+        {
+            "type": "java",
+            "name": "Launch CardSets",
+            "request": "launch",
+            "mainClass": "com.gempukku.lotro.game.CardSets",
+            "projectName": "gemp-lotr-logic"
+        },
+        {
+            "type": "java",
+            "name": "Launch EventSerializer",
+            "request": "launch",
+            "mainClass": "com.gempukku.lotro.game.state.EventSerializer",
+            "projectName": "gemp-lotr-logic"
+        },
+        {
+            "type": "java",
+            "name": "Launch GenerateTrophyCollections",
+            "request": "launch",
+            "mainClass": "com.gempukku.lotro.GenerateTrophyCollections",
+            "projectName": "gemp-lotr-server"
+        },
+        {
+            "type": "java",
+            "name": "Launch HobbitDraftTest",
+            "request": "launch",
+            "mainClass": "com.gempukku.lotro.draft.HobbitDraftTest",
+            "projectName": "gemp-lotr-server"
+        },
+        {
+            "type": "java",
+            "name": "Launch GetStatsConsole",
+            "request": "launch",
+            "mainClass": "com.gempukku.lotro.game.GetStatsConsole",
+            "projectName": "gemp-lotr-server"
+        }
+    ]
+}
