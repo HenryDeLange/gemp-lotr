@@ -4,6 +4,8 @@ import com.gempukku.lotro.common.ApplicationConfiguration;
 import com.gempukku.lotro.game.state.EventSerializer;
 import com.gempukku.lotro.game.state.GameCommunicationChannel;
 import com.gempukku.lotro.game.state.GameEvent;
+
+import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -23,6 +25,7 @@ import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
 public class GameRecorder {
+    private static Logger logger = Logger.getLogger(GameRecorder.class);
     private static String _possibleChars = "abcdefghijklmnopqrstuvwxyz0123456789";
     private static int _charsCount = _possibleChars.length();
 
@@ -80,6 +83,7 @@ public class GameRecorder {
 
     private File getRecordingFile(String playerId, String gameId) {
         File gameReplayFolder = new File(ApplicationConfiguration.getProperty("application.root"), "replay");
+        logger.debug("Using Replay folder " + gameReplayFolder.getAbsolutePath());
         File playerReplayFolder = new File(gameReplayFolder, playerId);
         return new File(playerReplayFolder, gameId + ".xml.gz");
     }

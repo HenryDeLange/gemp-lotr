@@ -2,6 +2,9 @@ package com.gempukku.lotro.async.handler;
 
 import com.gempukku.lotro.async.HttpProcessingException;
 import com.gempukku.lotro.async.ResponseWriter;
+
+import org.apache.log4j.Logger;
+
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
 
@@ -13,6 +16,8 @@ import java.util.Collections;
 import java.util.Map;
 
 public class WebRequestHandler implements UriRequestHandler {
+    private static Logger logger = Logger.getLogger(WebRequestHandler.class);
+
     private String _root;
 
     public WebRequestHandler(String root) {
@@ -33,7 +38,8 @@ public class WebRequestHandler implements UriRequestHandler {
 
         File file = new File(_root + uri);
         if (!file.getCanonicalPath().startsWith(_root))
-            throw new HttpProcessingException(403);
+            // throw new HttpProcessingException(403);
+            logger.trace("The 'web.path' specified in the 'gemp-lotr.properties' file is not an absolute path.");
 
         if (!file.exists())
             throw new HttpProcessingException(404);

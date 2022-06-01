@@ -86,6 +86,7 @@ public class LotroCardBlueprintLibrary {
     }
 
     private void loadCards(File path, boolean initial) {
+        logger.info("Loading cards from " + path.getAbsolutePath());
         if (path.isFile())
             loadCardsFromFile(path, initial);
         else if (path.isDirectory())
