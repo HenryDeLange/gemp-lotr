@@ -66,7 +66,7 @@ public class LotroCardBlueprintLibrary {
                                 LotroCardBlueprint blueprint = getBlueprint(blueprintId);
                                 _blueprintMap.put(blueprintId, blueprint);
                             } catch (CardNotFoundException exp) {
-                                throw new RuntimeException("Unable to start the server, due to invalid (missing) card definition - " + blueprintId);
+                                throw new RuntimeException("Unable to start the server, due to invalid (missing) card definition - " + blueprintId, exp);
                             }
                         }
                     }
