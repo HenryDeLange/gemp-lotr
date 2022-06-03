@@ -319,11 +319,11 @@ public class HallServer extends AbstractServer {
     /**
      * @return If table created, otherwise <code>false</code> (if the user already is sitting at a table or playing).
      */
-    public void createNewTable(String type, Player player, String deckName, String timer) throws HallException {
+    public void createNewTable(String type, Player player, String deckName, String timer, boolean bot) throws HallException {
         if (_shutdown)
             throw new HallException("Server is in shutdown mode. Server will be restarted after all running games are finished.");
 
-        GameSettings gameSettings = createGameSettings(type, timer);
+        GameSettings gameSettings = createGameSettings(type, timer, bot);
 
         LotroDeck lotroDeck = validateUserAndDeck(gameSettings.getLotroFormat(), player, deckName, gameSettings.getCollectionType());
 
@@ -339,7 +339,7 @@ public class HallServer extends AbstractServer {
         }
     }
 
-    private GameSettings createGameSettings(String type, String timer) throws HallException {
+    private GameSettings createGameSettings(String type, String timer, boolean botGame) throws HallException {
         League league = null;
         LeagueSerieData leagueSerie = null;
         CollectionType collectionType = _defaultCollectionType;
@@ -365,7 +365,8 @@ public class HallServer extends AbstractServer {
             throw new HallException("This format is not supported: " + type);
 
         return new GameSettings(collectionType, format, league, leagueSerie,
-                league != null, gameTimer.isLongGame(), gameTimer.getName(), gameTimer.getMaxSecondsPerPlayer(), gameTimer.getMaxSecondsPerDecision());
+                league != null, gameTimer.isLongGame(), gameTimer.getName(), gameTimer.getMaxSecondsPerPlayer(), 
+                gameTimer.getMaxSecondsPerDecision(), botGame);
     }
 
     private GameTimer resolveTimer(String timer) {
@@ -765,7 +766,7 @@ public class HallServer extends AbstractServer {
         private HallTournamentCallback(Tournament tournament) {
             _tournament = tournament;
             tournamentGameSettings = new GameSettings(null, _formatLibrary.getFormat(_tournament.getFormat()),
-                    null, null, true, false, "Tournament", 60 * 40, 60 * 5);
+                    null, null, true, false, "Tournament", 60 * 40, 60 * 5, false);
         }
 
         @Override

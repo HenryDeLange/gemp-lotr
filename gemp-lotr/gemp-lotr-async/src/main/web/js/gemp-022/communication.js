@@ -588,7 +588,7 @@ var GempLotrCommunication = Class.extend({
             dataType:"xml"
         });
     },
-    createTable:function (format, deckName, timer, callback, errorMap) {
+    createTable:function (format, deckName, timer, botGame, callback, errorMap) {
         $.ajax({
             type:"POST",
             url:this.url + "/hall",
@@ -597,6 +597,7 @@ var GempLotrCommunication = Class.extend({
                 format:format,
                 deckName:deckName,
                 timer:timer,
+                botGame:botGame,
                 participantId:getUrlParam("participantId")},
             success:this.deliveryCheck(callback),
             error:this.errorCheck(errorMap),

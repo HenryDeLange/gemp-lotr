@@ -7,6 +7,7 @@ var GempLotrHallUI = Class.extend({
     decksSelect:null,
     timerSelect:null,
     createTableButton:null,
+    createBotCheckbox:null,
 
     tablesDiv:null,
     buttonsDiv:null,
@@ -69,10 +70,13 @@ var GempLotrHallUI = Class.extend({
         this.pocketDiv.css({"float":"right", width:95, height:18});
         this.buttonsDiv.append(this.pocketDiv);
 
-        this.supportedFormatsSelect = $("<select style='width: 180px'></select>");
+        this.supportedFormatsSelect = $("<select style='width: 180px; margin-left: 5px'></select>");
         this.supportedFormatsSelect.hide();
 
-        this.createTableButton = $("<button>Create table</button>");
+        this.createBotCheckbox = $("<input id='botGame' type='checkbox' style='margin-left: 10px' /><label for='botGame'>Bot</label>");
+        this.createBotCheckbox.hide();
+
+        this.createTableButton = $("<button style='margin-left: 20px'>Create table</button>");
         $(this.createTableButton).button().click(
             function () {
                 that.supportedFormatsSelect.hide();
@@ -81,17 +85,18 @@ var GempLotrHallUI = Class.extend({
                 var format = that.supportedFormatsSelect.val();
                 var deck = that.decksSelect.val();
                 var timer = that.timerSelect.val();
+                var botGame = $("#botGame").prop("checked");
                 if (deck != null)
-                    that.comm.createTable(format, deck, timer, function (xml) {
+                    that.comm.createTable(format, deck, timer, botGame, function (xml) {
                         that.processResponse(xml);
                     });
             });
         this.createTableButton.hide();
 
-        this.decksSelect = $("<select style='width: 220px'></select>");
+        this.decksSelect = $("<select style='width: 220px; margin-left: 10px'></select>");
         this.decksSelect.hide();
 
-        this.timerSelect = $("<select style='width: 135px'></select>");
+        this.timerSelect = $("<select style='width: 135px; margin-left: 10px'></select>");
         this.addTimer("default", "Default (80m/5m)");
         this.addTimer("blitz", "Blitz! (30m/3m)");
         this.addTimer("slow", "Slow (2h/10m)");
@@ -100,6 +105,7 @@ var GempLotrHallUI = Class.extend({
         this.buttonsDiv.append(this.supportedFormatsSelect);
         this.buttonsDiv.append(this.decksSelect);
         this.buttonsDiv.append(this.timerSelect);
+        this.buttonsDiv.append(this.createBotCheckbox);
         this.buttonsDiv.append(this.createTableButton);
 
         this.div.append(this.buttonsDiv);
@@ -728,6 +734,8 @@ var GempLotrHallUI = Class.extend({
                 this.decksSelect.css("display", "");
             if (this.createTableButton.css("display") == "none")
                 this.createTableButton.css("display", "");
+            if (this.createBotCheckbox.css("display") == "none")
+                this.createBotCheckbox.css("display", "");
 
             setTimeout(function () {
                 that.updateHall();
