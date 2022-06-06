@@ -30,6 +30,9 @@ public class DbAccess {
 
         // Now run the script to create the tables
         initDevDB();
+
+        // Setup the bot player
+        setupBotPlayers();
     }
 
     public DataSource getDataSource() {
@@ -100,8 +103,16 @@ public class DbAccess {
                     // Insert DEV values
                     if (Boolean.parseBoolean(ApplicationConfiguration.getProperty("mode.dev"))) {
                         LOG.info("Start creating DEV data");
-                        connection.createStatement().executeUpdate("INSERT INTO PLAYER (ID, NAME, PASSWORD, \"TYPE\", LAST_LOGIN_REWARD, LAST_IP, CREATE_IP, BANNED_UNTIL) VALUES(1, 'bot', '9d74932bdb6f21dc7ab21d6fc5260f474e0d538571fba7a82b74ffe47e6f9a10', 'u', 20220530, '127.0.0.1', '127.0.0.1', NULL);");
-                        connection.createStatement().executeUpdate("INSERT INTO DECK (ID, PLAYER_ID, NAME, \"TYPE\", CONTENTS) VALUES(1, 1, 'Fellowship', 'Default', '2_102|1_2|1_319,1_330,1_337,3_116,1_349,1_351,1_355,3_117,1_361|3_7,3_7,3_7,3_7,1_31,1_31,1_33,1_33,3_13,3_13,1_45,1_45,1_48,1_48,1_48,1_48,1_47,1_47,1_47,1_47,3_23,3_23,3_27,3_27,1_50,1_50,1_50,1_50,2_18,2_18,1_163,1_163,1_170,1_170,1_163,1_163,2_62,2_62,1_174,1_174,1_176,1_176,1_176,1_176,1_191,1_191,1_191,1_191,1_187,1_187,1_187,1_187,2_52,1_196,1_196,1_196,1_184,1_184,2_60,2_60');");
+                        // Add 'dev' and 'test' users
+                        connection.createStatement().executeUpdate("INSERT INTO PLAYER (ID, NAME, PASSWORD, \"TYPE\", LAST_LOGIN_REWARD, LAST_IP, CREATE_IP, BANNED_UNTIL) " +
+                                "VALUES(1, 'dev', 'ef260e9aa3c673af240d17a2660480361a8e081d1ffeca2a5ed0e3219fc18567', 'u', 20220530, '127.0.0.1', '127.0.0.1', NULL);");
+                        connection.createStatement().executeUpdate("INSERT INTO PLAYER (ID, NAME, PASSWORD, \"TYPE\", LAST_LOGIN_REWARD, LAST_IP, CREATE_IP, BANNED_UNTIL) " +
+                                "VALUES(2, 'test', '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08', 'u', 20220530, '127.0.0.1', '127.0.0.1', NULL);");
+                        // Add some decks to the 'dev'
+                        connection.createStatement().executeUpdate("INSERT INTO DECK (ID, PLAYER_ID, NAME, \"TYPE\", CONTENTS) " +
+                                "VALUES(1, 1, 'Fellowship', 'Default', '2_102|1_2|1_319,1_330,1_337,3_116,1_349,1_351,1_355,3_117,1_361|3_7,3_7,3_7,3_7,1_31,1_31,1_33,1_33,3_13,3_13,1_45,1_45,1_48,1_48,1_48,1_48,1_47,1_47,1_47,1_47,3_23,3_23,3_27,3_27,1_50,1_50,1_50,1_50,2_18,2_18,1_163,1_163,1_170,1_170,1_163,1_163,2_62,2_62,1_174,1_174,1_176,1_176,1_176,1_176,1_191,1_191,1_191,1_191,1_187,1_187,1_187,1_187,2_52,1_196,1_196,1_196,1_184,1_184,2_60,2_60');");
+                        connection.createStatement().executeUpdate("INSERT INTO DECK (ID, PLAYER_ID, NAME, \"TYPE\", CONTENTS) " +
+                                "VALUES(2, 2, 'Fellowship', 'Default', '2_102|1_2|1_319,1_330,1_337,3_116,1_349,1_351,1_355,3_117,1_361|3_7,3_7,3_7,3_7,1_31,1_31,1_33,1_33,3_13,3_13,1_45,1_45,1_48,1_48,1_48,1_48,1_47,1_47,1_47,1_47,3_23,3_23,3_27,3_27,1_50,1_50,1_50,1_50,2_18,2_18,1_163,1_163,1_170,1_170,1_163,1_163,2_62,2_62,1_174,1_174,1_176,1_176,1_176,1_176,1_191,1_191,1_191,1_191,1_187,1_187,1_187,1_187,2_52,1_196,1_196,1_196,1_184,1_184,2_60,2_60');");
                         LOG.debug("Finished creating DEV data");
                     }
                 }
@@ -109,6 +120,19 @@ public class DbAccess {
             catch (SQLException ex) {
                 throw new RuntimeException(ex);
             }
+        }
+    }
+
+    private void setupBotPlayers() {
+        // TODO: Maybe add via script, or at least make sure not to add it over-and-over
+        try (Connection connection = getDataSource().getConnection()) {
+            connection.createStatement().executeUpdate("INSERT INTO PLAYER (ID, NAME, PASSWORD, \"TYPE\", LAST_LOGIN_REWARD, LAST_IP, CREATE_IP, BANNED_UNTIL) " +
+                    "VALUES(3, 'bot', '9d74932bdb6f21dc7ab21d6fc5260f474e0d538571fba7a82b74ffe47e6f9a10', 'bot', 20220530, '127.0.0.1', '127.0.0.1', NULL);");
+            connection.createStatement().executeUpdate("INSERT INTO DECK (ID, PLAYER_ID, NAME, \"TYPE\", CONTENTS) " +
+                    "VALUES(3, 3, 'fotr_block', 'Default', '2_102|1_2|1_319,1_330,1_337,3_116,1_349,1_351,1_355,3_117,1_361|3_7,3_7,3_7,3_7,1_31,1_31,1_33,1_33,3_13,3_13,1_45,1_45,1_48,1_48,1_48,1_48,1_47,1_47,1_47,1_47,3_23,3_23,3_27,3_27,1_50,1_50,1_50,1_50,2_18,2_18,1_163,1_163,1_170,1_170,1_163,1_163,2_62,2_62,1_174,1_174,1_176,1_176,1_176,1_176,1_191,1_191,1_191,1_191,1_187,1_187,1_187,1_187,2_52,1_196,1_196,1_196,1_184,1_184,2_60,2_60');");
+        }
+        catch (SQLException ex) {
+            throw new RuntimeException(ex);
         }
     }
 

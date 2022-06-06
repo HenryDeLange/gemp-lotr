@@ -5,6 +5,8 @@ import com.gempukku.lotro.SubscriptionExpiredException;
 import com.gempukku.lotro.async.HttpProcessingException;
 import com.gempukku.lotro.async.ResponseWriter;
 import com.gempukku.lotro.collection.CollectionsManager;
+import com.gempukku.lotro.db.DeckDAO;
+import com.gempukku.lotro.db.PlayerDAO;
 import com.gempukku.lotro.db.vo.CollectionType;
 import com.gempukku.lotro.db.vo.League;
 import com.gempukku.lotro.draft.DraftChannelVisitor;
@@ -17,6 +19,7 @@ import com.gempukku.lotro.hall.HallServer;
 import com.gempukku.lotro.league.LeagueSerieData;
 import com.gempukku.lotro.league.LeagueService;
 import com.gempukku.lotro.logic.GameUtils;
+import com.gempukku.lotro.logic.vo.LotroDeck;
 import com.gempukku.polling.LongPollingResource;
 import com.gempukku.polling.LongPollingSystem;
 import io.netty.handler.codec.http.HttpMethod;
@@ -40,6 +43,9 @@ public class HallRequestHandler extends LotroServerRequestHandler implements Uri
     private LotroCardBlueprintLibrary _library;
     private LotroServer _lotroServer;
     private LongPollingSystem longPollingSystem;
+    private PlayerDAO _playerDAO;
+    private DeckDAO _deckDAO;
+    private Random random = new Random();
 
     public HallRequestHandler(Map<Type, Object> context, LongPollingSystem longPollingSystem) {
         super(context);
@@ -50,6 +56,8 @@ public class HallRequestHandler extends LotroServerRequestHandler implements Uri
         _library = extractObject(context, LotroCardBlueprintLibrary.class);
         _lotroServer = extractObject(context, LotroServer.class);
         this.longPollingSystem = longPollingSystem;
+        _playerDAO = extractObject(context, PlayerDAO.class);
+        _deckDAO = extractObject(context, DeckDAO.class);
     }
 
     @Override
@@ -124,8 +132,19 @@ public class HallRequestHandler extends LotroServerRequestHandler implements Uri
 
         Player resourceOwner = getResourceOwnerSafely(request, participantId);
 
+        Player botPlayer = null;
+        LotroDeck botDeck = null;
+        if (botGame) {
+            List<Player> botPlayers = _playerDAO.getBotPlayers();
+            if (!botPlayers.isEmpty()) {
+                botPlayer = botPlayers.get(random.nextInt(botPlayers.size()));
+                // TODO: Support more than one deck per format (get all decks and then loop over them selection a relevant one)
+                botDeck = _deckDAO.getDeckForPlayer(botPlayer, format);
+            }
+        }
+
         try {
-            _hallServer.createNewTable(format, resourceOwner, deckName, timer, botGame);
+            _hallServer.createNewTable(format, resourceOwner, deckName, timer, botGame, botPlayer, botDeck);
             responseWriter.writeXmlResponse(null);
         } catch (HallException e) {
             responseWriter.writeXmlResponse(marshalException(e));

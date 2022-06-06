@@ -38,6 +38,23 @@ public class DbPlayerDAO implements PlayerDAO {
     }
 
     @Override
+    public List<Player> getBotPlayers() {
+        try (Connection conn = _dbAccess.getDataSource().getConnection()) {
+            String sql = _selectPlayer + " where type='bot'";
+            try (PreparedStatement statement = conn.prepareStatement(sql)) {
+                try (ResultSet rs = statement.executeQuery()) {
+                    List<Player> players = new LinkedList<>();
+                    while (rs.next())
+                        players.add(getPlayerFromResultSet(rs));
+                    return players;
+                }
+            }
+        } catch (SQLException exp) {
+            throw new RuntimeException("Unable to get bot players from DB", exp);
+        }
+    }
+
+    @Override
     public List<Player> findSimilarAccounts(String login) throws SQLException {
         final Player player = getPlayerFromDBByName(login);
         if (player == null)
@@ -214,7 +231,7 @@ public class DbPlayerDAO implements PlayerDAO {
     }
 
     @Override
-    public synchronized boolean registerUser(String login, String password, String remoteAddr) throws SQLException, LoginInvalidException {
+    public synchronized boolean registerUser(String login, String password, String remoteAddr, String type) throws SQLException, LoginInvalidException {
         boolean result = validateLogin(login);
         if (!result)
             return false;
@@ -223,7 +240,7 @@ public class DbPlayerDAO implements PlayerDAO {
             try (PreparedStatement statement = conn.prepareStatement("insert into player (name, password, type, create_ip) values (?, ?, ?, ?)")) {
                 statement.setString(1, login);
                 statement.setString(2, encodePassword(password));
-                statement.setString(3, "u");
+                statement.setString(3, type); // "u" for users, and "bot" for the bots
                 statement.setString(4, remoteAddr);
                 statement.execute();
                 return true;
@@ -256,6 +273,11 @@ public class DbPlayerDAO implements PlayerDAO {
             }
         }
     }
+
+    // public static void main(String[] arg) {
+    //     DbPlayerDAO dao = new DbPlayerDAO(null);
+    //     System.out.println(dao.encodePassword("test"));
+    // }
 
     private String encodePassword(String password) {
         try {

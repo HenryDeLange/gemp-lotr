@@ -11,6 +11,8 @@ public interface PlayerDAO {
 
     public Player getPlayer(String playerName);
 
+    public List<Player> getBotPlayers();
+
     public boolean banPlayerPermanently(String login) throws SQLException;
 
     public boolean banPlayerTemporarily(String login, long dateTo) throws SQLException;
@@ -29,7 +31,7 @@ public interface PlayerDAO {
 
     public boolean updateLastReward(Player player, int previousReward, int currentReward) throws SQLException;
 
-    public boolean registerUser(String login, String password, String remoteAddr) throws SQLException, LoginInvalidException;
+    public boolean registerUser(String login, String password, String remoteAddr, String type) throws SQLException, LoginInvalidException;
 
     public void updateLastLoginIp(String login, String remoteAddr) throws SQLException;
 }

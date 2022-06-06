@@ -1,5 +1,14 @@
 package com.gempukku.lotro.hall;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import com.gempukku.lotro.db.IgnoreDAO;
 import com.gempukku.lotro.db.vo.League;
 import com.gempukku.lotro.game.LotroGameMediator;
@@ -8,8 +17,6 @@ import com.gempukku.lotro.game.Player;
 import com.gempukku.lotro.league.LeagueSerieData;
 import com.gempukku.lotro.league.LeagueService;
 import com.gempukku.lotro.logic.vo.LotroDeck;
-
-import java.util.*;
 
 public class TableHolder {
     private LeagueService leagueService;
@@ -33,7 +40,7 @@ public class TableHolder {
         awaitingTables.clear();
     }
 
-    public GameTable createTable(Player player, GameSettings gameSettings, LotroDeck lotroDeck) throws HallException {
+    public GameTable createTable(Player player, GameSettings gameSettings, LotroDeck lotroDeck, Player botPlayer, LotroDeck botDeck) throws HallException {
         String tableId = String.valueOf(_nextTableId++);
 
         final League league = gameSettings.getLeague();
@@ -56,6 +63,22 @@ public class TableHolder {
         }
 
         awaitingTables.put(tableId, table);
+
+        // If it is a bot table, then have the bot player join it immediately
+        if (gameSettings.isBotGame() && botPlayer != null && botDeck != null) {
+            // new Thread(new Runnable() {
+            //     @Override
+            //     public void run() {
+            //         try {
+            //             Thread.sleep(1000L);
+                        joinTable(tableId, botPlayer, botDeck);
+            //         }
+            //         catch (HallException | InterruptedException ex) {
+            //             ex.printStackTrace();
+            //         }
+            //     }
+            // }).start();
+        }
         return null;
     }
 

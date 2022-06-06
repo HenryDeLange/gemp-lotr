@@ -319,17 +319,17 @@ public class HallServer extends AbstractServer {
     /**
      * @return If table created, otherwise <code>false</code> (if the user already is sitting at a table or playing).
      */
-    public void createNewTable(String type, Player player, String deckName, String timer, boolean bot) throws HallException {
+    public void createNewTable(String type, Player player, String deckName, String timer, boolean botGame, Player botPlayer, LotroDeck botDeck) throws HallException {
         if (_shutdown)
             throw new HallException("Server is in shutdown mode. Server will be restarted after all running games are finished.");
 
-        GameSettings gameSettings = createGameSettings(type, timer, bot);
+        GameSettings gameSettings = createGameSettings(type, timer, botGame);
 
         LotroDeck lotroDeck = validateUserAndDeck(gameSettings.getLotroFormat(), player, deckName, gameSettings.getCollectionType());
 
         _hallDataAccessLock.writeLock().lock();
         try {
-            final GameTable table = tableHolder.createTable(player, gameSettings, lotroDeck);
+            final GameTable table = tableHolder.createTable(player, gameSettings, lotroDeck, botPlayer, botDeck);
             if (table != null)
                 createGameFromTable(table);
 

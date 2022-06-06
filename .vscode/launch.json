@@ -6,6 +6,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "Launch DbPlayerDAO",
+            "request": "launch",
+            "mainClass": "com.gempukku.lotro.db.DbPlayerDAO",
+            "projectName": "gemp-lotr-server"
+        },
+        {
+            "type": "java",
             "name": "Launch Current File",
             "request": "launch",
             "mainClass": "${file}"

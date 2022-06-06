@@ -12,6 +12,7 @@ public class CachedPlayerDAO implements PlayerDAO, Cached {
     private Map<Integer, Player> _playerById = Collections.synchronizedMap(new LRUMap(500));
     private Map<String, Player> _playerByName = Collections.synchronizedMap(new LRUMap(500));
     private Set<String> _bannedUsernames = new HashSet<>();
+    private List<Player> _botPlayers = new ArrayList<>();
 
     public CachedPlayerDAO(PlayerDAO delegate) {
         _delegate = delegate;
@@ -22,6 +23,7 @@ public class CachedPlayerDAO implements PlayerDAO, Cached {
         _playerById.clear();
         _playerByName.clear();
         _bannedUsernames.clear();
+        _botPlayers.clear();
     }
 
     @Override
@@ -108,13 +110,21 @@ public class CachedPlayerDAO implements PlayerDAO, Cached {
     }
 
     @Override
+    public List<Player> getBotPlayers() {
+        if (_botPlayers.isEmpty()) {
+            _botPlayers = _delegate.getBotPlayers();
+        }
+        return _botPlayers;
+    }
+
+    @Override
     public Player loginUser(String login, String password) throws SQLException {
         return _delegate.loginUser(login, password);
     }
 
     @Override
-    public boolean registerUser(String login, String password, String remoteAddr) throws SQLException, LoginInvalidException {
-        boolean registered = _delegate.registerUser(login, password, remoteAddr);
+    public boolean registerUser(String login, String password, String remoteAddr, String type) throws SQLException, LoginInvalidException {
+        boolean registered = _delegate.registerUser(login, password, remoteAddr, type);
         if (registered)
             _playerByName.remove(login);
         return registered;

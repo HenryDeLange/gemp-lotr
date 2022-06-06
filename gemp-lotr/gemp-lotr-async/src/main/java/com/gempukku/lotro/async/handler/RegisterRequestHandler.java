@@ -24,7 +24,7 @@ public class RegisterRequestHandler extends LotroServerRequestHandler implements
             String login = getFormParameterSafely(postDecoder, "login");
             String password = getFormParameterSafely(postDecoder, "password");
             try {
-                if (_playerDao.registerUser(login, password, remoteIp)) {
+                if (_playerDao.registerUser(login, password, remoteIp, "u")) {
                     responseWriter.writeXmlResponse(null, logUserReturningHeaders(remoteIp, login));
                 } else {
                     throw new HttpProcessingException(409);
