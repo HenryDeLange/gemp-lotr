@@ -11,9 +11,11 @@ public class GameTable {
 
     private LotroGameMediator lotroGameMediator;
     private int capacity;
+    private String tableId;
 
-    public GameTable(GameSettings gameSettings) {
+    public GameTable(GameSettings gameSettings, String tableId) {
         this.gameSettings = gameSettings;
+        this.tableId = tableId;
         this.capacity = gameSettings.getLotroFormat().getAdventure().isSolo() ? 1 : 2;
     }
 
@@ -29,9 +31,13 @@ public class GameTable {
         return lotroGameMediator != null;
     }
 
+    public boolean tableIsFull() {
+        return players.size() == capacity;
+    }
+
     public boolean addPlayer(LotroGameParticipant player) {
         players.put(player.getPlayerId(), player);
-        return players.size() == capacity;
+        return tableIsFull();
     }
 
     public boolean removePlayer(String playerId) {
@@ -53,5 +59,9 @@ public class GameTable {
 
     public GameSettings getGameSettings() {
         return gameSettings;
+    }
+
+    public String getTableId() {
+        return tableId;
     }
 }

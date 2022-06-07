@@ -329,11 +329,16 @@ public class HallServer extends AbstractServer {
 
         _hallDataAccessLock.writeLock().lock();
         try {
-            final GameTable table = tableHolder.createTable(player, gameSettings, lotroDeck, botPlayer, botDeck);
-            if (table != null)
+            final GameTable table = tableHolder.createTable(player, gameSettings, lotroDeck);
+            if (table.tableIsFull())
                 createGameFromTable(table);
 
             hallChanged();
+
+            // If it is a bot table, then have the bot player join it immediately
+            if (gameSettings.isBotGame() && botPlayer != null && botDeck != null) {
+                joinTableAsPlayer(table.getTableId(), botPlayer, botDeck.getDeckName());
+            }
         } finally {
             _hallDataAccessLock.writeLock().unlock();
         }

@@ -40,7 +40,7 @@ public class TableHolder {
         awaitingTables.clear();
     }
 
-    public GameTable createTable(Player player, GameSettings gameSettings, LotroDeck lotroDeck, Player botPlayer, LotroDeck botDeck) throws HallException {
+    public GameTable createTable(Player player, GameSettings gameSettings, LotroDeck lotroDeck) throws HallException {
         String tableId = String.valueOf(_nextTableId++);
 
         final League league = gameSettings.getLeague();
@@ -54,32 +54,16 @@ public class TableHolder {
                 throw new HallException("You have already played max games in league");
         }
 
-        GameTable table = new GameTable(gameSettings);
+        GameTable table = new GameTable(gameSettings, tableId);
 
         boolean tableFull = table.addPlayer(new LotroGameParticipant(player.getName(), lotroDeck));
         if (tableFull) {
             runningTables.put(tableId, table);
-            return table;
         }
-
-        awaitingTables.put(tableId, table);
-
-        // If it is a bot table, then have the bot player join it immediately
-        if (gameSettings.isBotGame() && botPlayer != null && botDeck != null) {
-            // new Thread(new Runnable() {
-            //     @Override
-            //     public void run() {
-            //         try {
-            //             Thread.sleep(1000L);
-                        joinTable(tableId, botPlayer, botDeck);
-            //         }
-            //         catch (HallException | InterruptedException ex) {
-            //             ex.printStackTrace();
-            //         }
-            //     }
-            // }).start();
+        else {
+            awaitingTables.put(tableId, table);
         }
-        return null;
+        return table;
     }
 
     public GameTable joinTable(String tableId, Player player, LotroDeck lotroDeck) throws HallException {
@@ -122,7 +106,7 @@ public class TableHolder {
     public GameTable setupTournamentTable(GameSettings gameSettings, LotroGameParticipant[] participants) {
         String tableId = String.valueOf(_nextTableId++);
 
-        GameTable table = new GameTable(gameSettings);
+        GameTable table = new GameTable(gameSettings, tableId);
         for (LotroGameParticipant participant : participants) {
             table.addPlayer(participant);
         }
@@ -243,7 +227,6 @@ public class TableHolder {
             if (lotroGameMediator.isDestroyed()) {
                 iterator.remove();
                 changed = true;
-                ;
             }
         }
         return changed;
