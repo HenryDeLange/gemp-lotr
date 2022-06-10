@@ -38,6 +38,7 @@ public class GameRequestHandler extends LotroServerRequestHandler implements Uri
     private LotroServer _lotroServer;
     private LongPollingSystem longPollingSystem;
     private Set<Phase> _autoPassDefault = new HashSet<Phase>();
+    private Set<Phase> _autoPassAll = new HashSet<Phase>();
 
     public GameRequestHandler(Map<Type, Object> context, LongPollingSystem longPollingSystem) {
         super(context);
@@ -49,6 +50,17 @@ public class GameRequestHandler extends LotroServerRequestHandler implements Uri
         _autoPassDefault.add(Phase.ARCHERY);
         _autoPassDefault.add(Phase.ASSIGNMENT);
         _autoPassDefault.add(Phase.REGROUP);
+
+        _autoPassAll.add(Phase.FELLOWSHIP);
+        _autoPassAll.add(Phase.SHADOW);
+        _autoPassAll.add(Phase.MANEUVER);
+        _autoPassAll.add(Phase.ARCHERY);
+        _autoPassAll.add(Phase.ASSIGNMENT);
+        _autoPassAll.add(Phase.SKIRMISH);
+        _autoPassAll.add(Phase.REGROUP);
+        _autoPassAll.add(Phase.BETWEEN_TURNS);
+        _autoPassAll.add(Phase.PLAY_STARTING_FELLOWSHIP);
+        _autoPassAll.add(Phase.PUT_RING_BEARER);
     }
 
     @Override
@@ -84,8 +96,17 @@ public class GameRequestHandler extends LotroServerRequestHandler implements Uri
         LotroGameMediator gameMediator = _lotroServer.getGameById(gameId);
         if (gameMediator == null)
             throw new HttpProcessingException(404);
-
-        gameMediator.setPlayerAutoPassSettings(resourceOwner.getName(), getAutoPassPhases(request));
+        
+        System.out.println("GameRequestHandler.updateGameState [resourceOwner = " + resourceOwner.getName() + "] - channelNumber = " + channelNumber 
+            + " >> decisionId = " + decisionId + " --> decisionValue = " + decisionValue 
+            + " (participantId = " + participantId + ")");
+        if (resourceOwner.getName().equalsIgnoreCase("bot")) {
+            // Make sure the bot has auto-pass on for all phases
+            gameMediator.setPlayerAutoPassSettings(resourceOwner.getName(), _autoPassAll);
+        }
+        else {
+            gameMediator.setPlayerAutoPassSettings(resourceOwner.getName(), getAutoPassPhases(request));
+        }
 
         try {
             if (decisionId != null)
@@ -218,7 +239,13 @@ public class GameRequestHandler extends LotroServerRequestHandler implements Uri
         if (gameMediator == null)
             throw new HttpProcessingException(404);
 
-        gameMediator.setPlayerAutoPassSettings(resourceOwner.getName(), getAutoPassPhases(request));
+        if (resourceOwner.getName().equalsIgnoreCase("bot")) {
+            // Make sure the bot has auto-pass on for all phases
+            gameMediator.setPlayerAutoPassSettings(resourceOwner.getName(), _autoPassAll);
+        }
+        else {
+            gameMediator.setPlayerAutoPassSettings(resourceOwner.getName(), getAutoPassPhases(request));
+        }
 
         DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();

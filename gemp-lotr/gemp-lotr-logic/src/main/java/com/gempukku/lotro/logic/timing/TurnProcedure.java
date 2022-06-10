@@ -43,6 +43,12 @@ public class TurnProcedure {
         _gameStats = new GameStats();
 
         _gameProcess = lotroGame.getFormat().getAdventure().getStartingGameProcess(players, playerOrderFeedback);
+        String playerNames = "";
+        for (String playerName : players) {
+            playerNames = playerNames + playerName + ", ";
+        }
+        playerNames = playerNames.substring(0, playerNames.length() - 2);
+        System.out.println("TurnProcedure [players = " + playerNames + "]");
     }
 
     public GameStats getGameStats() {
