@@ -196,14 +196,18 @@
 
         function loginScreen() {
             $(".interaction").html("");
+            $(".interaction").append("<br/>");
             $(".interaction").append("Login below, or ");
             var registerButton = $("<div>Register</div>").button();
             registerButton.click(registrationScreen);
 
             $(".interaction").append(registerButton);
-            $(".interaction").append("<br/>Login: <input id='login' type='text'><br/>Password: <input id='password' type='password'><br/>");
+            $(".interaction").append("<br/>");
+            $(".interaction").append("<br/><label for='login' style='display: inline-block; width: 92px;'>Login:</label><input id='login' type='text'>");
+            $(".interaction").append("<br/><label for='password' style='display: inline-block; width: 92px;'>Password:</label><input id='password' type='password'><br/>");
+            $(".interaction").append("<br/>");
 
-            var loginButton = $("<div>Login</div>").button();
+            var loginButton = $("<div style='width: 320px;'>Login</div>").button();
             loginButton.click(login);
 
             $("#password").keypress(function (e) {

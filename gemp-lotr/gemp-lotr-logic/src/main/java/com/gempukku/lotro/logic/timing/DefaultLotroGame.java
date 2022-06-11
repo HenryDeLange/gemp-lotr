@@ -79,7 +79,7 @@ public class DefaultLotroGame implements LotroGame {
                 new PlayerOrderFeedback() {
                     @Override
                     public void setPlayerOrder(PlayerOrder playerOrder, String firstPlayer) {
-                        System.out.println("PlayerOrderFeedback.setPlayerOrder - firstPlayer = " + firstPlayer);
+                        System.out.println("PlayerOrderFeedback - setPlayerOrder [firstPlayer = " + firstPlayer + "]");
                         final GameStats gameStats = _turnProcedure.getGameStats();
                         _gameState.init(playerOrder, firstPlayer, cards, ringBearers, rings, library, gameStats);
                     }

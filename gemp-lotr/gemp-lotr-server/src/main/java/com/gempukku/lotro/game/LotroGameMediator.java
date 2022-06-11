@@ -43,6 +43,8 @@ public class LotroGameMediator {
     private int _channelNextIndex = 0;
     private volatile boolean _destroyed;
 
+    private Set<Phase> _autoPassAll = new HashSet<Phase>();
+
     public LotroGameMediator(String gameId, LotroFormat lotroFormat, LotroGameParticipant[] participants, LotroCardBlueprintLibrary library, int maxSecondsForGamePerPlayer,
                              int maxSecondsPerDecision, boolean allowSpectators, boolean cancellable, boolean privateGame) {
         _gameId = gameId;
@@ -65,6 +67,19 @@ public class LotroGameMediator {
 
         _userFeedback = new DefaultUserFeedback();
         _lotroGame = new DefaultLotroGame(lotroFormat, decks, _userFeedback, library);
+        if (true) {
+            _autoPassAll.add(Phase.FELLOWSHIP);
+            _autoPassAll.add(Phase.SHADOW);
+            _autoPassAll.add(Phase.MANEUVER);
+            _autoPassAll.add(Phase.ARCHERY);
+            _autoPassAll.add(Phase.ASSIGNMENT);
+            _autoPassAll.add(Phase.SKIRMISH);
+            _autoPassAll.add(Phase.REGROUP);
+            _autoPassAll.add(Phase.BETWEEN_TURNS);
+            _autoPassAll.add(Phase.PLAY_STARTING_FELLOWSHIP);
+            _autoPassAll.add(Phase.PUT_RING_BEARER);
+            setPlayerAutoPassSettings("bot", _autoPassAll);
+        }
         _userFeedback.setGame(_lotroGame);
     }
 
@@ -315,8 +330,7 @@ public class LotroGameMediator {
 
     public synchronized void playerAnswered(Player player, int channelNumber, int decisionId, String answer) throws SubscriptionConflictException, SubscriptionExpiredException {
         String playerName = player.getName();
-        System.out.println("LotroGameMediator.playerAnswered [playerName = " + playerName + "] - channelNumber = " + channelNumber 
-            + " >> decisionId = " + decisionId);
+        System.out.println("LotroGameMediator - playerAnswered [" + playerName + "] >> decisionId = " + decisionId);
         _writeLock.lock();
         try {
             GameCommunicationChannel communicationChannel = _communicationChannels.get(playerName);
@@ -327,8 +341,9 @@ public class LotroGameMediator {
                         if (awaitingDecision.getAwaitingDecisionId() == decisionId && !_lotroGame.isFinished()) {
                             try {
                                 _userFeedback.participantDecided(playerName);
-                                System.out.println("LotroGameMediator.playerAnswered [playerName = " + playerName + "] - awaitingDecision = " + awaitingDecision.getClass().getSimpleName() 
-                                    + " --> decisionMade(answer) = " + answer);
+                                System.out.println("LotroGameMediator - playerAnswered [" + playerName + "]"
+                                    + " >> awaitingDecision = " 
+                                    + awaitingDecision.getClass().getName().replace("com.gempukku.lotro.logic.", "..") + " --> decisionMade(answer) = " + answer);
                                 awaitingDecision.decisionMade(answer);
 
                                 // Decision successfully made, add the time to user clock
