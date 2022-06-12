@@ -1,5 +1,15 @@
 package com.gempukku.lotro.logic.timing;
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.log4j.Logger;
+
 import com.gempukku.lotro.communication.UserFeedback;
 import com.gempukku.lotro.filters.Filters;
 import com.gempukku.lotro.game.PhysicalCard;
@@ -19,12 +29,12 @@ import com.gempukku.lotro.logic.timing.results.ReturnCardsToHandResult;
 import com.gempukku.lotro.logic.timing.rules.CharacterDeathRule;
 import com.gempukku.lotro.logic.timing.rules.InitiativeChangeRule;
 
-import java.util.*;
-
 // Action generates multiple Effects, both costs and result of an action are Effects.
 
 // Decision is also an Effect.
 public class TurnProcedure {
+    private static final Logger LOG = Logger.getLogger(TurnProcedure.class);
+
     private UserFeedback _userFeedback;
     private LotroGame _game;
     private ActionStack _actionStack;
@@ -48,7 +58,7 @@ public class TurnProcedure {
             playerNames = playerNames + playerName + ", ";
         }
         playerNames = playerNames.substring(0, playerNames.length() - 2);
-        System.out.println("TurnProcedure [players = " + playerNames + "]");
+        LOG.trace("TurnProcedure [players = " + playerNames + "]");
     }
 
     public GameStats getGameStats() {

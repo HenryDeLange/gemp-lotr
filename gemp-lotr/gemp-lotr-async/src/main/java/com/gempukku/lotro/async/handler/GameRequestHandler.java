@@ -1,5 +1,19 @@
 package com.gempukku.lotro.async.handler;
 
+import java.lang.reflect.Type;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.apache.log4j.Logger;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+
 import com.gempukku.lotro.PrivateInformationException;
 import com.gempukku.lotro.SubscriptionConflictException;
 import com.gempukku.lotro.SubscriptionExpiredException;
@@ -15,6 +29,7 @@ import com.gempukku.lotro.game.state.GameCommunicationChannel;
 import com.gempukku.lotro.game.state.GameEvent;
 import com.gempukku.polling.LongPollingResource;
 import com.gempukku.polling.LongPollingSystem;
+
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
@@ -22,19 +37,10 @@ import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.cookie.ServerCookieDecoder;
 import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import java.lang.reflect.Type;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 
 public class GameRequestHandler extends LotroServerRequestHandler implements UriRequestHandler {
+    private static final Logger LOG = Logger.getLogger(GameRequestHandler.class);
+
     private LotroServer _lotroServer;
     private LongPollingSystem longPollingSystem;
     private Set<Phase> _autoPassDefault = new HashSet<Phase>();
@@ -85,8 +91,8 @@ public class GameRequestHandler extends LotroServerRequestHandler implements Uri
         if (gameMediator == null)
             throw new HttpProcessingException(404);
         
-        System.out.println("GameRequestHandler - updateGameState [resourceOwner=" + resourceOwner.getName() + " | participantId=" + participantId + "]"
-            + " decisionId = " + decisionId + " --> decisionValue = " + decisionValue);
+        LOG.trace("[resourceOwner=" + resourceOwner.getName() + " | participantId=" + participantId + "] updateGameState : "
+            + "decisionId = " + decisionId + " --> decisionValue = " + decisionValue);
         gameMediator.setPlayerAutoPassSettings(resourceOwner.getName(), getAutoPassPhases(request));
 
         try {

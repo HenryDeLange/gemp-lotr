@@ -1,8 +1,12 @@
 {
     "java.configuration.updateBuildConfiguration": "automatic",
     "cSpell.words": [
+        "Dwarven",
         "gemp",
-        "lotr"
+        "gempukku",
+        "gimli",
+        "lotr",
+        "lotro"
     ],
     "java.format.settings.url": ".vscode/java-formatter.xml"
 }

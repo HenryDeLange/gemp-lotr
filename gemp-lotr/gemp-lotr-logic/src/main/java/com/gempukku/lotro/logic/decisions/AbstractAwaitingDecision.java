@@ -3,7 +3,7 @@ package com.gempukku.lotro.logic.decisions;
 import java.util.HashMap;
 import java.util.Map;
 
-public abstract class AbstractAwaitingDecision implements AwaitingDecision {
+public abstract class AbstractAwaitingDecision extends AwaitingDecision {
     private int _id;
     private String _text;
     private AwaitingDecisionType _decisionType;

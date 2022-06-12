@@ -15,7 +15,7 @@ import java.sql.SQLException;
 import javax.sql.DataSource;
 
 public class DbAccess {
-    private static Logger LOG = Logger.getLogger(DbAccess.class);
+    private static final Logger LOG = Logger.getLogger(DbAccess.class);
     private DataSource _dataSource;
 
     public DbAccess() {

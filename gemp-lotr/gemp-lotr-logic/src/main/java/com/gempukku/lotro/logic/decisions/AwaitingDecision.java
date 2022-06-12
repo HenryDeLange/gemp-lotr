@@ -2,14 +2,14 @@ package com.gempukku.lotro.logic.decisions;
 
 import java.util.Map;
 
-public interface AwaitingDecision {
-    public int getAwaitingDecisionId();
+public abstract class AwaitingDecision {
+    public abstract int getAwaitingDecisionId();
 
-    public String getText();
+    public abstract String getText();
 
-    public AwaitingDecisionType getDecisionType();
+    public abstract AwaitingDecisionType getDecisionType();
 
-    public Map<String, String[]> getDecisionParameters();
+    public abstract Map<String, String[]> getDecisionParameters();
 
-    public void decisionMade(String result) throws DecisionResultInvalidException;
+    public abstract void decisionMade(String result) throws DecisionResultInvalidException;
 }

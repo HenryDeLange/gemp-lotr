@@ -19,7 +19,7 @@ import org.apache.log4j.Logger;
 import java.util.*;
 
 public class DefaultLotroGame implements LotroGame {
-    private static final Logger log = Logger.getLogger(DefaultLotroGame.class);
+    private static final Logger LOG = Logger.getLogger(DefaultLotroGame.class);
 
     private GameState _gameState;
     private ModifiersLogic _modifiersLogic = new ModifiersLogic();
@@ -79,7 +79,7 @@ public class DefaultLotroGame implements LotroGame {
                 new PlayerOrderFeedback() {
                     @Override
                     public void setPlayerOrder(PlayerOrder playerOrder, String firstPlayer) {
-                        System.out.println("PlayerOrderFeedback - setPlayerOrder [firstPlayer = " + firstPlayer + "]");
+                        LOG.trace("setPlayerOrder (firstPlayer = " + firstPlayer + ")");
                         final GameStats gameStats = _turnProcedure.getGameStats();
                         _gameState.init(playerOrder, firstPlayer, cards, ringBearers, rings, library, gameStats);
                     }

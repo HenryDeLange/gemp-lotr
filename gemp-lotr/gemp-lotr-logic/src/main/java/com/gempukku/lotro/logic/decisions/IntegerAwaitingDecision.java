@@ -4,24 +4,19 @@ public abstract class IntegerAwaitingDecision extends AbstractAwaitingDecision {
     private Integer _min;
     private Integer _max;
 
-    public IntegerAwaitingDecision(int id, String text) {
-        this(id, text, null);
-    }
-
-    public IntegerAwaitingDecision(int id, String text, Integer min) {
+    public IntegerAwaitingDecision(int id, String text, int min) {
         this(id, text, min, null);
     }
 
-    public IntegerAwaitingDecision(int id, String text, Integer min, Integer max) {
+    public IntegerAwaitingDecision(int id, String text, int min, Integer max) {
         this(id, text, min, max, null);
     }
 
-    public IntegerAwaitingDecision(int id, String text, Integer min, Integer max, Integer defaultValue) {
+    public IntegerAwaitingDecision(int id, String text, int min, Integer max, Integer defaultValue) {
         super(id, text, AwaitingDecisionType.INTEGER);
         _min = min;
         _max = max;
-        if (min != null)
-            setParam("min", min.toString());
+        setParam("min", Integer.toString(min));
         if (max != null)
             setParam("max", max.toString());
         if (defaultValue != null)
