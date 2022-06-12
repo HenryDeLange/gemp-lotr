@@ -13,10 +13,10 @@ public class RegroupGameProcess implements GameProcess {
     @Override
     public void process(LotroGame game) {
         _followingGameProcess = new StartOfPhaseGameProcess(Phase.REGROUP,
-                new PlayersPlayPhaseActionsInOrderGameProcess(game.getGameState().getPlayerOrder().getCounterClockwisePlayOrder(game.getGameState().getCurrentPlayerId(), true), 0,
-                        game.getFormat().getAdventure().getBeforeFellowshipChooseToMoveGameProcess(
-                                        new FellowshipPlayerChoosesToMoveOrStayGameProcess())));
-
+            new PlayersPlayPhaseActionsInOrderGameProcess(
+                game.getGameState().getPlayerOrder().getCounterClockwisePlayOrder(game.getGameState().getCurrentPlayerId(), true), 
+                0, game.getFormat().getAdventure().getBeforeFellowshipChooseToMoveGameProcess(
+                    new FellowshipPlayerChoosesToMoveOrStayGameProcess())));
     }
 
     @Override

@@ -9,8 +9,6 @@ public abstract class MultipleChoiceAwaitingDecision extends AbstractAwaitingDec
         setParam("results", _possibleResults);
     }
 
-    protected abstract void validDecisionMade(int index, String result);
-
     @Override
     public final void decisionMade(String result) throws DecisionResultInvalidException {
         if (result == null)
@@ -24,4 +22,6 @@ public abstract class MultipleChoiceAwaitingDecision extends AbstractAwaitingDec
         }
         validDecisionMade(index, _possibleResults[index]);
     }
+
+    protected abstract void validDecisionMade(int index, String result);
 }

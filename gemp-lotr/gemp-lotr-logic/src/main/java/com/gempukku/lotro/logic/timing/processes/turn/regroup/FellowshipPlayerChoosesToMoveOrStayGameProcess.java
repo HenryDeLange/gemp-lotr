@@ -27,9 +27,9 @@ public class FellowshipPlayerChoosesToMoveOrStayGameProcess implements GameProce
                         new MultipleChoiceAwaitingDecision(1, "Do you want to make another move?", new String[]{"Yes (move again)", "No (end turn)"}) {
                             @Override
                             protected void validDecisionMade(int index, String result) {
-                                if (result.contains("Yes"))
+                                if (result.equals("Yes (move again)")) {
                                     playerMoves();
-                                else {
+                                } else {
                                     playerStays(game);
                                 }
                             }

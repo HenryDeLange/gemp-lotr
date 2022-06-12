@@ -1,5 +1,7 @@
 package com.gempukku.lotro.logic.timing.processes.turn.general;
 
+import org.apache.log4j.Logger;
+
 import com.gempukku.lotro.common.Phase;
 import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.game.state.actions.DefaultActionsEnvironment;
@@ -11,6 +13,8 @@ import com.gempukku.lotro.logic.timing.processes.GameProcess;
 import com.gempukku.lotro.logic.timing.results.StartOfPhaseResult;
 
 public class StartOfPhaseGameProcess implements GameProcess {
+    private static final Logger LOG = Logger.getLogger(StartOfPhaseGameProcess.class);
+
     private Phase _phase;
     private String _playerId;
     private GameProcess _followingGameProcess;
@@ -28,6 +32,7 @@ public class StartOfPhaseGameProcess implements GameProcess {
 
     @Override
     public void process(LotroGame game) {
+        LOG.trace("[" + _playerId + "] <<<<<<<<<< Starting " + _phase + " phase >>>>>>>>>>");
         game.getGameState().setCurrentPhase(_phase);
         SystemQueueAction action = new SystemQueueAction();
         action.setText("Start of " + _phase + " phase");

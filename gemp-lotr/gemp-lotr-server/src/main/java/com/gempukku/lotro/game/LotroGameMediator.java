@@ -330,7 +330,6 @@ public class LotroGameMediator {
 
     public synchronized void playerAnswered(Player player, int channelNumber, int decisionId, String answer) throws SubscriptionConflictException, SubscriptionExpiredException {
         String playerName = player.getName();
-        LOG.trace("[" + playerName + "] playerAnswered : decisionId = " + decisionId);
         _writeLock.lock();
         try {
             GameCommunicationChannel communicationChannel = _communicationChannels.get(playerName);
@@ -341,7 +340,7 @@ public class LotroGameMediator {
                         if (awaitingDecision.getAwaitingDecisionId() == decisionId && !_lotroGame.isFinished()) {
                             try {
                                 _userFeedback.participantDecided(playerName);
-                                LOG.trace("[" + playerName + "] playerAnswered : decisionMade(answer) = " + answer);
+                                LOG.trace(" [" + playerName + "] playerAnswered : decisionMade(answer) = " + answer);
                                 awaitingDecision.decisionMade(answer);
 
                                 // Decision successfully made, add the time to user clock

@@ -91,6 +91,7 @@ public class DefaultUserFeedback implements UserFeedback {
         String choice = _botDecisionMap.get(getOriginalClass(awaitingDecision).getName()).getBotChoice(awaitingDecision);
         // Make the decision based on the bot's choice
         try {
+            _game.getGameState().playerDecisionStarted(playerId, awaitingDecision);
             participantDecided(playerId);
             LOG.trace("[" + playerId + "] handleBotDecision : decisionMade(choice) = " + choice);
             awaitingDecision.decisionMade(choice);
