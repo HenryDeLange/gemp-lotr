@@ -289,8 +289,11 @@ var GempLotrGameUI = Class.extend({
                 + "<div class='playerStats'><div id='deck" + i + "' class='deckSize'></div><div id='hand" + i + "' class='handSize'></div><div id='threats" + i + "' class='threatsSize'></div><div id='showStats" + i + "' class='showStats'></div><div id='discard" + i + "' class='discardSize'></div><div id='deadPile" + i + "' class='deadPileSize'></div><div id='adventureDeck" + i + "' class='adventureDeckSize'></div></div></div>");
         }
 
-        this.gameStateElem.append("<div class='twilightPool'>0</div>");
+        this.gameStateElem.append("<br /><br /><hr /><br /><br />");
+
         this.gameStateElem.append("<div class='phase'></div>");
+        this.gameStateElem.append("<br />");
+        this.gameStateElem.append("<div class='twilightPool'>0</div>");
 
         $("#main").append(this.gameStateElem);
 
@@ -352,19 +355,24 @@ var GempLotrGameUI = Class.extend({
             position: "absolute",
             left: "0px",
             top: "0px",
-            width: "100%",
-            height: "50px",
-            scroll: "auto"
+            width: "90%",
+            height: "70px",
+            scroll: "auto",
+            padding: "4px",
+            textAlign: "center",
+            fontSize: "120%"
         });
 
         this.alertButtons = $("<div class='alertButtons'></div>");
         this.alertButtons.css({
             position: "absolute",
             left: "0px",
-            top: "50px",
+            top: "70px",
             width: "100%",
             height: "30px",
-            scroll: "auto"
+            scroll: "auto",
+            textAlign: "center",
+            fontSize: "150%"
         });
 
         this.alertBox.append(this.alertText);
@@ -808,7 +816,7 @@ var GempLotrGameUI = Class.extend({
         var advPathWidth = Math.min(150, width * 0.1);
         var specialUiWidth = 150;
 
-        var alertHeight = 80;
+        var alertHeight = 100;
 
         var chatHeight = 200;
 
@@ -1473,7 +1481,7 @@ var GempLotrGameUI = Class.extend({
 
         var that = this;
         this.smallDialog
-            .html(text + "<br /><input id='integerDecision' type='text' value='0'>");
+            .html(text + "<br /><br /><input id='integerDecision' type='text' value='0'>");
 
         if (!this.replayMode) {
             this.smallDialog.dialog("option", "buttons",
@@ -1513,7 +1521,7 @@ var GempLotrGameUI = Class.extend({
             .html(text);
 
         if (results.length > 2 || this.settingsAlwaysDropDown) {
-            var html = "<br /><select id='multipleChoiceDecision' selectedIndex='0'>";
+            var html = "<br /><br /><select id='multipleChoiceDecision' selectedIndex='0'>";
             for (var i = 0; i < results.length; i++)
                 html += "<option value='" + i + "'>" + results[i] + "</option>";
             html += "</select>";
@@ -1529,7 +1537,7 @@ var GempLotrGameUI = Class.extend({
                     });
             }
         } else {
-            this.smallDialog.append("<br />");
+            this.smallDialog.append("<br /><br />");
             for (var i = 0; i < results.length; i++) {
                 if (i > 0)
                     this.smallDialog.append(" ");
@@ -1848,7 +1856,7 @@ var GempLotrGameUI = Class.extend({
         var processButtons = function () {
             that.alertButtons.html("");
             if (selectedCardIds.length == 0) {
-                that.alertButtons.append("<button id='Pass'>Pass</button>");
+                that.alertButtons.append("<button id='Pass' style='width: 80px;'>Pass</button>");
                 $("#Pass").button().click(function () {
                     finishChoice();
                 });

@@ -194,19 +194,22 @@ body {
 
 .phase {
     color: #ffffff;
-    font-size: 120%;
+    font-size: 180%;
+    padding: 2px;
+    text-align: center;
 }
 
 .twilightPool {
-    float: right;
     font-size: 30px;
-    width: 40px;
     border-radius: 7px;
     border: 1px solid #ffffff;
     background-color: #000000;
     color: #ffffff;
-    padding: 2px;
-    text-align: right;
+    padding: 3px;
+    margin-left: 10px;
+    margin-right: 10px;
+    text-align: center;
+    align-self: center;
 }
 
 .skirmish {

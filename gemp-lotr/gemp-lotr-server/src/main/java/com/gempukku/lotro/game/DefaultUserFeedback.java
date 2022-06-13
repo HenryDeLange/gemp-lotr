@@ -95,8 +95,11 @@ public class DefaultUserFeedback implements UserFeedback {
             participantDecided(playerId);
             LOG.trace("[" + playerId + "] handleBotDecision : decisionMade(choice) = " + choice);
             awaitingDecision.decisionMade(choice);
-            if (_game instanceof DefaultLotroGame) {
-                ((DefaultLotroGame) _game).carryOutPendingActionsUntilDecisionNeeded();
+            // TODO: How to fix this propperly? (without this IF the bot just keeps looping on the same question)
+            if (!awaitingDecision.getText().equals("Do you want to make another move?")) {
+                if (_game instanceof DefaultLotroGame) {
+                    ((DefaultLotroGame) _game).carryOutPendingActionsUntilDecisionNeeded();
+                }
             }
         }
         catch (DecisionResultInvalidException e) {

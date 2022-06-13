@@ -22,12 +22,13 @@ public class PlayerAssignMinionsDecisionBot implements MakeBotDecision {
         LOG.trace("PARAM: minions = " + Arrays.toString(minions));
         commaArrayOfCharacterSpaceMinion = "";
         for (int minionIndex = 0; minionIndex < minions.length; minionIndex++) {
-            if (minionIndex < freeCharacters.length) {
+            int freeCharacterIndex = minionIndex + 1; // Don't assign to the ring-bearer
+            if (freeCharacterIndex < freeCharacters.length) {
                 if (minionIndex == 0) {
-                    commaArrayOfCharacterSpaceMinion += freeCharacters[minionIndex] + " " + minions[minionIndex];
+                    commaArrayOfCharacterSpaceMinion += freeCharacters[freeCharacterIndex] + " " + minions[minionIndex];
                 }
                 else {
-                    commaArrayOfCharacterSpaceMinion += "," + freeCharacters[minionIndex] + " " + minions[minionIndex];
+                    commaArrayOfCharacterSpaceMinion += "," + freeCharacters[freeCharacterIndex] + " " + minions[minionIndex];
                 }
             }
         }
