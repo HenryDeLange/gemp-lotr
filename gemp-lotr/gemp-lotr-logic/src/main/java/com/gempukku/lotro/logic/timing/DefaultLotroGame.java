@@ -291,4 +291,8 @@ public class DefaultLotroGame implements LotroGame {
     public void setPlayerAutoPassSettings(String playerId, Set<Phase> phases) {
         _autoPassConfiguration.put(playerId, phases);
     }
+
+    public TurnProcedure getTurnProcedure() {
+        return _turnProcedure;
+    }
 }

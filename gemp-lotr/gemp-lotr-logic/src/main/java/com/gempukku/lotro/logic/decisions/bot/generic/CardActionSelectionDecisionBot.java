@@ -30,6 +30,13 @@ public class CardActionSelectionDecisionBot implements MakeBotDecision {
         else {
             actionIndex = "";
         }
+        // If this is a Transfer action then don't do it, because otherwise the bot will end up in an infinite loop
+        if (decision.getCopyOfActions().get(Integer.parseInt(actionIndex)).getClass().getName().contains("TransferPermanentAction")) {
+            LOG.trace("SKIP: Don't transfer equipment");
+// // TODO: Test whether this works (also maybe choose random actions instead of always 0) - does nnot fix the loop...
+//             decision.removeAction(decision.getCopyOfActions().get(Integer.parseInt(actionIndex)));
+            actionIndex = "";
+        }
         LOG.trace("CHOICE: actionIndex = " + actionIndex);
         return actionIndex;
     }

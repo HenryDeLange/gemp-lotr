@@ -16,6 +16,22 @@ public abstract class PlayerAssignMinionsDecision extends AbstractAwaitingDecisi
         setParam("minions", getCardIds(_minions));
     }
 
+    public PhysicalCard getPhysicalFreeCharacterCard(int cardId) {
+        for (PhysicalCard card : _freeCharacters) {
+            if (card.getCardId() == cardId)
+                return card;
+        }
+        return null;
+    }
+
+    public PhysicalCard getPhysicalMinionCard(int cardId) {
+        for (PhysicalCard card : _minions) {
+            if (card.getCardId() == cardId)
+                return card;
+        }
+        return null;
+    }
+
     protected Map<PhysicalCard, Set<PhysicalCard>> getAssignmentsBasedOnResponse(String response) throws DecisionResultInvalidException {
         Map<PhysicalCard, Set<PhysicalCard>> assignments = new HashMap<PhysicalCard, Set<PhysicalCard>>();
         if (response.equals(""))

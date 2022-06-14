@@ -62,7 +62,7 @@ public class FellowshipPlayerAssignsArcheryDamageGameProcess implements GameProc
                 final int woundsLeft = _woundsToAssign - i;
                 ChooseAndWoundCharactersEffect woundCharacter = new ChooseAndWoundCharactersEffect(action, game.getGameState().getCurrentPlayerId(), 1, 1, filter);
                 woundCharacter.setSourceText("Archery Fire");
-                woundCharacter.setChoiceText("Choose character to assign archery wound to - remaining wounds: " + woundsLeft);
+                woundCharacter.setChoiceText("Choose a character to assign an archery wound to. Remaining wounds: " + woundsLeft);
                 action.appendEffect(woundCharacter);
             }
 

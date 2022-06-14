@@ -3,6 +3,7 @@ package com.gempukku.lotro.logic.decisions;
 import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.timing.Action;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -26,8 +27,26 @@ public abstract class CardActionSelectionDecision extends AbstractAwaitingDecisi
      *
      * @param action
      */
+    @Deprecated
     public void addAction(Action action) {
         _actions.add(action);
+    }
+
+    /**
+     * Don't use, only added for the bot to be able to remove actions it can't perform (to prevent infinite loops)
+     * @param action
+     */
+    @Deprecated
+    public void removeAction(Action action) {
+        _actions.remove(action);
+        setParam("actionId", getActionIds(_actions));
+        setParam("cardId", getCardIds(_actions));
+        setParam("blueprintId", getBlueprintIdsForVirtualActions(_actions));
+        setParam("actionText", getActionTexts(_actions));
+    }
+
+    public List<Action> getCopyOfActions() {
+        return new ArrayList<>(_actions);
     }
 
     private String[] getActionIds(List<? extends Action> actions) {

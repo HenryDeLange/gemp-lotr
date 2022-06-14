@@ -289,11 +289,11 @@ var GempLotrGameUI = Class.extend({
                 + "<div class='playerStats'><div id='deck" + i + "' class='deckSize'></div><div id='hand" + i + "' class='handSize'></div><div id='threats" + i + "' class='threatsSize'></div><div id='showStats" + i + "' class='showStats'></div><div id='discard" + i + "' class='discardSize'></div><div id='deadPile" + i + "' class='deadPileSize'></div><div id='adventureDeck" + i + "' class='adventureDeckSize'></div></div></div>");
         }
 
-        this.gameStateElem.append("<br /><br /><hr /><br /><br />");
-
-        this.gameStateElem.append("<div class='phase'></div>");
-        this.gameStateElem.append("<br />");
+        this.gameStateElem.append("<br /><br /><hr />");
+        this.gameStateElem.append("<div class='twilightPoolTitle'>Twilight Pool</div>");
         this.gameStateElem.append("<div class='twilightPool'>0</div>");
+        this.gameStateElem.append("<br /><hr /><br />");
+        this.gameStateElem.append("<div class='phase'></div>");
 
         $("#main").append(this.gameStateElem);
 
@@ -367,7 +367,7 @@ var GempLotrGameUI = Class.extend({
         this.alertButtons.css({
             position: "absolute",
             left: "0px",
-            top: "70px",
+            bottom: "1px",
             width: "100%",
             height: "30px",
             scroll: "auto",
@@ -816,7 +816,7 @@ var GempLotrGameUI = Class.extend({
         var advPathWidth = Math.min(150, width * 0.1);
         var specialUiWidth = 150;
 
-        var alertHeight = 100;
+        var alertHeight = 130;
 
         var chatHeight = 200;
 
@@ -1863,7 +1863,7 @@ var GempLotrGameUI = Class.extend({
             }
             if (selectedCardIds.length > 0) {
                 that.alertButtons.append("<button id='ClearSelection'>Reset choice</button>");
-                that.alertButtons.append("<button id='Done' style='float: right'>Done</button>");
+                that.alertButtons.append("<button id='Done' style='width: 80px;'>Done</button>");
                 $("#Done").button().click(function () {
                     finishChoice();
                 });
@@ -2159,7 +2159,7 @@ var GempLotrGameUI = Class.extend({
                 });
             }
             if (selectedCardIds.length >= min) {
-                that.alertButtons.append("<button id='Done' style='float: right'>Done</button>");
+                that.alertButtons.append("<button id='Done' style='width: 80px;'>Done</button>");
                 $("#Done").button().click(function () {
                     finishChoice();
                 });
@@ -2209,7 +2209,7 @@ var GempLotrGameUI = Class.extend({
         // ****CCG League****: Border around alert box
         this.alertBox.css({"border-radius": "7px", "border-color": "#7faf7f", "border-width": "2px"});
         if (!this.replayMode) {
-            this.alertButtons.html("<button id='Done'>Done</button>");
+            this.alertButtons.html("<button id='Done' style='width: 80px;'>Done</button>");
             $("#Done").button().click(function () {
                 var atLeastOnMinionUnassigned = false;
 

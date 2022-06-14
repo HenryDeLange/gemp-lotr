@@ -398,4 +398,8 @@ public class TurnProcedure {
             return true;
         }
     }
+
+    public GameProcess getGameProcess() {
+        return _gameProcess;
+    }
 }

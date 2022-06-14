@@ -74,7 +74,8 @@ public class DefaultUserFeedback implements UserFeedback {
 
     @Override
     public void sendAwaitingDecision(String playerId, AwaitingDecision awaitingDecision) {
-        LOG.trace("[" + playerId + "] sendAwaitingDecision ********** " + awaitingDecision.getClass().getName().replace("com.gempukku.lotro.logic.", "..") + " **********");
+        LOG.trace("[" + playerId + "] sendAwaitingDecision ********** " 
+                + awaitingDecision.getClass().getName().replace("com.gempukku.lotro.logic.", "..") + " **********");
         if (playerId != null && playerId.equalsIgnoreCase("bot")) {
             // Don't send, the bot will respond immediately
             handleBotDecision(playerId, awaitingDecision);
@@ -96,9 +97,15 @@ public class DefaultUserFeedback implements UserFeedback {
             LOG.trace("[" + playerId + "] handleBotDecision : decisionMade(choice) = " + choice);
             awaitingDecision.decisionMade(choice);
             // TODO: How to fix this propperly? (without this IF the bot just keeps looping on the same question)
-            if (!awaitingDecision.getText().equals("Do you want to make another move?")) {
-                if (_game instanceof DefaultLotroGame) {
-                    ((DefaultLotroGame) _game).carryOutPendingActionsUntilDecisionNeeded();
+            // if (!awaitingDecision.getText().equals("Do you want to make another move?")) {
+            if (_game instanceof DefaultLotroGame) {
+                DefaultLotroGame defaultLotroGame = (DefaultLotroGame) _game;
+                if (defaultLotroGame.getTurnProcedure().getGameProcess().getNextProcess() == null) {
+                    defaultLotroGame.carryOutPendingActionsUntilDecisionNeeded();
+                }
+                else {
+                    LOG.trace("[" + playerId + "] handleBotDecision : Continue to next GameProcess -> " 
+                            + defaultLotroGame.getTurnProcedure().getGameProcess().getNextProcess().getClass().getName().replace("com.gempukku.lotro.logic.", ".."));
                 }
             }
         }

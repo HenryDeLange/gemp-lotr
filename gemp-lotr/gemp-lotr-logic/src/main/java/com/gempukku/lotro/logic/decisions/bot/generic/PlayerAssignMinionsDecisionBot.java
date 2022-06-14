@@ -4,6 +4,7 @@ import java.util.Arrays;
 
 import org.apache.log4j.Logger;
 
+import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.PlayerAssignMinionsDecision;
 import com.gempukku.lotro.logic.decisions.bot.MakeBotDecision;
@@ -21,14 +22,21 @@ public class PlayerAssignMinionsDecisionBot implements MakeBotDecision {
         LOG.trace("PARAM: freeCharacters = " + Arrays.toString(freeCharacters));
         LOG.trace("PARAM: minions = " + Arrays.toString(minions));
         commaArrayOfCharacterSpaceMinion = "";
+        int freeCharacterIndex = 0;
         for (int minionIndex = 0; minionIndex < minions.length; minionIndex++) {
-            int freeCharacterIndex = minionIndex + 1; // Don't assign to the ring-bearer
-            if (freeCharacterIndex < freeCharacters.length) {
-                if (minionIndex == 0) {
-                    commaArrayOfCharacterSpaceMinion += freeCharacters[freeCharacterIndex] + " " + minions[minionIndex];
+            // Don't assign to the ring-bearer
+            if (freeCharacterIndex < (freeCharacters.length - 1)) { 
+                PhysicalCard card = decision.getPhysicalFreeCharacterCard(Integer.parseInt(freeCharacters[freeCharacterIndex]));
+                if (card.getBlueprint().getTitle().equals("Frodo")) {
+                    LOG.trace("SKIP: Don't assign a minion to Frodo");
+                    freeCharacterIndex++;
+                    continue;
+                }
+                if (commaArrayOfCharacterSpaceMinion.isEmpty()) {
+                    commaArrayOfCharacterSpaceMinion += freeCharacters[freeCharacterIndex++] + " " + minions[minionIndex];
                 }
                 else {
-                    commaArrayOfCharacterSpaceMinion += "," + freeCharacters[freeCharacterIndex] + " " + minions[minionIndex];
+                    commaArrayOfCharacterSpaceMinion += "," + freeCharacters[freeCharacterIndex++] + " " + minions[minionIndex];
                 }
             }
         }

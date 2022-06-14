@@ -10,6 +10,7 @@
         }
         body {
             font-size: 100%;
+            font-family: Verdana, Arial, sans-serif;
             height: 100%; 
             background-image: url('images/dwarrowdelf.jpg'); 
             background-size: auto 100%; 
@@ -203,11 +204,11 @@
 
             $(".interaction").append(registerButton);
             $(".interaction").append("<br/>");
-            $(".interaction").append("<br/><label for='login' style='display: inline-block; width: 92px;'>Login:</label><input id='login' type='text'>");
-            $(".interaction").append("<br/><label for='password' style='display: inline-block; width: 92px;'>Password:</label><input id='password' type='password'><br/>");
+            $(".interaction").append("<br/><label for='login' style='display: inline-block; width: 110px;'>Login:</label><input id='login' type='text'>");
+            $(".interaction").append("<br/><label for='password' style='display: inline-block; width: 110px;'>Password:</label><input id='password' type='password'><br/>");
             $(".interaction").append("<br/>");
 
-            var loginButton = $("<div style='width: 320px;'>Login</div>").button();
+            var loginButton = $("<div style='width: 340px;'>Login</div>").button();
             loginButton.click(login);
 
             $("#password").keypress(function (e) {
