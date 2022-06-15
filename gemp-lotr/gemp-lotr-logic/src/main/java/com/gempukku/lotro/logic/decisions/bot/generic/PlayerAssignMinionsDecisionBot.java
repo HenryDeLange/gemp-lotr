@@ -25,7 +25,7 @@ public class PlayerAssignMinionsDecisionBot implements MakeBotDecision {
         int freeCharacterIndex = 0;
         for (int minionIndex = 0; minionIndex < minions.length; minionIndex++) {
             // Don't assign to the ring-bearer
-            if (freeCharacterIndex < (freeCharacters.length - 1)) { 
+            if (freeCharacterIndex < freeCharacters.length) {
                 PhysicalCard card = decision.getPhysicalFreeCharacterCard(Integer.parseInt(freeCharacters[freeCharacterIndex]));
                 if (card.getBlueprint().getTitle().equals("Frodo")) {
                     LOG.trace("SKIP: Don't assign a minion to Frodo");

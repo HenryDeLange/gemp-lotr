@@ -73,10 +73,10 @@ var GempLotrHallUI = Class.extend({
         this.supportedFormatsSelect = $("<select style='width: 180px; margin-left: 5px'></select>");
         this.supportedFormatsSelect.hide();
 
-        this.createBotCheckbox = $("<input id='botGame' type='checkbox' style='margin-left: 10px' /><label for='botGame'>Bot</label>");
+        this.createBotCheckbox = $("<label for='botGame' style='vertical-align:middle;'><input id='botGame' type='checkbox' style='margin-left: 10px; vertical-align:middle;' />Bot</label>");
         this.createBotCheckbox.hide();
 
-        this.createTableButton = $("<button style='margin-left: 20px'>Create table</button>");
+        this.createTableButton = $("<button style='margin-left: 20px; font-size: 150%; font-weight: bold; padding-left: 10px; padding-right: 10px;'>Create table</button>");
         $(this.createTableButton).button().click(
             function () {
                 that.supportedFormatsSelect.hide();
