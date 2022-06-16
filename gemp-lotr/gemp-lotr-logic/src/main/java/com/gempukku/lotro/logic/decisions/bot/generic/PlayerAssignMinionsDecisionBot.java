@@ -27,16 +27,18 @@ public class PlayerAssignMinionsDecisionBot implements MakeBotDecision {
             // Don't assign to the ring-bearer
             if (freeCharacterIndex < freeCharacters.length) {
                 PhysicalCard card = decision.getPhysicalFreeCharacterCard(Integer.parseInt(freeCharacters[freeCharacterIndex]));
+                // TODO: Rather use Game -> GameState -> Ringbearers
                 if (card.getBlueprint().getTitle().equals("Frodo")) {
-                    LOG.trace("SKIP: Don't assign a minion to Frodo");
+                    LOG.trace("CONDITION: Don't assign a minion to Frodo [" + freeCharacterIndex + "]");
                     freeCharacterIndex++;
-                    continue;
-                }
-                if (commaArrayOfCharacterSpaceMinion.isEmpty()) {
-                    commaArrayOfCharacterSpaceMinion += freeCharacters[freeCharacterIndex++] + " " + minions[minionIndex];
                 }
                 else {
-                    commaArrayOfCharacterSpaceMinion += "," + freeCharacters[freeCharacterIndex++] + " " + minions[minionIndex];
+                    if (commaArrayOfCharacterSpaceMinion.isEmpty()) {
+                        commaArrayOfCharacterSpaceMinion += freeCharacters[freeCharacterIndex++] + " " + minions[minionIndex];
+                    }
+                    else {
+                        commaArrayOfCharacterSpaceMinion += "," + freeCharacters[freeCharacterIndex++] + " " + minions[minionIndex];
+                    }
                 }
             }
         }

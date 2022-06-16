@@ -32,7 +32,10 @@ public class StartOfPhaseGameProcess implements GameProcess {
 
     @Override
     public void process(LotroGame game) {
-        LOG.trace("<<<<<<<<<< Starting " + _phase + " phase >>>>>>>>>>");
+        LOG.trace("<<<<<<<<<<<<<<<<<<<< Starting " + _phase + " phase >>>>>>>>>>>>>>>>>>>>");
+        if (game.isBotGame()) {
+            game.getUserFeedback().resetBotActionHistory();
+        }
         game.getGameState().setCurrentPhase(_phase);
         SystemQueueAction action = new SystemQueueAction();
         action.setText("Start of " + _phase + " phase");

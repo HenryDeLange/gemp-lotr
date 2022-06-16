@@ -44,6 +44,8 @@ public class DefaultLotroGame implements LotroGame {
     private Set<String> _requestedCancel = new HashSet<String>();
     private LotroCardBlueprintLibrary _library;
 
+    private boolean botGame = false;
+
     public DefaultLotroGame(LotroFormat format, Map<String, LotroDeck> decks, UserFeedback userFeedback, final LotroCardBlueprintLibrary library) {
         _library = library;
         _adventure = format.getAdventure();
@@ -292,7 +294,31 @@ public class DefaultLotroGame implements LotroGame {
         _autoPassConfiguration.put(playerId, phases);
     }
 
+    /**
+     * Don't use, only added for the bot to use
+     */
+    @Deprecated
+    @Override
     public TurnProcedure getTurnProcedure() {
         return _turnProcedure;
     }
+
+    /**
+     * Don't use, only added for the bot to use
+     */
+    @Deprecated
+    @Override
+    public void setBotGame(boolean botGame) {
+        this.botGame = botGame;
+    }
+
+    /**
+     * Don't use, only added for the bot to use
+     */
+    @Deprecated
+    @Override
+    public boolean isBotGame() {
+        return botGame;
+    }
+
 }

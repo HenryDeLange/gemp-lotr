@@ -33,8 +33,7 @@ public abstract class CardActionSelectionDecision extends AbstractAwaitingDecisi
     }
 
     /**
-     * Don't use, only added for the bot to be able to remove actions it can't perform (to prevent infinite loops)
-     * @param action
+     * Don't use, only added for the bot to use
      */
     @Deprecated
     public void removeAction(Action action) {
@@ -45,8 +44,28 @@ public abstract class CardActionSelectionDecision extends AbstractAwaitingDecisi
         setParam("actionText", getActionTexts(_actions));
     }
 
+    /**
+     * Don't use, only added for the bot to use
+     */
+    @Deprecated
     public List<Action> getCopyOfActions() {
         return new ArrayList<>(_actions);
+    }
+
+    /**
+     * Don't use, only added for the bot to use
+     */
+    @Deprecated
+    public Action getAction(int actionId) {
+        return _actions.get(actionId);
+    }
+
+    /**
+     * Don't use, only added for the bot to use
+     */
+    @Deprecated
+    public boolean hasActions() {
+        return _actions != null && !_actions.isEmpty();
     }
 
     private String[] getActionIds(List<? extends Action> actions) {

@@ -43,10 +43,10 @@ public class LotroGameMediator {
     private int _channelNextIndex = 0;
     private volatile boolean _destroyed;
 
-    private Set<Phase> _autoPassAll = new HashSet<Phase>();
+    private Set<Phase> _autoPassAll = new HashSet<>();
 
     public LotroGameMediator(String gameId, LotroFormat lotroFormat, LotroGameParticipant[] participants, LotroCardBlueprintLibrary library, int maxSecondsForGamePerPlayer,
-                             int maxSecondsPerDecision, boolean allowSpectators, boolean cancellable, boolean privateGame) {
+                             int maxSecondsPerDecision, boolean allowSpectators, boolean cancellable, boolean privateGame, boolean botGame) {
         _gameId = gameId;
         _maxSecondsForGamePerPlayer = maxSecondsForGamePerPlayer;
         _maxSecondsPerDecision = maxSecondsPerDecision;
@@ -67,7 +67,9 @@ public class LotroGameMediator {
 
         _userFeedback = new DefaultUserFeedback();
         _lotroGame = new DefaultLotroGame(lotroFormat, decks, _userFeedback, library);
-        if (true) {
+
+        _lotroGame.setBotGame(botGame);
+        if (_lotroGame.isBotGame()) {
             _autoPassAll.add(Phase.FELLOWSHIP);
             _autoPassAll.add(Phase.SHADOW);
             _autoPassAll.add(Phase.MANEUVER);
@@ -80,6 +82,7 @@ public class LotroGameMediator {
             _autoPassAll.add(Phase.PUT_RING_BEARER);
             setPlayerAutoPassSettings("bot", _autoPassAll);
         }
+
         _userFeedback.setGame(_lotroGame);
     }
 
@@ -340,7 +343,7 @@ public class LotroGameMediator {
                         if (awaitingDecision.getAwaitingDecisionId() == decisionId && !_lotroGame.isFinished()) {
                             try {
                                 _userFeedback.participantDecided(playerName);
-                                LOG.trace(" [" + playerName + "] playerAnswered : decisionMade(answer) = " + answer);
+                                LOG.trace("  [" + playerName + "] playerAnswered : decisionMade(answer) = " + answer);
                                 awaitingDecision.decisionMade(answer);
 
                                 // Decision successfully made, add the time to user clock

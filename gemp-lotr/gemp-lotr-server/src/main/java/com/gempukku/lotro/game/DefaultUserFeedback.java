@@ -1,6 +1,9 @@
 package com.gempukku.lotro.game;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -33,7 +36,9 @@ import com.gempukku.lotro.logic.decisions.bot.specific.ForEachBurdenYouSpotDecis
 import com.gempukku.lotro.logic.decisions.bot.specific.ForEachTwilightTokenYouSpotDecisionBot;
 import com.gempukku.lotro.logic.decisions.bot.specific.ForEachYouSpotDecisionBot;
 import com.gempukku.lotro.logic.decisions.bot.specific.YesNoDecisionBot;
+import com.gempukku.lotro.logic.timing.Action;
 import com.gempukku.lotro.logic.timing.DefaultLotroGame;
+import com.gempukku.lotro.logic.timing.processes.GameProcess;
 
 public class DefaultUserFeedback implements UserFeedback {
     private static final Logger LOG = Logger.getLogger(DefaultUserFeedback.class);
@@ -41,6 +46,7 @@ public class DefaultUserFeedback implements UserFeedback {
     private Map<String, AwaitingDecision> _awaitingDecisionMap = new HashMap<String, AwaitingDecision>();
     private LotroGame _game;
     private Map<String, MakeBotDecision> _botDecisionMap = new HashMap<>();
+    private List<String> _botActionHistory = new ArrayList<>();
 
     public DefaultUserFeedback() {
         // Generic Decisions
@@ -63,7 +69,7 @@ public class DefaultUserFeedback implements UserFeedback {
     }
 
     public void participantDecided(String playerId) {
-        LOG.trace("[" + playerId + "] participantDecided");
+        LOG.trace(" [" + playerId + "] participantDecided");
         _awaitingDecisionMap.remove(playerId);
         _game.getGameState().playerDecisionFinished(playerId);
     }
@@ -74,9 +80,9 @@ public class DefaultUserFeedback implements UserFeedback {
 
     @Override
     public void sendAwaitingDecision(String playerId, AwaitingDecision awaitingDecision) {
-        LOG.trace("[" + playerId + "] sendAwaitingDecision ********** " 
-                + awaitingDecision.getClass().getName().replace("com.gempukku.lotro.logic.", "..") + " **********");
-        if (playerId != null && playerId.equalsIgnoreCase("bot")) {
+        LOG.trace(" [" + playerId + "] *************** Start New Decision ***************");
+        LOG.trace(" [" + playerId + "] sendAwaitingDecision -> " + awaitingDecision.getClass().getName().replace("com.gempukku.lotro.logic.", ".."));
+        if (_game.isBotGame() && playerId != null && playerId.equalsIgnoreCase("bot")) {
             // Don't send, the bot will respond immediately
             handleBotDecision(playerId, awaitingDecision);
         }
@@ -88,12 +94,49 @@ public class DefaultUserFeedback implements UserFeedback {
     }
 
     private void handleBotDecision(String playerId, AwaitingDecision awaitingDecision) {
+        if (!_botActionHistory.isEmpty()) {
+            LOG.trace(" [" + playerId + "] handleBotDecision : Previously played actions " + Arrays.toString(_botActionHistory.toArray()));
+        }
         // Let the bot make a choice
-        String choice = _botDecisionMap.get(getOriginalClass(awaitingDecision).getName()).getBotChoice(awaitingDecision);
+        String decisionType = getOriginalClass(awaitingDecision).getName();
+        String choice = null;
+        if (decisionType.equals(CardActionSelectionDecision.class.getName())) {
+            CardActionSelectionDecision decision = (CardActionSelectionDecision) awaitingDecision;
+            // If the bot already performed the action then remove it from the available actions list
+            // (thus for now the bot will only be allowed to do an action once per phase, to prevent infinite loops or even more silly choices)
+            for (String prevAction : _botActionHistory) {
+                if (decision.hasActions()) {
+                    for (Action action : decision.getCopyOfActions()) {
+                        if (action.getActionSource().getBlueprintId().equals(prevAction)) {
+                            LOG.trace("[" + playerId + "] handleBotDecision : REMOVE action from decision because it was used before = " + action.getText(_game));
+                            decision.removeAction(action);
+                            break;
+                        }
+                    }
+                }
+            }
+            // If there are valid action remaining, then let the bot make a choice
+            if (decision.hasActions()) {
+                choice = _botDecisionMap.get(decisionType).getBotChoice(decision);
+            }
+            else {
+                LOG.trace("[" + playerId + "] handleBotDecision : SKIP because there are no actions to perform");
+            }
+            // Keep track of performed actions
+            if (choice != null && !choice.trim().isEmpty()) {
+                _botActionHistory.add(decision.getAction(Integer.parseInt(choice)).getActionSource().getBlueprintId());
+            }
+        }
+        else {
+            choice = _botDecisionMap.get(decisionType).getBotChoice(awaitingDecision);
+        }
         // Make the decision based on the bot's choice
         try {
             _game.getGameState().playerDecisionStarted(playerId, awaitingDecision);
             participantDecided(playerId);
+            if (choice == null) {
+                choice = "";
+            }
             LOG.trace("[" + playerId + "] handleBotDecision : decisionMade(choice) = " + choice);
             awaitingDecision.decisionMade(choice);
             if (_game instanceof DefaultLotroGame) {
@@ -103,7 +146,8 @@ public class DefaultUserFeedback implements UserFeedback {
                 }
                 else {
                     LOG.trace("[" + playerId + "] handleBotDecision : Continue to next GameProcess -> " 
-                            + defaultLotroGame.getTurnProcedure().getGameProcess().getNextProcess().getClass().getName().replace("com.gempukku.lotro.logic.", ".."));
+                            + defaultLotroGame.getTurnProcedure().getGameProcess().getNextProcess().getClass().getName()
+                                    .replace("com.gempukku.lotro.logic.", ".."));
                 }
             }
         }
@@ -120,6 +164,16 @@ public class DefaultUserFeedback implements UserFeedback {
         else {
             return cls;
         }
+    }
+
+    /**
+     * Don't use, only added for the bot to use
+     */
+    @Deprecated
+    @Override
+    public void resetBotActionHistory() {
+        LOG.trace("< CLEAR the bot action history >");
+        _botActionHistory.clear();
     }
 
     @Override

@@ -102,7 +102,8 @@ public class LotroServer extends AbstractServer {
             // Allow spectators for leagues, but not tournaments
             LotroGameMediator lotroGameMediator = new LotroGameMediator(gameId, gameSettings.getLotroFormat(), participants, _lotroCardBlueprintLibrary,
                     gameSettings.getMaxSecondsPerPlayer(), gameSettings.getMaxSecondsPerDecision(),
-                    gameSettings.getLeague() != null || !gameSettings.isCompetitive(), !gameSettings.isCompetitive(), gameSettings.isPrivateGame());
+                    gameSettings.getLeague() != null || !gameSettings.isCompetitive(), !gameSettings.isCompetitive(), 
+                    gameSettings.isPrivateGame(), gameSettings.isBotGame());
             lotroGameMediator.addGameResultListener(
                     new GameResultListener() {
                         @Override

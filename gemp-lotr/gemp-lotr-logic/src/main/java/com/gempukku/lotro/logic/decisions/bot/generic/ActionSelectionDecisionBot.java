@@ -1,6 +1,7 @@
 package com.gempukku.lotro.logic.decisions.bot.generic;
 
 import java.util.Arrays;
+import java.util.Random;
 
 import org.apache.log4j.Logger;
 
@@ -10,6 +11,7 @@ import com.gempukku.lotro.logic.decisions.bot.MakeBotDecision;
 
 public class ActionSelectionDecisionBot implements MakeBotDecision {
     private static final Logger LOG = Logger.getLogger(ActionSelectionDecisionBot.class);
+    private Random random = new Random();
 
     @Override
     public String getBotChoice(AwaitingDecision awaitingDecision) {
@@ -23,7 +25,7 @@ public class ActionSelectionDecisionBot implements MakeBotDecision {
         LOG.trace("PARAM: blueprintId = " + Arrays.toString(blueprintId));
         LOG.trace("PARAM: actionText = " + Arrays.toString(actionText));
         if (actionId.length > 0) {
-            actionIndex = "0";
+            actionIndex = Integer.toString(random.nextInt(actionId.length));
         }
         else {
             actionIndex = "";

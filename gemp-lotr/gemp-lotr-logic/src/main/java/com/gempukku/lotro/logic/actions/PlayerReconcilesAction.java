@@ -100,7 +100,7 @@ public class PlayerReconcilesAction implements Action {
                         }));
             } else if (cardsInHand.size() > 0) {
                 _effectQueue.add(new PlayoutDecisionEffect(_playerId,
-                        new CardsSelectionDecision(1, "Reconcile - choose card to discard or press DONE", cardsInHand, 0, 1) {
+                        new CardsSelectionDecision(1, "Reconcile: Choose card to discard or press DONE", cardsInHand, 0, 1) {
                             @Override
                             public void decisionMade(String result) throws DecisionResultInvalidException {
                                 Set<PhysicalCard> selectedCards = getSelectedCardsByResponse(result);
