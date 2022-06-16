@@ -9,7 +9,7 @@ import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.IntegerAwaitingDecision;
 import com.gempukku.lotro.logic.decisions.bot.MakeBotDecision;
 
-public class IntegerAwaitingDecisionBot implements MakeBotDecision {
+public class IntegerAwaitingDecisionBot extends MakeBotDecision {
     private static final Logger LOG = Logger.getLogger(IntegerAwaitingDecisionBot.class);
     private Random random = new Random();
     
@@ -21,9 +21,9 @@ public class IntegerAwaitingDecisionBot implements MakeBotDecision {
         String[] min = decision.getDecisionParameters().get("min");
         String[] max = decision.getDecisionParameters().get("max");
         String[] defaultValue = decision.getDecisionParameters().get("defaultValue");
-        LOG.trace("PARAM: min = " + Arrays.toString(min));
-        LOG.trace("PARAM: max = " + Arrays.toString(max));
-        LOG.trace("PARAM: defaultValue = " + Arrays.toString(defaultValue));
+        LOG.trace("PARAM: min = " + getArrayAsString(min));
+        LOG.trace("PARAM: max = " + getArrayAsString(max));
+        LOG.trace("PARAM: defaultValue = " + getArrayAsString(defaultValue));
         if (defaultValue != null && defaultValue.length > 0) {
             intValue = defaultValue[0];
         }

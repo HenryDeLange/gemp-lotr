@@ -6,7 +6,7 @@ import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.bot.MakeBotDecision;
 import com.gempukku.lotro.logic.decisions.bot.generic.MultipleChoiceAwaitingDecisionBot;
 
-public class YesNoDecisionBot implements MakeBotDecision {
+public class YesNoDecisionBot extends MakeBotDecision {
     private static final Logger LOG = Logger.getLogger(YesNoDecisionBot.class);
     private final MultipleChoiceAwaitingDecisionBot multipleChoiceAwaitingDecisionBot = new MultipleChoiceAwaitingDecisionBot();
 

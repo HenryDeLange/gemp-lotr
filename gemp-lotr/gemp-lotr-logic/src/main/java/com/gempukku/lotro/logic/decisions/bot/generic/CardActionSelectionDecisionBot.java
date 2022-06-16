@@ -10,7 +10,7 @@ import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.CardActionSelectionDecision;
 import com.gempukku.lotro.logic.decisions.bot.MakeBotDecision;
 
-public class CardActionSelectionDecisionBot implements MakeBotDecision {
+public class CardActionSelectionDecisionBot extends MakeBotDecision {
     private static final Logger LOG = Logger.getLogger(CardActionSelectionDecisionBot.class);
     private Random random = new Random();
 
@@ -23,13 +23,14 @@ public class CardActionSelectionDecisionBot implements MakeBotDecision {
         String[] cardId = decision.getDecisionParameters().get("cardId");
         String[] blueprintId = decision.getDecisionParameters().get("blueprintId");
         String[] actionText = decision.getDecisionParameters().get("actionText");
-        LOG.trace("PARAM: actionId = " + Arrays.toString(actionId));
-        LOG.trace("PARAM: cardId = " + Arrays.toString(cardId));
-        LOG.trace("PARAM: blueprintId = " + Arrays.toString(blueprintId));
-        LOG.trace("PARAM: actionText = " + Arrays.toString(actionText));
+        LOG.trace("PARAM: actionId = " + getArrayAsString(actionId));
+        LOG.trace("PARAM: cardId = " + getArrayAsString(cardId));
+        LOG.trace("PARAM: blueprintId = " + getArrayAsString(blueprintId));
+        LOG.trace("PARAM: actionText = " + getArrayAsString(actionText));
         // TODO: Try to use GameState -> xxxSkirmishStrength, etc. to aviod doing actions when already winning a skirmish
         if (actionId.length > 0) {
             actionIndex = Integer.toString(random.nextInt(actionId.length));
+            LOG.trace("CARD: " + decision.getAction(Integer.parseInt(actionIndex)).getActionSource().getBlueprintId());
         }
         else {
             actionIndex = "";
@@ -39,8 +40,7 @@ public class CardActionSelectionDecisionBot implements MakeBotDecision {
             LOG.trace("SKIP: Don't transfer equipment");
             actionIndex = "";
         }
-        LOG.trace("CHOICE: actionIndex = " + actionIndex 
-                + " (" + decision.getAction(Integer.parseInt(actionIndex)).getActionSource().getBlueprintId() + ")");
+        LOG.trace("CHOICE: actionIndex = " + actionIndex);
         return actionIndex;
     }
     

@@ -6,7 +6,7 @@ import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.bot.MakeBotDecision;
 import com.gempukku.lotro.logic.decisions.bot.generic.IntegerAwaitingDecisionBot;
 
-public class ForEachTwilightTokenYouSpotDecisionBot implements MakeBotDecision {
+public class ForEachTwilightTokenYouSpotDecisionBot extends MakeBotDecision {
     private static final Logger LOG = Logger.getLogger(ForEachTwilightTokenYouSpotDecisionBot.class);
     private final IntegerAwaitingDecisionBot integerAwaitingDecisionBot = new IntegerAwaitingDecisionBot();
 

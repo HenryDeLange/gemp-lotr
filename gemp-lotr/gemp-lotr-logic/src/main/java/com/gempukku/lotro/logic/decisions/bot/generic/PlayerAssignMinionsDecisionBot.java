@@ -9,7 +9,7 @@ import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.PlayerAssignMinionsDecision;
 import com.gempukku.lotro.logic.decisions.bot.MakeBotDecision;
 
-public class PlayerAssignMinionsDecisionBot implements MakeBotDecision {
+public class PlayerAssignMinionsDecisionBot extends MakeBotDecision {
     private static final Logger LOG = Logger.getLogger(PlayerAssignMinionsDecisionBot.class);
 
     @Override
@@ -19,8 +19,8 @@ public class PlayerAssignMinionsDecisionBot implements MakeBotDecision {
         LOG.trace("TEXT: " + decision.getText());
         String[] freeCharacters = decision.getDecisionParameters().get("freeCharacters");
         String[] minions = decision.getDecisionParameters().get("minions");
-        LOG.trace("PARAM: freeCharacters = " + Arrays.toString(freeCharacters));
-        LOG.trace("PARAM: minions = " + Arrays.toString(minions));
+        LOG.trace("PARAM: freeCharacters = " + getArrayAsString(freeCharacters));
+        LOG.trace("PARAM: minions = " + getArrayAsString(minions));
         commaArrayOfCharacterSpaceMinion = "";
         int freeCharacterIndex = 0;
         for (int minionIndex = 0; minionIndex < minions.length; minionIndex++) {

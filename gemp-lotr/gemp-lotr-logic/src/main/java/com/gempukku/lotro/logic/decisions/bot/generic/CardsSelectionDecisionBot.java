@@ -11,7 +11,7 @@ import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.CardsSelectionDecision;
 import com.gempukku.lotro.logic.decisions.bot.MakeBotDecision;
 
-public class CardsSelectionDecisionBot implements MakeBotDecision {
+public class CardsSelectionDecisionBot extends MakeBotDecision {
     private static final Logger LOG = Logger.getLogger(CardsSelectionDecisionBot.class);
     private Random random = new Random();
 
@@ -23,9 +23,9 @@ public class CardsSelectionDecisionBot implements MakeBotDecision {
         String[] min = decision.getDecisionParameters().get("min");
         String[] max = decision.getDecisionParameters().get("max");
         String[] cardId = decision.getDecisionParameters().get("cardId");
-        LOG.trace("PARAM: min = " + Arrays.toString(min));
-        LOG.trace("PARAM: max = " + Arrays.toString(max));
-        LOG.trace("PARAM: cardId = " + Arrays.toString(cardId));
+        LOG.trace("PARAM: min = " + getArrayAsString(min));
+        LOG.trace("PARAM: max = " + getArrayAsString(max));
+        LOG.trace("PARAM: cardId = " + getArrayAsString(cardId));
         int minValue = Integer.parseInt(min[0]);
         int maxValue = Integer.parseInt(max[0]);
         int numberOfCardsToSelect = random.nextInt((maxValue + 1) - minValue) + minValue;

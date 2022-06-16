@@ -11,7 +11,7 @@ import com.gempukku.lotro.logic.decisions.ArbitraryCardsSelectionDecision;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.bot.MakeBotDecision;
 
-public class ArbitraryCardsSelectionDecisionBot implements MakeBotDecision {
+public class ArbitraryCardsSelectionDecisionBot extends MakeBotDecision {
     private static final Logger LOG = Logger.getLogger(ArbitraryCardsSelectionDecisionBot.class);
     private Random random = new Random();
 
@@ -25,11 +25,11 @@ public class ArbitraryCardsSelectionDecisionBot implements MakeBotDecision {
         String[] cardId = decision.getDecisionParameters().get("cardId");
         String[] blueprintId = decision.getDecisionParameters().get("blueprintId");
         String[] selectable = decision.getDecisionParameters().get("selectable");
-        LOG.trace("PARAM: min = " + Arrays.toString(min));
-        LOG.trace("PARAM: max = " + Arrays.toString(max));
-        LOG.trace("PARAM: cardId = " + Arrays.toString(cardId));
-        LOG.trace("PARAM: blueprintId = " + Arrays.toString(blueprintId));
-        LOG.trace("PARAM: selectable = " + Arrays.toString(selectable));
+        LOG.trace("PARAM: min = " + getArrayAsString(min));
+        LOG.trace("PARAM: max = " + getArrayAsString(max));
+        LOG.trace("PARAM: cardId = " + getArrayAsString(cardId));
+        LOG.trace("PARAM: blueprintId = " + getArrayAsString(blueprintId));
+        LOG.trace("PARAM: selectable = " + getArrayAsString(selectable));
         if (selectable != null && selectable.length > 0) {
             List<Integer> selectableCardIndexes = new ArrayList<>();
             for (int cardIndex = 0; cardIndex < cardId.length; cardIndex++) {
