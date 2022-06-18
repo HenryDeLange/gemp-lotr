@@ -38,8 +38,6 @@ import com.gempukku.lotro.logic.decisions.bot.specific.ForEachTwilightTokenYouSp
 import com.gempukku.lotro.logic.decisions.bot.specific.ForEachYouSpotDecisionBot;
 import com.gempukku.lotro.logic.decisions.bot.specific.YesNoDecisionBot;
 import com.gempukku.lotro.logic.timing.Action;
-import com.gempukku.lotro.logic.timing.DefaultLotroGame;
-import com.gempukku.lotro.logic.timing.processes.GameProcess;
 
 public class DefaultUserFeedback implements UserFeedback {
     private static final Logger LOG = Logger.getLogger(DefaultUserFeedback.class);
@@ -118,7 +116,7 @@ public class DefaultUserFeedback implements UserFeedback {
             }
             // If there are valid action remaining, then let the bot make a choice
             if (decision.hasActions()) {
-                choice = _botDecisionMap.get(decisionType).getBotChoice(decision);
+                choice = _botDecisionMap.get(decisionType).getBotChoice(_game, decision);
             }
             else {
                 LOG.trace("[" + playerId + "] handleBotDecision : SKIP because there are no actions to perform");
@@ -129,7 +127,7 @@ public class DefaultUserFeedback implements UserFeedback {
             }
         }
         else {
-            choice = _botDecisionMap.get(decisionType).getBotChoice(awaitingDecision);
+            choice = _botDecisionMap.get(decisionType).getBotChoice(_game, awaitingDecision);
         }
         // Make the decision based on the bot's choice
         try {
@@ -140,16 +138,13 @@ public class DefaultUserFeedback implements UserFeedback {
             }
             LOG.trace("[" + playerId + "] handleBotDecision : decisionMade(choice) = " + choice);
             awaitingDecision.decisionMade(choice);
-            if (_game instanceof DefaultLotroGame) {
-                DefaultLotroGame defaultLotroGame = (DefaultLotroGame) _game;
-                if (defaultLotroGame.getTurnProcedure().getGameProcess().getNextProcess() == null) {
-                    defaultLotroGame.carryOutPendingActionsUntilDecisionNeeded();
-                }
-                else {
-                    LOG.trace("[" + playerId + "] handleBotDecision : Continue to next GameProcess -> " 
-                            + defaultLotroGame.getTurnProcedure().getGameProcess().getNextProcess().getClass().getName()
-                                    .replace("com.gempukku.lotro.logic.", ".."));
-                }
+            if (_game.getTurnProcedure().getGameProcess().getNextProcess() == null) {
+                _game.carryOutPendingActionsUntilDecisionNeeded();
+            }
+            else {
+                LOG.trace("[" + playerId + "] handleBotDecision : Continue to next GameProcess -> " 
+                        + _game.getTurnProcedure().getGameProcess().getNextProcess().getClass().getName()
+                                .replace("com.gempukku.lotro.logic.", ".."));
             }
         }
         catch (DecisionResultInvalidException e) {

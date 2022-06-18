@@ -126,6 +126,7 @@ public class DefaultLotroGame implements LotroGame {
             _turnProcedure.carryOutPendingActionsUntilDecisionNeeded();
     }
 
+    @Override
     public void carryOutPendingActionsUntilDecisionNeeded() {
         if (!_cancelled)
             _turnProcedure.carryOutPendingActionsUntilDecisionNeeded();

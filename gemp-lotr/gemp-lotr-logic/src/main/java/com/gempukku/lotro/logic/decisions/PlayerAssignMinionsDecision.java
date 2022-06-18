@@ -16,6 +16,26 @@ public abstract class PlayerAssignMinionsDecision extends AbstractAwaitingDecisi
         setParam("minions", getCardIds(_minions));
     }
 
+    /**
+     * Don't use, only added for the bot to use
+     */
+    @Deprecated
+    public List<PhysicalCard> getCopyOfPhysicalFreeCharacterCards() {
+        return Collections.unmodifiableList(_freeCharacters);
+    }
+
+    /**
+     * Don't use, only added for the bot to use
+     */
+    @Deprecated
+    public List<PhysicalCard> getCopyOfPhysicalMinionCards() {
+        return Collections.unmodifiableList(_minions);
+    }
+
+    /**
+     * Don't use, only added for the bot to use
+     */
+    @Deprecated
     public PhysicalCard getPhysicalFreeCharacterCard(int cardId) {
         for (PhysicalCard card : _freeCharacters) {
             if (card.getCardId() == cardId)
@@ -24,6 +44,10 @@ public abstract class PlayerAssignMinionsDecision extends AbstractAwaitingDecisi
         return null;
     }
 
+    /**
+     * Don't use, only added for the bot to use
+     */
+    @Deprecated
     public PhysicalCard getPhysicalMinionCard(int cardId) {
         for (PhysicalCard card : _minions) {
             if (card.getCardId() == cardId)

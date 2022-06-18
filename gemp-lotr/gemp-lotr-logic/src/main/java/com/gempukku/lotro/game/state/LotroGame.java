@@ -55,4 +55,10 @@ public interface LotroGame {
      */
     @Deprecated
     public boolean isBotGame();
+
+    /**
+     * Don't use, only added for the bot to use
+     */
+    @Deprecated
+    public void carryOutPendingActionsUntilDecisionNeeded();
 }

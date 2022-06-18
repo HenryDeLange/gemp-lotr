@@ -1,12 +1,12 @@
 package com.gempukku.lotro.logic.decisions.bot.generic;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
 import org.apache.log4j.Logger;
 
+import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.CardsSelectionDecision;
 import com.gempukku.lotro.logic.decisions.bot.MakeBotDecision;
@@ -16,7 +16,7 @@ public class CardsSelectionDecisionBot extends MakeBotDecision {
     private Random random = new Random();
 
     @Override
-    public String getBotChoice(AwaitingDecision awaitingDecision) {
+    public String getBotChoice(LotroGame game, AwaitingDecision awaitingDecision) {
         String commaArrayOfSelectedCardIndexes = null;
         CardsSelectionDecision decision = (CardsSelectionDecision) awaitingDecision;
         LOG.trace("TEXT: " + decision.getText());

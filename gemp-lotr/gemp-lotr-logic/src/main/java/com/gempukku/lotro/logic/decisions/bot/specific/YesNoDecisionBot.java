@@ -2,6 +2,7 @@ package com.gempukku.lotro.logic.decisions.bot.specific;
 
 import org.apache.log4j.Logger;
 
+import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.bot.MakeBotDecision;
 import com.gempukku.lotro.logic.decisions.bot.generic.MultipleChoiceAwaitingDecisionBot;
@@ -11,9 +12,9 @@ public class YesNoDecisionBot extends MakeBotDecision {
     private final MultipleChoiceAwaitingDecisionBot multipleChoiceAwaitingDecisionBot = new MultipleChoiceAwaitingDecisionBot();
 
     @Override
-    public String getBotChoice(AwaitingDecision awaitingDecision) {
+    public String getBotChoice(LotroGame game, AwaitingDecision awaitingDecision) {
         LOG.trace("DELEGATE TO: MultipleChoiceAwaitingDecisionBot");
-        return multipleChoiceAwaitingDecisionBot.getBotChoice(awaitingDecision);
+        return multipleChoiceAwaitingDecisionBot.getBotChoice(game, awaitingDecision);
     }
     
 }
