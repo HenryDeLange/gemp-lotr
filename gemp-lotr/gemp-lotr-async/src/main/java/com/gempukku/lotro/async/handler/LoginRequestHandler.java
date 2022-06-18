@@ -2,6 +2,7 @@ package com.gempukku.lotro.async.handler;
 
 import com.gempukku.lotro.async.HttpProcessingException;
 import com.gempukku.lotro.async.ResponseWriter;
+import com.gempukku.lotro.common.Bot;
 import com.gempukku.lotro.game.Player;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
@@ -26,7 +27,7 @@ public class LoginRequestHandler extends LotroServerRequestHandler implements Ur
 
             Player player = _playerDao.loginUser(login, password);
             if (player != null) {
-                if (player.getType().contains("u")) {
+                if (player.getType().contains("u") || player.getType().equals(Bot.BOT_DB_TYPE.getValue())) {
                     final Date bannedUntil = player.getBannedUntil();
                     if (bannedUntil != null && bannedUntil.after(new Date()))
                         throw new HttpProcessingException(409);

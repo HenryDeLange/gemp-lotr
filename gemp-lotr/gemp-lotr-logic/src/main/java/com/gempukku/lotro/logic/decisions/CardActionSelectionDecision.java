@@ -4,6 +4,7 @@ import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.timing.Action;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -49,7 +50,7 @@ public abstract class CardActionSelectionDecision extends AbstractAwaitingDecisi
      */
     @Deprecated
     public List<Action> getCopyOfActions() {
-        return new ArrayList<>(_actions);
+        return Collections.unmodifiableList(_actions);
     }
 
     /**

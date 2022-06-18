@@ -80,7 +80,7 @@ public class LotroGameMediator {
             _autoPassAll.add(Phase.BETWEEN_TURNS);
             _autoPassAll.add(Phase.PLAY_STARTING_FELLOWSHIP);
             _autoPassAll.add(Phase.PUT_RING_BEARER);
-            setPlayerAutoPassSettings("bot", _autoPassAll);
+            setPlayerAutoPassSettings(Bot.BOT_NAME.getValue(), _autoPassAll);
         }
 
         _userFeedback.setGame(_lotroGame);

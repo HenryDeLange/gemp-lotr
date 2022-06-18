@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 
+import com.gempukku.lotro.common.Bot;
 import com.gempukku.lotro.communication.UserFeedback;
 import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.decisions.ActionSelectionDecision;
@@ -82,7 +83,7 @@ public class DefaultUserFeedback implements UserFeedback {
     public void sendAwaitingDecision(String playerId, AwaitingDecision awaitingDecision) {
         LOG.trace(" [" + playerId + "] *************** Start New Decision ***************");
         LOG.trace(" [" + playerId + "] sendAwaitingDecision -> " + awaitingDecision.getClass().getName().replace("com.gempukku.lotro.logic.", ".."));
-        if (_game.isBotGame() && playerId != null && playerId.equalsIgnoreCase("bot")) {
+        if (_game.isBotGame() && playerId != null && playerId.equalsIgnoreCase(Bot.BOT_NAME.getValue())) {
             // Don't send, the bot will respond immediately
             handleBotDecision(playerId, awaitingDecision);
         }

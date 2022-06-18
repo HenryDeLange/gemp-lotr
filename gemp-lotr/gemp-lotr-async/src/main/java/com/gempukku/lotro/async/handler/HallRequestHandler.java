@@ -1,5 +1,22 @@
 package com.gempukku.lotro.async.handler;
 
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.apache.log4j.Logger;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 import com.gempukku.lotro.SubscriptionConflictException;
 import com.gempukku.lotro.SubscriptionExpiredException;
 import com.gempukku.lotro.async.HttpProcessingException;
@@ -10,7 +27,12 @@ import com.gempukku.lotro.db.PlayerDAO;
 import com.gempukku.lotro.db.vo.CollectionType;
 import com.gempukku.lotro.db.vo.League;
 import com.gempukku.lotro.draft.DraftChannelVisitor;
-import com.gempukku.lotro.game.*;
+import com.gempukku.lotro.game.CardCollection;
+import com.gempukku.lotro.game.CardNotFoundException;
+import com.gempukku.lotro.game.LotroCardBlueprintLibrary;
+import com.gempukku.lotro.game.LotroFormat;
+import com.gempukku.lotro.game.LotroServer;
+import com.gempukku.lotro.game.Player;
 import com.gempukku.lotro.game.formats.LotroFormatLibrary;
 import com.gempukku.lotro.hall.HallChannelVisitor;
 import com.gempukku.lotro.hall.HallCommunicationChannel;
@@ -22,20 +44,15 @@ import com.gempukku.lotro.logic.GameUtils;
 import com.gempukku.lotro.logic.vo.LotroDeck;
 import com.gempukku.polling.LongPollingResource;
 import com.gempukku.polling.LongPollingSystem;
+
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import java.lang.reflect.Type;
-import java.util.*;
 
 public class HallRequestHandler extends LotroServerRequestHandler implements UriRequestHandler {
+    private static final Logger LOG = Logger.getLogger(HallRequestHandler.class);
+
     private CollectionsManager _collectionManager;
     private LotroFormatLibrary _formatLibrary;
     private HallServer _hallServer;
@@ -124,31 +141,38 @@ public class HallRequestHandler extends LotroServerRequestHandler implements Uri
     private void createTable(HttpRequest request, ResponseWriter responseWriter) throws Exception {
         HttpPostRequestDecoder postDecoder = new HttpPostRequestDecoder(request);
         try {
-        String participantId = getFormParameterSafely(postDecoder, "participantId");
-        String format = getFormParameterSafely(postDecoder, "format");
-        String deckName = getFormParameterSafely(postDecoder, "deckName");
-        String timer = getFormParameterSafely(postDecoder, "timer");
-        boolean botGame = Boolean.parseBoolean(getFormParameterSafely(postDecoder, "botGame"));
-
-        Player resourceOwner = getResourceOwnerSafely(request, participantId);
-
-        Player botPlayer = null;
-        LotroDeck botDeck = null;
-        if (botGame) {
-            List<Player> botPlayers = _playerDAO.getBotPlayers();
-            if (!botPlayers.isEmpty()) {
-                botPlayer = botPlayers.get(random.nextInt(botPlayers.size()));
-                // TODO: Support more than one deck per format (get all decks and then loop over them selection a relevant one)
-                botDeck = _deckDAO.getDeckForPlayer(botPlayer, format);
+            String participantId = getFormParameterSafely(postDecoder, "participantId");
+            String format = getFormParameterSafely(postDecoder, "format");
+            String deckName = getFormParameterSafely(postDecoder, "deckName");
+            String timer = getFormParameterSafely(postDecoder, "timer");
+            boolean botGame = Boolean.parseBoolean(getFormParameterSafely(postDecoder, "botGame"));
+            Player resourceOwner = getResourceOwnerSafely(request, participantId);
+            // Setup the bot
+            Player botPlayer = null;
+            LotroDeck botDeck = null;
+            if (botGame) {
+                List<Player> botPlayers = _playerDAO.getBotPlayers();
+                if (!botPlayers.isEmpty()) {
+                    List<String> selectableDecks = new ArrayList<>();
+                    botPlayer = botPlayers.get(random.nextInt(botPlayers.size()));
+                    Set<String> availableDecks = _deckDAO.getPlayerDeckNames(botPlayer);
+                    for (String availableDeckName : availableDecks) {
+                        if (availableDeckName.startsWith(format)) {
+                            selectableDecks.add(availableDeckName);
+                        }
+                    }
+                    botDeck = _deckDAO.getDeckForPlayer(botPlayer, selectableDecks.get(random.nextInt(selectableDecks.size())));
+                    LOG.debug("Bot Player = " + botPlayer);
+                    LOG.debug("Bot Deck = " + botDeck.getDeckName());
+                }
             }
-        }
-
-        try {
-            _hallServer.createNewTable(format, resourceOwner, deckName, timer, botGame, botPlayer, botDeck);
-            responseWriter.writeXmlResponse(null);
-        } catch (HallException e) {
-            responseWriter.writeXmlResponse(marshalException(e));
-        }
+            // Create the table
+            try {
+                _hallServer.createNewTable(format, resourceOwner, deckName, timer, botGame, botPlayer, botDeck);
+                responseWriter.writeXmlResponse(null);
+            } catch (HallException e) {
+                responseWriter.writeXmlResponse(marshalException(e));
+            }
         } finally {
             postDecoder.destroy();
         }
