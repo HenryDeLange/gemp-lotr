@@ -162,7 +162,7 @@ public class HallRequestHandler extends LotroServerRequestHandler implements Uri
                         }
                     }
                     botDeck = _deckDAO.getDeckForPlayer(botPlayer, selectableDecks.get(random.nextInt(selectableDecks.size())));
-                    LOG.debug("Bot Player = " + botPlayer);
+                    LOG.debug("Bot Player = " + botPlayer.getName());
                     LOG.debug("Bot Deck = " + botDeck.getDeckName());
                 }
             }

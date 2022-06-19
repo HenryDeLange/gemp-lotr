@@ -289,11 +289,12 @@ var GempLotrGameUI = Class.extend({
                 + "<div class='playerStats'><div id='deck" + i + "' class='deckSize'></div><div id='hand" + i + "' class='handSize'></div><div id='threats" + i + "' class='threatsSize'></div><div id='showStats" + i + "' class='showStats'></div><div id='discard" + i + "' class='discardSize'></div><div id='deadPile" + i + "' class='deadPileSize'></div><div id='adventureDeck" + i + "' class='adventureDeckSize'></div></div></div>");
         }
 
-        this.gameStateElem.append("<br /><br /><hr />");
-        this.gameStateElem.append("<div class='twilightPoolTitle'>Twilight Pool</div>");
+        this.gameStateElem.append("<hr />");
+        this.gameStateElem.append("<div class='twilightPoolTitle'>Twilight Pool</div>");    
         this.gameStateElem.append("<div class='twilightPool'>0</div>");
-        this.gameStateElem.append("<br /><hr /><br />");
+        this.gameStateElem.append("<hr />");
         this.gameStateElem.append("<div class='phase'></div>");
+        this.gameStateElem.append("<div class='gameResult'></div>");
 
         $("#main").append(this.gameStateElem);
 
@@ -857,7 +858,7 @@ var GempLotrGameUI = Class.extend({
                     height: groupHeight,
                     position: "absolute"
                 });
-                var strengthBoxSize = 40;
+                var strengthBoxSize = 50;
                 var dmgBoxSize = 30;
                 if (currentPlayerTurn) {
                     this.skirmishShadowGroup.setBounds(x + 3, y + 3, groupWidth - 6, heightScales[2] * heightPerScale - 6);

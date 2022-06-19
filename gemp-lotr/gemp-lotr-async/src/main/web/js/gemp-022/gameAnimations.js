@@ -840,6 +840,7 @@ var GameAnimations = Class.extend({
                     var damageBonus = element.getAttribute("shadowDamageBonus");
                     if (damageBonus != null) {
                         that.game.shadowDamageBonusDiv.text("+" + damageBonus);
+                        that.game.shadowDamageBonusDiv.attr("title", "This character will inflict " + (1 + Number(damageBonus)) + " wounds.");
                         if (damageBonus == 0)
                             that.game.shadowDamageBonusDiv.css({visibility:"hidden"});
                         else
@@ -858,6 +859,20 @@ var GameAnimations = Class.extend({
                 var message = element.getAttribute("message");
                 if (that.game.chatBox != null)
                     that.game.chatBox.appendMessage(message, "gameMessage");
+                console.log(that.game.bottomPlayerId + " is the winner due to")
+
+                if (message.includes(that.game.bottomPlayerId + " is the winner due to")) {
+                    $(".gameResult").text("WIN");
+                    $(".gameResult").css({color: '#32a803'});
+                }
+                else if (message.includes(that.game.bottomPlayerId + " lost due to:")) {
+                    $(".gameResult").text("LOSE");
+                    $(".gameResult").css({color: '#b10a0a'});
+                }
+                else if (message.includes("error")) {
+                    $(".gameResult").text("ERROR");
+                    $(".gameResult").css({color: '#e0ac00'});
+                }
 
                 next();
             });
