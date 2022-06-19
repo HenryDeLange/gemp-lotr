@@ -820,14 +820,17 @@ var GameAnimations = Class.extend({
                     if (fpOverwhelmed != null) {
                         if (fpOverwhelmed == "true") {
                             that.game.fpStrengthDiv.addClass("overwhelmed");
+                            that.game.fpStrengthDiv.attr("title", "Warning: This character will be killed!");
                         } else {
                             that.game.fpStrengthDiv.removeClass("overwhelmed");
+                            that.game.fpStrengthDiv.attr("title", "");
                         }
                     }
 
                     var damageBonus = element.getAttribute("fellowshipDamageBonus");
                     if (damageBonus != null) {
                         that.game.fpDamageBonusDiv.text("+" + damageBonus);
+                        that.game.fpDamageBonusDiv.attr("title", "This character will inflict " + (1 + Number(damageBonus)) + " wounds.");
                         if (damageBonus == 0)
                             that.game.fpDamageBonusDiv.css({visibility:"hidden"});
                         else

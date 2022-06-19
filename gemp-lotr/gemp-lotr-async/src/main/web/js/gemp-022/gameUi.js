@@ -859,7 +859,7 @@ var GempLotrGameUI = Class.extend({
                     position: "absolute"
                 });
                 var strengthBoxSize = 50;
-                var dmgBoxSize = 30;
+                var dmgBoxSize = 40;
                 if (currentPlayerTurn) {
                     this.skirmishShadowGroup.setBounds(x + 3, y + 3, groupWidth - 6, heightScales[2] * heightPerScale - 6);
                     this.skirmishFellowshipGroup.setBounds(x + 3, y + heightScales[2] * heightPerScale + padding + 3, groupWidth - 6, heightScales[3] * heightPerScale - 6);
