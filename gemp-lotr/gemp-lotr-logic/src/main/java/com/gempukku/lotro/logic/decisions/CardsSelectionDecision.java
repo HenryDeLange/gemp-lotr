@@ -56,7 +56,7 @@ public abstract class CardsSelectionDecision extends AbstractAwaitingDecision {
         return result;
     }
 
-    private PhysicalCard getSelectedCardById(int cardId) throws DecisionResultInvalidException {
+    public PhysicalCard getSelectedCardById(int cardId) throws DecisionResultInvalidException {
         for (PhysicalCard physicalCard : _physicalCards)
             if (physicalCard.getCardId() == cardId)
                 return physicalCard;

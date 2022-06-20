@@ -41,7 +41,7 @@ public class ShadowPlayerAssignsArcheryDamageGameProcess implements GameProcess 
                 final int woundsLeft = _woundsToAssign - i;
                 ChooseAndWoundCharactersEffect woundCharacter = new ChooseAndWoundCharactersEffect(action, _playerId, 1, 1, filter);
                 woundCharacter.setSourceText("Archery Fire");
-                woundCharacter.setChoiceText("Choose minion to assign archery wound to - remaining wounds: " + woundsLeft);
+                woundCharacter.setChoiceText("Choose a minion to assign an archery wound to. Remaining wounds: " + woundsLeft);
                 action.appendEffect(woundCharacter);
             }
 

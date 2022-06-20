@@ -112,7 +112,7 @@ public class PlayerAssignMinionsDecisionBot extends MakeBotDecision {
             }
         }
         String choice = assignment.toString();
-        LOG.trace("CHOICE: " + choice + " (Comma separated array of CardIds: 'FrP Min,FrP Min')");
+        LOG.trace("CHOICE: " + choice + " ('FrP Min,FrP Min')");
         return choice;
     }
 

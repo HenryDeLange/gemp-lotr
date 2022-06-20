@@ -79,7 +79,7 @@ public class DefaultUserFeedback implements UserFeedback {
 
     @Override
     public void sendAwaitingDecision(String playerId, AwaitingDecision awaitingDecision) {
-        LOG.trace(" [" + playerId + "] *************** Start New Decision ***************");
+        LOG.trace(" [" + playerId + "] ---------- Start New Decision ----------");
         LOG.trace(" [" + playerId + "] sendAwaitingDecision -> " + awaitingDecision.getClass().getName().replace("com.gempukku.lotro.logic.", ".."));
         if (_game.isBotGame() && playerId != null && playerId.equalsIgnoreCase(Bot.BOT_NAME.getValue())) {
             // Don't send, the bot will respond immediately
@@ -168,7 +168,7 @@ public class DefaultUserFeedback implements UserFeedback {
     @Deprecated
     @Override
     public void resetBotActionHistory() {
-        LOG.trace("< CLEAR the bot action history >");
+        LOG.trace("[CLEAR the bot action history]");
         _botActionHistory.clear();
     }
 
