@@ -60,7 +60,7 @@ public abstract class ArbitraryCardsSelectionDecision extends AbstractAwaitingDe
         return result;
     }
 
-    protected PhysicalCard getPhysicalCardByIndex(int index) {
+    public PhysicalCard getPhysicalCardByIndex(int index) {
         int i = 0;
         for (PhysicalCard physicalCard : _physicalCards) {
             if (i == index)

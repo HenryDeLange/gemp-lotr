@@ -29,21 +29,21 @@ public class CardsSelectionDecisionBot extends MakeBotDecision {
         LOG.trace(" TEXT: " + decision.getText());
         String[] min = decision.getDecisionParameters().get("min");
         String[] max = decision.getDecisionParameters().get("max");
-        String[] cardIds = decision.getDecisionParameters().get("cardId");
+        String[] cardId = decision.getDecisionParameters().get("cardId");
         LOG.trace(" PARAM: min = " + getArrayAsString(min));
         LOG.trace(" PARAM: max = " + getArrayAsString(max));
-        LOG.trace(" PARAM: cardId = " + getArrayAsString(cardIds));
+        LOG.trace(" PARAM: cardId = " + getArrayAsString(cardId));
         int minValue = Integer.parseInt(min[0]);
         int maxValue = Integer.parseInt(max[0]);
         int numberOfCardsToSelect = random.nextInt((maxValue + 1) - minValue) + minValue;
         if (numberOfCardsToSelect > 0) {
             // Handle wound selection
-            if (cardIds.length > 0) {
+            if (cardId.length > 0) {
                 try {
                     Boolean isOwnCard = null;
-                    List<Target> targets = new ArrayList<>(cardIds.length);
+                    List<Target> targets = new ArrayList<>(cardId.length);
                     if (decision.getText().equals("Choose cards to wound")) {
-                        PhysicalCard card = decision.getSelectedCardById(Integer.parseInt(cardIds[0]));
+                        PhysicalCard card = decision.getSelectedCardById(Integer.parseInt(cardId[0]));
                         isOwnCard = card.getOwner().equals(Bot.BOT_NAME.getValue());
                     }
                     else if (decision.getText().startsWith("Choose a character to assign an archery wound to")) {
@@ -53,8 +53,8 @@ public class CardsSelectionDecisionBot extends MakeBotDecision {
                         isOwnCard = true;
                     }
                     if (isOwnCard != null) {
-                        for (String cardId : cardIds) {
-                            int tempCardId = Integer.parseInt(cardId);
+                        for (String decisionCardId : cardId) {
+                            int tempCardId = Integer.parseInt(decisionCardId);
                             PhysicalCard card = decision.getSelectedCardById(tempCardId);
                             targets.add(new Target(tempCardId, card.getBlueprint().getTitle(), 
                                     game.getModifiersQuerying().getStrength(game, card),
@@ -124,16 +124,16 @@ public class CardsSelectionDecisionBot extends MakeBotDecision {
             }
             // Handle non-wound selection
             if (choice == null) {
-                List<Integer> selectableCardIndexes = new ArrayList<>(cardIds.length);
-                for (int i = 0; i < cardIds.length; i++)
+                List<Integer> selectableCardIndexes = new ArrayList<>(cardId.length);
+                for (int i = 0; i < cardId.length; i++)
                     selectableCardIndexes.add(i);
                 for (int selectCount = 0; selectCount < numberOfCardsToSelect; selectCount++) {
                     int selectedCardIndex = selectableCardIndexes.remove(random.nextInt(selectableCardIndexes.size()));
                     if (selectCount == 0) {
-                        choice = cardIds[selectedCardIndex];
+                        choice = cardId[selectedCardIndex];
                     }
                     else {
-                        choice += "," + cardIds[selectedCardIndex];
+                        choice += "," + cardId[selectedCardIndex];
                     }
                 }
             }
