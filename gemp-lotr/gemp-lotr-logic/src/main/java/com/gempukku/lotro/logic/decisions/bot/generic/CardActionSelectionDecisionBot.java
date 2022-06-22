@@ -4,6 +4,7 @@ import java.util.Random;
 
 import org.apache.log4j.Logger;
 
+import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.actions.TransferPermanentAction;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
@@ -16,7 +17,7 @@ public class CardActionSelectionDecisionBot extends MakeBotDecision {
 
     @Override
     public String getBotChoice(LotroGame game, AwaitingDecision awaitingDecision) {
-        String actionIndex = null;
+        String choice = "";
         CardActionSelectionDecision decision = (CardActionSelectionDecision) awaitingDecision;
         LOG.trace("TEXT: " + decision.getText());
         String[] actionId = decision.getDecisionParameters().get("actionId");
@@ -29,19 +30,17 @@ public class CardActionSelectionDecisionBot extends MakeBotDecision {
         LOG.trace("PARAM: actionText = " + getArrayAsString(actionText));
         // TODO: Try to use GameState -> xxxSkirmishStrength, etc. to aviod doing actions when already winning a skirmish
         if (actionId.length > 0) {
-            actionIndex = Integer.toString(random.nextInt(actionId.length));
-            LOG.trace("CARD: " + decision.getAction(Integer.parseInt(actionIndex)).getActionSource().getBlueprintId());
-        }
-        else {
-            actionIndex = "";
+            choice = Integer.toString(random.nextInt(actionId.length));
+            PhysicalCard card = decision.getAction(Integer.parseInt(choice)).getActionSource();
+            LOG.trace("CARD: " + card.getBlueprintId() + " (" + card.getBlueprint().getTitle() + ")");
         }
         // If this is a Transfer action then don't do it, because otherwise the bot will end up in an infinite loop
-        if (decision.getAction(Integer.parseInt(actionIndex)).getClass().getName().equals(TransferPermanentAction.class.getName())) {
+        if (decision.getAction(Integer.parseInt(choice)).getClass().getName().equals(TransferPermanentAction.class.getName())) {
             LOG.trace("SKIP: Don't transfer equipment");
-            actionIndex = "";
+            choice = "";
         }
-        LOG.trace("CHOICE: actionIndex = " + actionIndex);
-        return actionIndex;
+        LOG.trace("CHOICE: " + choice);
+        return choice;
     }
     
 }

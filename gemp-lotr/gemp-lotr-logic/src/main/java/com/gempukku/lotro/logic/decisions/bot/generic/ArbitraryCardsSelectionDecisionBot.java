@@ -57,6 +57,7 @@ public class ArbitraryCardsSelectionDecisionBot extends MakeBotDecision {
                     }
                 }
             }
+            // TODO: How to handle cards like Eomer and Elite Rider, where Eomer is stronger but needs to be played second
             if (selectableCards.size() > 1) {
                 // Play as many companions as possible (thus start with the cheapest)
                 // Assume less copies of the card in the deck means it is more likely to be in the starting fellowship
