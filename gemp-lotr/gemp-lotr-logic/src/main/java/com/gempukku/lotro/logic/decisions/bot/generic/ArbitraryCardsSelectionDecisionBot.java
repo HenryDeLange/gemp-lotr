@@ -52,19 +52,18 @@ public class ArbitraryCardsSelectionDecisionBot extends MakeBotDecision {
                             if (deckCard.getBlueprintId().equals(card.getBlueprintId()))
                                 count++;
                         }
-                        selectableCards.add(new Selectable(tempCardId, card.getBlueprint().getTitle(), 
+                        selectableCards.add(new Selectable(tempCardId, card.getBlueprintId(), card.getBlueprint().getTitle(), 
                                 card.getBlueprint().getStrength(), card.getBlueprint().getVitality(), cost, count));
                     }
                 }
             }
-            // TODO: How to handle cards like Eomer and Elite Rider, where Eomer is stronger but needs to be played second
             if (selectableCards.size() > 1) {
-                // Play as many companions as possible (thus start with the cheapest)
                 // Assume less copies of the card in the deck means it is more likely to be in the starting fellowship
+                // Play as many companions as possible (thus start with the cheapest)
                 Collections.sort(selectableCards, ((o1, o2) -> {
-                    int result = Integer.compare(o1.cost, o2.cost);
+                    int result = Integer.compare(o1.copies, o2.copies);
                     if (result == 0)
-                        result = Integer.compare(o1.copies, o2.copies);
+                        result = Integer.compare(o1.cost, o2.cost);
                     if (result == 0)
                         result = -1 * Integer.compare(o1.strength, o2.strength);
                     if (result == 0)
@@ -74,10 +73,18 @@ public class ArbitraryCardsSelectionDecisionBot extends MakeBotDecision {
 
             }
             // Select the card
-            Selectable selectected = selectableCards.get(0);
-            choice = selectected.cardId;
-            LOG.trace(" FELLOWSHIP: " + selectected.title 
-                + " (c" + selectected.cost + ", d" + selectected.copies + ", s" + selectected.strength + ", v" + selectected.vitality + ")");
+            Selectable selected = selectableCards.get(0);
+            // Check for special treatment
+            if (game.getGameState().getTwilightPool() == 0 && selectableCards.size() >= 2) {
+                // Play Eomer second
+                if (selected.blueprintId.equals("4_267")) {
+                    selected = selectableCards.get(1);
+                    LOG.trace(" SKIP: Rather skip" + selected.title + " (" + selected.blueprintId + ") now, to play him second, to make him cheaper");
+                }
+            }
+            choice = selected.cardId;
+            LOG.trace(" FELLOWSHIP: " + selected.title 
+                + " (c" + selected.cost + ", d" + selected.copies + ", s" + selected.strength + ", v" + selected.vitality + ")");
         }
         else {
             if (selectable != null && selectable.length > 0) {
@@ -112,14 +119,16 @@ public class ArbitraryCardsSelectionDecisionBot extends MakeBotDecision {
 
     private class Selectable {
         private String cardId;
+        private String blueprintId;
         private String title;
         private int strength;
         private int vitality;
         private int cost;
         private int copies;
 
-        private Selectable(String cardId, String title, int strength, int vitality, int cost, int copies) {
+        private Selectable(String cardId, String blueprintId, String title, int strength, int vitality, int cost, int copies) {
             this.cardId = cardId;
+            this.blueprintId = blueprintId;
             this.title = title;
             this.strength = strength;
             this.vitality = vitality;

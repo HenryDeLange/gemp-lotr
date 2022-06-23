@@ -50,6 +50,7 @@ public class MultipleChoiceAwaitingDecisionBot extends MakeBotDecision {
             // TODO: Also consider the number of near-death companions and how many minions are likely to win
             // TODO: Also consider defender+1
             // TODO: Also consider sanctuaries
+            // TODO Also consider roaming
             if (companionCount - 1 > minionCount + potentialNewMinions) {
                 choice = "0"; // Move
             }
