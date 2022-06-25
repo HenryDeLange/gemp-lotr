@@ -1,12 +1,14 @@
 package com.gempukku.lotro.logic.actions;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+
 import com.gempukku.lotro.common.Phase;
 import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.effects.DiscountEffect;
 import com.gempukku.lotro.logic.timing.Effect;
-
-import java.util.Arrays;
-import java.util.LinkedList;
 
 public abstract class AbstractCostToEffectAction implements CostToEffectAction {
     private LinkedList<DiscountEffect> _potentialDiscounts = new LinkedList<DiscountEffect>();
@@ -154,4 +156,13 @@ public abstract class AbstractCostToEffectAction implements CostToEffectAction {
 
         return true;
     }
+
+    /**
+     * Don't use, only added for the bot to use
+     */
+    @Deprecated
+    public List<Effect> getEffects() {
+        return Collections.unmodifiableList(_effects);
+    }
+    
 }
