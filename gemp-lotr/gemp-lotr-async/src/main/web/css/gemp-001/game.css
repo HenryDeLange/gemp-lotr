@@ -29,8 +29,10 @@ body {
     display: table-cell;
     text-align: center;
     vertical-align: middle;
-    font-size: 200%;
+    font-size: 220%;
     font-weight: bolder;
+    color: #ffffff;
+    line-height: 42px;
     width: 42px;
     height: 42px;
     background-image: url('/gemp-lotr/images/threats-42.png');
@@ -134,30 +136,36 @@ body {
     padding: 2px;
 }
 
-.fpArchery {
+.archeryFp {
     display: table-cell;
     text-align: center;
     vertical-align: middle;
-    background-image: url('/gemp-lotr/images/fpArchery.png');
+    background-image: url('/gemp-lotr/images/archeryFp.png');
     background-repeat: no-repeat;
-    color: #007777;
-    font-size: 200%;
-    font-weight: bolder;
     width: 30px;
     height: 30px;
+    line-height: 30px;
+    -webkit-text-stroke: 1.25px rgb(255, 239, 239);
+    color: #ff1b1b;
+    font-size: 200%;
+    font-weight: bolder;
+    padding-right: 5px
 }
 
-.shadowArchery {
+.archeryShadow {
     display: table-cell;
     text-align: center;
     vertical-align: middle;
-    background-image: url('/gemp-lotr/images/shadowArchery.png');
+    background-image: url('/gemp-lotr/images/archeryShadow.png');
     background-repeat: no-repeat;
-    color: #007777;
-    font-size: 200%;
-    font-weight: bolder;
     width: 30px;
     height: 30px;
+    line-height: 30px;
+    -webkit-text-stroke: 1.25px rgb(255, 239, 239);
+    color: #ff1b1b;
+    font-size: 200%;
+    font-weight: bolder;
+    padding-right: 15px;
 }
 
 .move {
@@ -166,11 +174,14 @@ body {
     vertical-align: middle;
     background-image: url('/gemp-lotr/images/move.png');
     background-repeat: no-repeat;
-    color: #007777;
+    color: #256d1e;
+    -webkit-text-stroke: 1.25px rgb(146, 175, 146);
     font-size: 200%;
     font-weight: bolder;
     width: 30px;
     height: 30px;
+    line-height: 30px;
+    padding-left: 30px;
 }
 
 .player {

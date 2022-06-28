@@ -776,16 +776,25 @@ var GameAnimations = Class.extend({
                 var moveCount = element.getAttribute("moveCount");
                 var moveLimit = element.getAttribute("moveLimit");
 
-                if (fellowshipArchery == "null")
-                    $(".fpArchery").html("");
-                else if (fellowshipArchery != null)
-                    $(".fpArchery").html(fellowshipArchery);
-                if (shadowArchery == "null")
-                    $(".shadowArchery").html("");
-                else if (shadowArchery != null)
-                    $(".shadowArchery").html(shadowArchery);
+                if (fellowshipArchery == "null") {
+                    $(".archeryFp").html("");
+                    $(".archeryFp").attr("title", "");
+                }
+                else if (fellowshipArchery != null) {
+                    $(".archeryFp").html(fellowshipArchery);
+                    $(".archeryFp").attr("title", "Fellowship will inflict " + fellowshipArchery + " archery wounds");
+                }
+                if (shadowArchery == "null") {
+                    $(".archeryShadow").html("");
+                    $(".archeryShadow").attr("title", "");
+                }
+                else if (shadowArchery != null) {
+                    $(".archeryShadow").html(shadowArchery);
+                    $(".archeryShadow").attr("title", "Shadow will inflict " + fellowshipArchery + " archery wounds");
+                }
 
-                $(".move").html(moveCount + "/" + moveLimit);
+                $(".move").html(moveLimit - moveCount);
+                $(".move").attr("title", "Moved " + moveCount + " of " + moveLimit + " available");
 
                 var playerZones = element.getElementsByTagName("playerZones");
                 for (var i = 0; i < playerZones.length; i++) {
@@ -812,6 +821,7 @@ var GameAnimations = Class.extend({
                     var playerId = playerThreat.getAttribute("name");
                     var value = playerThreat.getAttribute("value");
                     $("#threats" + that.game.getPlayerIndex(playerId)).text(value);
+                    $("#threats" + that.game.getPlayerIndex(playerId)).attr("title", "Take " + value + " wounds when a companion dies");
                 }
 
                 if (that.game.fpStrengthDiv != null) {
@@ -862,9 +872,8 @@ var GameAnimations = Class.extend({
                 var message = element.getAttribute("message");
                 if (that.game.chatBox != null)
                     that.game.chatBox.appendMessage(message, "gameMessage");
-                console.log(that.game.bottomPlayerId + " is the winner due to")
 
-                if (message.includes(that.game.bottomPlayerId + " is the winner due to")) {
+                if (message.includes(that.game.bottomPlayerId + " is the winner due to:")) {
                     $(".gameResult").text("WIN");
                     $(".gameResult").css({color: '#32a803'});
                 }

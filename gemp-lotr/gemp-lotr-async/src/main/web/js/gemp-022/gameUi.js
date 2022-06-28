@@ -383,7 +383,7 @@ var GempLotrGameUI = Class.extend({
 
         this.statsDiv = $("<div class='ui-widget-content stats'></div>");
         this.statsDiv.css({"border-radius": "7px"});
-        this.statsDiv.append("<div class='fpArchery'></div> <div class='shadowArchery'></div> <div class='move'></div>");
+        this.statsDiv.append("<div class='archeryFp' /><div class='archeryShadow' /> <div class='move'></div>");
         $("#main").append(this.statsDiv);
 
         var dragFunc = function (event) {
