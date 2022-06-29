@@ -285,8 +285,18 @@ var GempLotrGameUI = Class.extend({
         this.gameStateElem.css({"border-radius": "7px"});
 
         for (var i = 0; i < this.allPlayerIds.length; i++) {
-            this.gameStateElem.append("<div class='player'>" + (i + 1) + ". " + this.allPlayerIds[i] + "<div id='clock" + i + "' class='clock'></div>"
-                + "<div class='playerStats'><div id='deck" + i + "' class='deckSize'></div><div id='hand" + i + "' class='handSize'></div><div id='threats" + i + "' class='threatsSize'></div><div id='showStats" + i + "' class='showStats'></div><div id='discard" + i + "' class='discardSize'></div><div id='deadPile" + i + "' class='deadPileSize'></div><div id='adventureDeck" + i + "' class='adventureDeckSize'></div></div></div>");
+            this.gameStateElem.append("<div class='player'>" + (i + 1) + ". " + this.allPlayerIds[i] 
+                                        + "<div id='clock" + i + "' class='clock' />"
+                                        + "<div class='playerStats'>"
+                                            + "<div id='deck" + i + "' class='deckSize' />"
+                                            + "<div id='hand" + i + "' class='handSize' />"
+                                            + "<div id='threats" + i + "' class='threatsSize' />"
+                                            + "<div id='showStats" + i + "' class='showStats' />"
+                                            + "<div id='discard" + i + "' class='discardSize' />"
+                                            + "<div id='deadPile" + i + "' class='deadPileSize' />"
+                                            + "<div id='adventureDeck" + i + "' class='adventureDeckSize' />"
+                                        + "</div>"
+                                    + "</div>");
         }
 
         this.gameStateElem.append("<hr />");

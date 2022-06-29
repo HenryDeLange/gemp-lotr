@@ -9,9 +9,11 @@ body {
     vertical-align: middle;
     font-size: 200%;
     font-weight: bolder;
+    line-height: 42px;
     width: 42px;
     height: 42px;
     background-image: url('/gemp-lotr/images/deck-42.png');
+    -webkit-text-stroke: 1px rgb(0, 0, 0);
 }
 
 .handSize {
@@ -20,22 +22,24 @@ body {
     vertical-align: middle;
     font-size: 200%;
     font-weight: bolder;
+    line-height: 42px;
     width: 42px;
     height: 42px;
     background-image: url('/gemp-lotr/images/hand-42.png');
+    -webkit-text-stroke: 1px rgb(0, 0, 0);
 }
 
 .threatsSize {
     display: table-cell;
     text-align: center;
     vertical-align: middle;
-    font-size: 220%;
+    font-size: 200%;
     font-weight: bolder;
-    color: #ffffff;
     line-height: 42px;
     width: 42px;
     height: 42px;
     background-image: url('/gemp-lotr/images/threats-42.png');
+    -webkit-text-stroke: 1px rgb(0, 0, 0);
 }
 
 .discardSize {
@@ -186,13 +190,28 @@ body {
 
 .player {
     color: #ffffff;
+    background-color: #3a2323;
     position: relative;
+    border-style: solid;
+    border-radius: 5px;
+    border-width: 2px;
+    border-color: #4d1212;
+    margin: 2px;
+    margin-bottom: 5px;
     z-index: 50;
 }
 
 .player.current {
-    background-color: #ffffff;
+    background-color: #abc5b4;
     color: #000000;
+    font-weight: bold;
+    border-style: solid;
+    border-radius: 5px;
+    border-width: 2px;
+    border-color: #256d1e;
+    margin: 2px;
+    margin-bottom: 5px;
+    z-index: 50;
 }
 
 .playerStats {

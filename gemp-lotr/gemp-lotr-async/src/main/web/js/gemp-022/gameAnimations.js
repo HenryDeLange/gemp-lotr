@@ -808,10 +808,15 @@ var GameAnimations = Class.extend({
                     var deck = playerZone.getAttribute("DECK");
 
                     $("#deck" + that.game.getPlayerIndex(playerId)).text(deck);
+                    $("#deck" + that.game.getPlayerIndex(playerId)).attr("title", "Deck: " + deck + " cards in " + playerId + "'s deck");
                     $("#hand" + that.game.getPlayerIndex(playerId)).text(hand);
+                    $("#hand" + that.game.getPlayerIndex(playerId)).attr("title", "Hand: " + hand + " cards in " + playerId + "'s hand");
                     $("#discard" + that.game.getPlayerIndex(playerId)).text(discard);
+                    $("#discard" + that.game.getPlayerIndex(playerId)).attr("title", "Discard: " + discard + " cards in " + playerId + "'s discard pile");
                     $("#deadPile" + that.game.getPlayerIndex(playerId)).text(dead);
+                    $("#deadPile" + that.game.getPlayerIndex(playerId)).attr("title", "Dead: " + dead + " cards in " + playerId + "'s graveyard");
                     $("#adventureDeck" + that.game.getPlayerIndex(playerId)).text(adventureDeck);
+                    $("#adventureDeck" + that.game.getPlayerIndex(playerId)).attr("title", "Sites: " + adventureDeck + " cards in " + playerId + "'s adventure deck");
                 }
 
                 var playerThreats = element.getElementsByTagName("threats")
@@ -821,7 +826,7 @@ var GameAnimations = Class.extend({
                     var playerId = playerThreat.getAttribute("name");
                     var value = playerThreat.getAttribute("value");
                     $("#threats" + that.game.getPlayerIndex(playerId)).text(value);
-                    $("#threats" + that.game.getPlayerIndex(playerId)).attr("title", "Take " + value + " wounds when a companion dies");
+                    $("#threats" + that.game.getPlayerIndex(playerId)).attr("title", "Threats: Take " + value + " wounds when a companion dies");
                 }
 
                 if (that.game.fpStrengthDiv != null) {

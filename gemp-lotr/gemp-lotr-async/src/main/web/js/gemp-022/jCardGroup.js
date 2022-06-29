@@ -404,6 +404,12 @@ function layoutTokens(cardElem) {
             var tokenIndex = 1;
             for (var token in tokens)
                 if (tokens.hasOwnProperty(token)) {
+                    if (token == "1-a" || token == "2-a") {
+                        tokenSize = Math.floor(maxDimension / 13) * 4;
+                    }
+                    else if (token == "1-i" || token == "2-i") {
+                        tokenSize = Math.floor(maxDimension / 13) * 3;
+                    }
                     if (token == "count") {
                         var tokenElem = $("<div class='cardCount token'>" + tokens[token] + "</div>").css({position:"absolute", left:((width - 20) / 2) + "px", top:((height - 18) / 2) + "px"});
                         tokenOverlay.append(tokenElem);
