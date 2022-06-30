@@ -826,7 +826,7 @@ var GameAnimations = Class.extend({
                     var playerId = playerThreat.getAttribute("name");
                     var value = playerThreat.getAttribute("value");
                     $("#threats" + that.game.getPlayerIndex(playerId)).text(value);
-                    $("#threats" + that.game.getPlayerIndex(playerId)).attr("title", "Threats: Take " + value + " wounds when a companion dies");
+                    $("#threats" + that.game.getPlayerIndex(playerId)).attr("title", "Threats: " + playerId + " takes " + value + " wounds when a companion dies");
                 }
 
                 if (that.game.fpStrengthDiv != null) {

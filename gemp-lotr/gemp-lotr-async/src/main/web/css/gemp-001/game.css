@@ -196,7 +196,6 @@ body {
     border-radius: 5px;
     border-width: 2px;
     border-color: #4d1212;
-    margin: 2px;
     margin-bottom: 5px;
     z-index: 50;
 }
@@ -204,22 +203,23 @@ body {
 .player.current {
     background-color: #abc5b4;
     color: #000000;
-    font-weight: bold;
+    font-weight: bolder;
     border-style: solid;
     border-radius: 5px;
     border-width: 2px;
     border-color: #256d1e;
-    margin: 2px;
     margin-bottom: 5px;
     z-index: 50;
 }
 
 .playerStats {
     color: #ffffff;
+    -webkit-text-stroke: 1.25px rgb(0, 0, 0);
 }
 
 .playerStats .clickable {
-    color: #9f9fff;
+    color: #dbe6ff;
+    -webkit-text-stroke: 1.25px rgb(0, 51, 161);
     cursor: pointer;
 }
 
