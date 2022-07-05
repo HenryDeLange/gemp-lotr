@@ -79,3 +79,11 @@ body {
     color: #ffffff;
     font-size: 180%;
 }
+
+#culture2 .ui-state-focus  {
+    border: 1px solid #8595b6;
+}
+
+#culture2 .ui-state-focus .ui-state-active {
+    border: 1px solid #0b93d5;
+}
