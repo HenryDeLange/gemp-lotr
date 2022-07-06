@@ -46,7 +46,7 @@ public class DeathAtTest extends AbstractAtTest {
 
         // Decide not to move
         assertEquals(Phase.REGROUP, _game.getGameState().getCurrentPhase());
-        playerDecided(P1, getMultipleDecisionIndex(_userFeedback.getAwaitingDecision(P1), "No"));
+        playerDecided(P1, getMultipleDecisionIndex(_userFeedback.getAwaitingDecision(P1), "No (end turn)"));
 
         // Fellowship of player2
         assertEquals(Phase.FELLOWSHIP, _game.getGameState().getCurrentPhase());

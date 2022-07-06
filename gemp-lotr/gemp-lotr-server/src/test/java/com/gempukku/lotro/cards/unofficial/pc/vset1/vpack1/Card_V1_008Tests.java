@@ -21,7 +21,7 @@ public class Card_V1_008Tests
 		return new GenericCardTestHelper(
 				new HashMap<String, String>()
 				{{
-					put("there", "151_8");
+					put("there", "151_7");
 					put("arwen", "1_30");
 					put("aragorn", "1_89");
 					put("tale", "1_66");

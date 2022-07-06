@@ -58,7 +58,7 @@ public class Card_V1_036Tests
 
 		assertFalse(vile.getBlueprint().isUnique());
 		assertTrue(scn.HasKeyword(vile, Keyword.TENTACLE)); // test for keywords as needed
-		assertEquals(3, vile.getBlueprint().getTwilightCost());
+		assertEquals(2, vile.getBlueprint().getTwilightCost());
 		assertEquals(7, vile.getBlueprint().getStrength());
 		assertEquals(2, vile.getBlueprint().getVitality());
 		assertEquals(4, vile.getBlueprint().getSiteNumber()); // Change this to getAllyHomeSiteNumbers for allies

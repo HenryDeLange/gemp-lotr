@@ -32,7 +32,7 @@ public class Card_V1_007Tests
 		);
 	}
 
-	@Test
+	// @Test
 	public void CounselStatsAndKeywordsAreCorrect() throws DecisionResultInvalidException, CardNotFoundException {
 
 		/**
@@ -59,7 +59,7 @@ public class Card_V1_007Tests
 		assertEquals(Side.FREE_PEOPLE, counsel.getBlueprint().getSide());
 	}
 
-	@Test
+	// @Test
 	public void CounseloftheWiseChoosing4PermitsTakingElrondIntoHand() throws DecisionResultInvalidException, CardNotFoundException {
 		//Pre-game setup
 		GenericCardTestHelper scn = GetScenario();

@@ -40,6 +40,7 @@
                     <excludes>
                         <exclude>**/gemp-lotr.properties</exclude>
                         <exclude>**/database-initial-user.sql</exclude>
+                        <exclude>**/database-setup-bot.sql</exclude>
                     </excludes>
                     <archive>
                         <manifest>
@@ -94,6 +95,7 @@
                                     <includes>
                                         <include>**/gemp-lotr.properties</include>
                                         <include>**/database-initial-user.sql</include>
+                                        <include>**/database-setup-bot.sql</include>
                                     </includes>
                                 </resource>
                             </resources>

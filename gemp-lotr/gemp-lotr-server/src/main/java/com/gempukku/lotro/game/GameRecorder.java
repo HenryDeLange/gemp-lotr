@@ -82,7 +82,7 @@ public class GameRecorder {
     }
 
     private File getRecordingFile(String playerId, String gameId) {
-        File gameReplayFolder = new File(ApplicationConfiguration.getProperty("application.root"), "replay");
+        File gameReplayFolder = new File(ApplicationConfiguration.getProperty("replay.path"), "replay");
         logger.debug("Using Replay folder " + gameReplayFolder.getAbsolutePath());
         File playerReplayFolder = new File(gameReplayFolder, playerId);
         return new File(playerReplayFolder, gameId + ".xml.gz");
