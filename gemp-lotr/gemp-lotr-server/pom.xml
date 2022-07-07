@@ -9,7 +9,6 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>gemp-lotr-server</artifactId>
     <packaging>jar</packaging>
-    <!-- TODO: Fix broken unit tests (some break when upgrading past Java 8, confirmed broken on 11, 15 and 18) -->
     <!-- TODO: Maybe use a Maven Profile to toggle between the MySQL and H2 database dependencies? -->
     <dependencies>
         <dependency>
@@ -76,14 +75,13 @@
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
-            <artifactId>mockito-all</artifactId>
-            <version>1.9.0</version>
-            <!-- <version>1.10.19</version> -->
+            <artifactId>mockito-core</artifactId>
+            <version>4.6.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
-    <!-- FIXME: this is needed by the tests for newer versions of Java (if used remove the space between the - of the first two add statements) -->
-    <!-- <build>
+    <!-- This is needed by the tests for newer versions of Java -->
+    <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -91,12 +89,12 @@
                 <version>3.0.0-M5</version>
                 <configuration>
                     <argLine>
-                        - -add-opens java.base/java.lang=ALL-UNNAMED
-                        - -add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED
+                        --add-opens java.base/java.lang=ALL-UNNAMED
+                        --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED
                         -Dillegal-access=permit
                     </argLine>
                 </configuration>
             </plugin>
         </plugins>
-    </build> -->
+    </build>
 </project>
