@@ -1,7 +1,6 @@
-package com.gempukku.lotro.cards.official.set2;
+package com.gempukku.lotro.cards.official.set02;
 
 import com.gempukku.lotro.cards.GenericCardTestHelper;
-import com.gempukku.lotro.common.Keyword;
 import com.gempukku.lotro.common.Phase;
 import com.gempukku.lotro.game.CardNotFoundException;
 import com.gempukku.lotro.game.PhysicalCardImpl;
@@ -41,7 +40,6 @@ public class Card2_013Tests
         PhysicalCardImpl gimli = scn.GetFreepsCard("gimli");
         scn.FreepsMoveCharToTable(gimli);
         scn.FreepsMoveCardToHand(tidings);
-        scn.FreepsMoveCardToDeck("deckcard1", "deckcard2", "deckcard3");
 
         scn.StartGame();
         scn.FreepsSkipCurrentPhaseAction();
