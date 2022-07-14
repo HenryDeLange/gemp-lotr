@@ -12,6 +12,7 @@ import com.gempukku.lotro.logic.GameUtils;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
 import com.gempukku.lotro.logic.modifiers.Modifier;
+import com.gempukku.lotro.logic.timing.RuleUtils;
 import com.gempukku.lotro.logic.vo.LotroDeck;
 
 import java.util.*;
@@ -34,7 +35,20 @@ public class GenericCardTestHelper extends AbstractAtTest {
         put("site9", "1_360");
     }};
 
+    public static final HashMap<String, String> KingSites = new HashMap<String, String>() {{
+        put("site1", "7_330");
+        put("site2", "7_335");
+        put("site3", "8_117");
+        put("site4", "7_342");
+        put("site5", "7_345");
+        put("site6", "7_350");
+        put("site7", "8_120");
+        put("site8", "10_120");
+        put("site9", "7_360");
+    }};
+
     public static final String FOTRFrodo = "1_290";
+    public static final String GimliRB = "9_4";
     public static final String FOTRRing = "1_2";
 
 
@@ -79,11 +93,11 @@ public class GenericCardTestHelper extends AbstractAtTest {
                 String id = cardIDs.get(name);
                 PhysicalCardImpl card = CreateCard(P1, id);
                 Cards.get(P1).put(name, card);
-                FreepsMoveCardToDeck(card);
+                FreepsMoveCardsToTopOfDeck(card);
 
                 card = CreateCard(P2, id);
                 Cards.get(P2).put(name, card);
-                FreepsMoveCardToDeck(card);
+                FreepsMoveCardsToTopOfDeck(card);
             }
         }
     }
@@ -98,6 +112,15 @@ public class GenericCardTestHelper extends AbstractAtTest {
 
     public PhysicalCardImpl GetFreepsCard(String cardName) { return Cards.get(P1).get(cardName); }
     public PhysicalCardImpl GetShadowCard(String cardName) { return Cards.get(P2).get(cardName); }
+    public PhysicalCardImpl GetFreepsCardByID(String id) { return GetCardByID(P1, Integer.parseInt(id)); }
+    public PhysicalCardImpl GetFreepsCardByID(int id) { return GetCardByID(P1, id); }
+    public PhysicalCardImpl GetShadowCardByID(String id) { return GetCardByID(P2, Integer.parseInt(id)); }
+    public PhysicalCardImpl GetShadowCardByID(int id) { return GetCardByID(P2, id); }
+    public PhysicalCardImpl GetCardByID(String player, int id) {
+        return Cards.get(player).values().stream()
+                .filter(x -> x.getCardId() == id)
+                .findFirst().orElse(null);
+    }
 
     public PhysicalCardImpl GetFreepsSite(int siteNum) { return GetSite(P1, siteNum); }
     public PhysicalCardImpl GetShadowSite(int siteNum) { return GetSite(P2, siteNum); }
@@ -202,6 +225,9 @@ public class GenericCardTestHelper extends AbstractAtTest {
 
     public int GetBurdens() { return _game.getGameState().getBurdens(); }
 
+    public int GetFreepsArcheryTotal() { return RuleUtils.calculateFellowshipArcheryTotal(_game); }
+    public int GetShadowArcheryTotal() { return RuleUtils.calculateShadowArcheryTotal(_game); }
+
     public int GetFreepsHandCount() { return GetPlayerHandCount(P1); }
     public int GetShadowHandCount() { return GetPlayerHandCount(P2); }
     public int GetPlayerHandCount(String player)
@@ -239,49 +265,125 @@ public class GenericCardTestHelper extends AbstractAtTest {
 
 
 
-    public void FreepsMoveCardToHand(String cardName) { MoveCardToZone(P1, GetFreepsCard(cardName), Zone.HAND); }
+    public void FreepsMoveCardToHand(String...names) {
+        for(String name : names) {
+            FreepsMoveCardToHand(GetFreepsCard(name));
+        }
+    }
     public void FreepsMoveCardToHand(PhysicalCardImpl...cards) {
         for(PhysicalCardImpl card : cards) {
+            RemoveCardZone(P1, card);
             MoveCardToZone(P1, card, Zone.HAND);
         }
     }
-    public void ShadowMoveCardToHand(String cardName) { MoveCardToZone(P2, GetShadowCard(cardName), Zone.HAND); }
+    public void ShadowMoveCardToHand(String...names) {
+        for(String name : names) {
+            ShadowMoveCardToHand(GetShadowCard(name));
+        }
+    }
     public void ShadowMoveCardToHand(PhysicalCardImpl...cards) {
         for(PhysicalCardImpl card : cards) {
+            RemoveCardZone(P2, card);
             MoveCardToZone(P2, card, Zone.HAND);
         }
     }
 
-
+    public void FreepsAttachCardsTo(PhysicalCardImpl bearer, String...names) {
+        Arrays.stream(names).forEach(name -> AttachCardsTo(bearer, GetFreepsCard(name)));
+    }
+    public void ShadowAttachCardsTo(PhysicalCardImpl bearer, String...names) {
+        Arrays.stream(names).forEach(name -> AttachCardsTo(bearer, GetShadowCard(name)));
+    }
     public void AttachCardsTo(PhysicalCardImpl bearer, PhysicalCardImpl...cards) {
-        Arrays.stream(cards).forEach(card -> _game.getGameState().attachCard(_game, card, bearer));
+        Arrays.stream(cards).forEach(card -> {
+            RemoveCardZone(card.getOwner(), card);
+            _game.getGameState().attachCard(_game, card, bearer);
+        });
     }
 
+    public void FreepsStackCardsOn(PhysicalCardImpl on, String...cardNames) {
+        Arrays.stream(cardNames).forEach(name -> StackCardsOn(on, GetFreepsCard(name)));
+    }
+    public void ShadowStackCardsOn(PhysicalCardImpl on, String...cardNames) {
+        Arrays.stream(cardNames).forEach(name -> StackCardsOn(on, GetShadowCard(name)));
+    }
     public void StackCardsOn(PhysicalCardImpl on, PhysicalCardImpl...cards) {
-        Arrays.stream(cards).forEach(card -> _game.getGameState().stackCard(_game, card, on));
+        Arrays.stream(cards).forEach(card -> {
+            RemoveCardZone(card.getOwner(), card);
+            _game.getGameState().stackCard(_game, card, on);
+        });
     }
 
-    public void FreepsMoveCardToDeck(String...cardNames) {
-        Arrays.stream(cardNames).forEach(cardName -> FreepsMoveCardToDeck(GetFreepsCard(cardName)));
+    public void FreepsMoveCardsToTopOfDeck(String...cardNames) {
+        Arrays.stream(cardNames).forEach(cardName -> FreepsMoveCardsToTopOfDeck(GetFreepsCard(cardName)));
     }
-    public void FreepsMoveCardToDeck(PhysicalCardImpl...cards) {
-        Arrays.stream(cards).forEach(card -> MoveCardToZone(P1, card, Zone.DECK));
+    public void FreepsMoveCardsToTopOfDeck(PhysicalCardImpl...cards) {
+        Arrays.stream(cards).forEach(card -> {
+            RemoveCardZone(card.getOwner(), card);
+            _game.getGameState().putCardOnTopOfDeck(card);
+        });
     }
-    public void ShadowMoveCardToDeck(String...cardNames) {
-        Arrays.stream(cardNames).forEach(cardName -> ShadowMoveCardToDeck(GetShadowCard(cardName)));
+    public void ShadowMoveCardsToTopOfDeck(String...cardNames) {
+        Arrays.stream(cardNames).forEach(cardName -> ShadowMoveCardsToTopOfDeck(GetShadowCard(cardName)));
     }
-    public void ShadowMoveCardToDeck(PhysicalCardImpl...cards) {
-        Arrays.stream(cards).forEach(card -> MoveCardToZone(P1, card, Zone.DECK));
+    public void ShadowMoveCardsToTopOfDeck(PhysicalCardImpl...cards) {
+        Arrays.stream(cards).forEach(card -> {
+            RemoveCardZone(card.getOwner(), card);
+            _game.getGameState().putCardOnTopOfDeck(card);
+        });
     }
 
-    public void FreepsMoveCharToTable(String cardName) { FreepsMoveCharToTable(GetFreepsCard(cardName)); }
+    public void FreepsMoveCardsToBottomOfDeck(String...cardNames) {
+        Arrays.stream(cardNames).forEach(cardName -> FreepsMoveCardsToBottomOfDeck(GetFreepsCard(cardName)));
+    }
+    public void FreepsMoveCardsToBottomOfDeck(PhysicalCardImpl...cards) {
+        Arrays.stream(cards).forEach(card -> {
+            RemoveCardZone(card.getOwner(), card);
+            _game.getGameState().putCardOnTopOfDeck(card);
+        });
+    }
+    public void ShadowMoveCardsToBottomOfDeck(String...cardNames) {
+        Arrays.stream(cardNames).forEach(cardName -> ShadowMoveCardsToBottomOfDeck(GetShadowCard(cardName)));
+    }
+    public void ShadowMoveCardsToBottomOfDeck(PhysicalCardImpl...cards) {
+        Arrays.stream(cards).forEach(card -> {
+            RemoveCardZone(card.getOwner(), card);
+            _game.getGameState().putCardOnTopOfDeck(card);
+        });
+    }
+
+    public void FreepsShuffleCardsInDeck(String...cardNames) {
+        Arrays.stream(cardNames).forEach(cardName -> FreepsShuffleCardsInDeck(GetFreepsCard(cardName)));
+    }
+    public void FreepsShuffleCardsInDeck(PhysicalCardImpl...cards) {
+        Arrays.stream(cards).forEach(card -> {
+            RemoveCardZone(card.getOwner(), card);
+            _game.getGameState().putCardOnTopOfDeck(card);
+        });
+    }
+    public void ShadowShuffleCardsInDeck(String...cardNames) {
+        Arrays.stream(cardNames).forEach(cardName -> ShadowShuffleCardsInDeck(GetShadowCard(cardName)));
+    }
+    public void ShadowShuffleCardsInDeck(PhysicalCardImpl...cards) {
+        Arrays.stream(cards).forEach(card -> {
+            RemoveCardZone(card.getOwner(), card);
+            _game.getGameState().putCardOnTopOfDeck(card);
+        });
+    }
+
+    public void FreepsMoveCharToTable(String...names) {
+        Arrays.stream(names).forEach(name -> FreepsMoveCharToTable(GetFreepsCard(name)));
+    }
     public void FreepsMoveCharToTable(PhysicalCardImpl...cards) {
         Arrays.stream(cards).forEach(card -> MoveCardToZone(P1, card, Zone.FREE_CHARACTERS));
     }
-    public void ShadowMoveCharToTable(String cardName) { FreepsMoveCharToTable(GetShadowCard(cardName)); }
+    public void ShadowMoveCharToTable(String...names) {
+        Arrays.stream(names).forEach(name -> ShadowMoveCharToTable(GetShadowCard(name)));
+    }
     public void ShadowMoveCharToTable(PhysicalCardImpl...cards) {
         Arrays.stream(cards).forEach(card -> MoveCardToZone(P2, card, Zone.SHADOW_CHARACTERS));
     }
+
 
     public void FreepsMoveCardToSupportArea(String cardName) { FreepsMoveCardToSupportArea(GetFreepsCard(cardName)); }
     public void FreepsMoveCardToSupportArea(PhysicalCardImpl...cards) {
@@ -302,12 +404,15 @@ public class GenericCardTestHelper extends AbstractAtTest {
     }
 
 
-
-    public void MoveCardToZone(String player, PhysicalCardImpl card, Zone zone) {
+    public void RemoveCardZone(String player, PhysicalCardImpl card) {
         if(card.getZone() != null)
         {
             _game.getGameState().removeCardsFromZone(player, new ArrayList<PhysicalCard>() {{ add(card); }});
         }
+    }
+
+    public void MoveCardToZone(String player, PhysicalCardImpl card, Zone zone) {
+        RemoveCardZone(player, card);
         _game.getGameState().addCardToZone(_game, card, zone);
     }
 
@@ -318,6 +423,23 @@ public class GenericCardTestHelper extends AbstractAtTest {
         {
             _game.getGameState().addWound(card);
         }
+    }
+
+    public void FreepsRemoveWoundsFromChar(String cardName, int count) { RemoveWoundsFromChar(GetFreepsCard(cardName), count); }
+    public void ShadowRemoveWoundsFromChar(String cardName, int count) { RemoveWoundsFromChar(GetShadowCard(cardName), count); }
+    public void RemoveWoundsFromChar(PhysicalCardImpl card, int count) {
+        for(int i = 0; i < count; i++)
+        {
+            _game.getGameState().removeWound(card);
+        }
+    }
+
+    public void AddBurdens(int count) {
+        _game.getGameState().addBurdens(count);
+    }
+
+    public void RemoveBurdens(int count) {
+        _game.getGameState().removeBurdens(count);
     }
 
     public int GetTwilight() { return _game.getGameState().getTwilightPool(); }
@@ -413,6 +535,22 @@ public class GenericCardTestHelper extends AbstractAtTest {
     public void ShadowChooseCard(PhysicalCardImpl card) throws DecisionResultInvalidException {
         playerDecided(P2, String.valueOf(card.getCardId()));
     }
+
+    public void FreepsChooseCards(PhysicalCardImpl...cards) throws DecisionResultInvalidException { ChooseCards(P1, cards); }
+    public void ShadowChooseCards(PhysicalCardImpl...cards) throws DecisionResultInvalidException { ChooseCards(P2, cards); }
+    public void ChooseCards(String player, PhysicalCardImpl...cards) throws DecisionResultInvalidException {
+        String[] ids = new String[cards.length];
+
+        for(int i = 0; i < cards.length; i++)
+        {
+            ids[i] = String.valueOf(cards[i].getCardId());
+        }
+
+        playerDecided(player, String.join(",", ids));
+    }
+
+
+
     public boolean FreepsCanChooseCharacter(PhysicalCardImpl card) { return FreepsGetCardChoices().contains(String.valueOf(card.getCardId())); }
     public boolean ShadowCanChooseCharacter(PhysicalCardImpl card) { return ShadowGetCardChoices().contains(String.valueOf(card.getCardId())); }
 
@@ -491,7 +629,9 @@ public class GenericCardTestHelper extends AbstractAtTest {
     }
 
     public void FreepsChoose(String choice) throws DecisionResultInvalidException { playerDecided(P1, choice); }
+    public void FreepsChoose(String...choices) throws DecisionResultInvalidException { playerDecided(P1, String.join(",", choices)); }
     public void ShadowChoose(String choice) throws DecisionResultInvalidException { playerDecided(P2, choice); }
+    public void ShadowChoose(String...choices) throws DecisionResultInvalidException { playerDecided(P2, String.join(",", choices)); }
 
 
     public void FreepsChooseToMove() throws DecisionResultInvalidException { playerDecided(P1, "0"); }
