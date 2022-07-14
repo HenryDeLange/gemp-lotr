@@ -274,10 +274,14 @@ public class DbPlayerDAO implements PlayerDAO {
         }
     }
 
-    // public static void main(String[] arg) {
-    //     DbPlayerDAO dao = new DbPlayerDAO(null);
-    //     System.out.println(dao.encodePassword("test"));
-    // }
+    public static void main(String[] arg) {
+        System.out.println("Type the password to encrypt, then press Enter:");
+        Scanner scanner = new Scanner(System.in);
+        String password = scanner.nextLine();
+        System.out.println("The encrypted password is:");
+        DbPlayerDAO dao = new DbPlayerDAO(null);
+        System.out.println(dao.encodePassword(password));
+    }
 
     private String encodePassword(String password) {
         try {
