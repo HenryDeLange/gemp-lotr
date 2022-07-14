@@ -37,7 +37,7 @@ public class Card_V1_008Tests
 		 * Set: V1
 		 * Title: *Lament For Gandalf
 		 * Side: Free Peoples
-		 * Culture: gandalf
+		 * Culture: elven
 		 * Twilight Cost: 1
 		 * Type: condition
 		 * Subtype: Support Area
@@ -48,7 +48,7 @@ public class Card_V1_008Tests
 		//Pre-game setup
 		GenericCardTestHelper scn = GetScenario();
 
-		PhysicalCardImpl card = scn.GetFreepsCard("card");
+		PhysicalCardImpl card = scn.GetFreepsCard("lament");
 
 		assertTrue(card.getBlueprint().isUnique());
 		assertTrue(scn.HasKeyword(card, Keyword.SUPPORT_AREA)); // test for keywords as needed
@@ -59,7 +59,7 @@ public class Card_V1_008Tests
 		//assertEquals(Signet., card.getBlueprint().getSignet());
 		//assertEquals(, card.getBlueprint().getSiteNumber()); // Change this to getAllyHomeSiteNumbers for allies
 		assertEquals(CardType.CONDITION, card.getBlueprint().getCardType());
-		assertEquals(Culture.GANDALF, card.getBlueprint().getCulture());
+		assertEquals(Culture.ELVEN, card.getBlueprint().getCulture());
 		assertEquals(Side.FREE_PEOPLE, card.getBlueprint().getSide());
 	}
 
@@ -68,7 +68,7 @@ public class Card_V1_008Tests
 		//Pre-game setup
 		GenericCardTestHelper scn = GetScenario();
 
-		PhysicalCardImpl card = scn.GetFreepsCard("card");
+		PhysicalCardImpl card = scn.GetFreepsCard("lament");
 		scn.FreepsMoveCardToHand(card);
 
 		scn.StartGame();
