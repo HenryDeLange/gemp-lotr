@@ -27,7 +27,7 @@
         </dependency>
     </dependencies>
     <build>
-        <finalName>web</finalName>
+        <finalName>app</finalName>
         <plugins>
             <!-- Setup the Manifest file with the Main Class and other useful information -->
             <!-- Exclude the configuration resources from the JAR file -->
@@ -38,7 +38,10 @@
                 <version>3.2.2</version>
                 <configuration>
                     <excludes>
+                        <exclude>**/log4j.xml</exclude>
                         <exclude>**/gemp-lotr.properties</exclude>
+                        <exclude>**/gemp-lotr-override.properties</exclude>
+                        <exclude>**/database-init-tables-mysql.sql</exclude>
                         <exclude>**/database-initial-user.sql</exclude>
                         <exclude>**/database-setup-bot.sql</exclude>
                     </excludes>
@@ -81,7 +84,7 @@
                 <version>3.2.0</version>
                 <executions>
                     <execution>
-                        <id>copy-resources</id>
+                        <id>copy-config</id>
                         <goals>
                             <goal>copy-resources</goal>
                         </goals>
@@ -93,9 +96,31 @@
                                     <directory>src/main/resources</directory>
                                     <filtering>true</filtering>
                                     <includes>
+                                        <include>**/log4j.xml</include>
                                         <include>**/gemp-lotr.properties</include>
+                                        <include>**/gemp-lotr-override.properties</include>
+                                        <include>**/database-init-tables-mysql.sql</include>
                                         <include>**/database-initial-user.sql</include>
                                         <include>**/database-setup-bot.sql</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-web</id>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <phase>package</phase>
+                        <configuration>
+                            <outputDirectory>${basedir}/target/web</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/web</directory>
+                                    <filtering>false</filtering>
+                                    <includes>
+                                        <include>**</include>
                                     </includes>
                                 </resource>
                             </resources>

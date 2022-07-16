@@ -80,17 +80,19 @@ public class CardSets {
             String line;
 
             while ((line = bufferedReader.readLine()) != null) {
-                if (line.endsWith("T")) {
-                    if (!line.substring(0, setNo.length()).equals(setNo))
-                        throw new IllegalStateException("Seems the rarity is for some other set");
-                    String blueprintId = setNo + "_" + line.substring(setNo.length() + 1);
-                    rarity.addTengwarCard(blueprintId);
-                } else {
-                    if (!line.substring(0, setNo.length()).equals(setNo))
-                        throw new IllegalStateException("Seems the rarity is for some other set");
-                    String cardRarity = line.substring(setNo.length(), setNo.length() + 1);
-                    String blueprintId = setNo + "_" + line.substring(setNo.length() + 1);
-                    rarity.addCard(blueprintId, cardRarity);
+                if (!line.trim().isEmpty()) {
+                    if (line.endsWith("T")) {
+                        if (!line.substring(0, setNo.length()).equals(setNo))
+                            throw new IllegalStateException("Seems the rarity is for some other set [" + setNo + " | " + rarityFile + " | " + line + "]");
+                        String blueprintId = setNo + "_" + line.substring(setNo.length() + 1);
+                        rarity.addTengwarCard(blueprintId);
+                    } else {
+                        if (!line.substring(0, setNo.length()).equals(setNo))
+                            throw new IllegalStateException("Seems the rarity is for some other set [" + setNo + " | " + rarityFile + " | " + line + "]");
+                        String cardRarity = line.substring(setNo.length(), setNo.length() + 1);
+                        String blueprintId = setNo + "_" + line.substring(setNo.length() + 1);
+                        rarity.addCard(blueprintId, cardRarity);
+                    }
                 }
             }
         } finally {

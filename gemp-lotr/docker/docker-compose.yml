@@ -1,80 +1,56 @@
 version: "3.4"
 
+# networks:
+#   gemp_net_1:
+#     ipam:
+#       driver: default
+#       config:
+#         - subnet: 172.28.1.0/24
+
 services:
-
+  # BUILD APPLICATION
   build:
-    env_file:
-      - .env
-    container_name: ${APP_CONTAINER_NAME}
-    build: 
-      context: .
-      dockerfile: gemp_app.Dockerfile
-    image: gemp_app
-    expose:
-      - "80"
-      - "8080"
-    restart: always
-    ports:
-        # target means in the container
-      - target: 80
-        # published is what's on the host machine
-        published: "${APP_PORT}"
-        #These are the ports used for remote debugging the JRE
-      - target: 8000
-        published: 8052
+    container_name: ${BUILD_CONTAINER_NAME}
+    image: maven:3.8.6-openjdk-18
+    env_file: [ .env ]
+    profiles: [ build ]
     volumes:
-       - type: bind
-         source: ../gemp-lotr-async/src/main/web
-         target: /etc/gemp-lotr/web
-       - type: bind
-         source: ../../gemp-lotr
-         target: /etc/gemp-lotr
-       - type: bind
-         source: ../gemp-lotr-async/src/main/web
-         target: /var/www/localhost/htdocs/gemp-lotr #/etc/apache2/htdocs/gemp-lotr
-       - type: bind
-         source: ../../logs
-         target: /logs
-       - type: bind
-         source: ../../replay
-         target: /replay
-         target: /etc/gemp-lotr/replay
-       - type: bind
-         source: ../..
-         target: /gemp-src
-    networks:
-      gemp_net_1:
-        ipv4_address: ${APP_IP}
-    tty: true
-    command: nohup java -jar /etc/gemp-lotr/gemp-lotr-async/target/web.jar &
+      - ../../:/usr/src/mymaven
+    working_dir: /usr/src/mymaven/gemp-lotr
+    command: mvn clean verify
 
-
+  # RUN DATABASE
   db:
-    env_file:
-      - .env
     container_name: ${DB_CONTAINER_NAME}
-    build: 
-      context: ..
-      dockerfile: docker/gemp_db.Dockerfile
-    image: gemp_db
-    ports:
-        # target means in the container
-      - target: 3306
-        # published is what's on the host machine
-        published: "${DB_PORT}"
-    restart: always
+    image: mariadb:10.8.3
+    env_file: [ .env ]
+    profiles: [ run ]
+    # No need to expose the port unless needed for development/debugging
+    # ports:
+    #   - ${DB_PORT}:3306
     volumes:
-       - type: bind
-         source: ../../database
-         target: /var/lib/mysql
-    networks:
-      gemp_net_1:
-        ipv4_address: ${DB_IP}
-      
-  
-networks:
-  gemp_net_1:
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.28.1.0/24
+      - ../../database/mysql:/var/lib/mysql # Folder containing the database
+      - ../gemp-lotr-async/target/config/:/docker-entrypoint-initdb.d # Folder containing the scripts to run when the DB is initialized (in alphabetical order)
+    # networks:
+    #   gemp_net_1:
+    #     ipv4_address: ${DB_IP}
+    restart: always
+
+  # RUN APPLICATION
+  app:
+    container_name: ${APP_CONTAINER_NAME}
+    image: bellsoft/liberica-openjdk-alpine:18.0.1.1-2
+# TODO: Wait for SB to startup fully
+    depends_on: [ db ]
+    profiles: [ run ]
+    env_file: [ .env ]
+    ports:
+      - ${APP_PORT}:80
+    volumes:
+      - ../gemp-lotr-async/target:/data
+      - ./gemp-lotr-override.properties:/data/config/gemp-lotr-override.properties
+    command: java -jar -Dgemp-lotr.override=/gemp-lotr-override.properties /data/app.jar
+    # environment:
+    #   - gemp-lotr.override=/gemp-lotr-override.properties
+    # command: java -jar /data/app.jar
+    restart: always

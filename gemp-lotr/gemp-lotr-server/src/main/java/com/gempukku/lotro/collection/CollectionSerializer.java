@@ -125,7 +125,7 @@ public class CollectionSerializer {
 
             while ((line = cardReader.readLine()) != null) {
                 if (!line.substring(0, setId.length()).equals(setId))
-                    throw new IllegalStateException("Seems the rarity is for some other set");
+                    throw new IllegalStateException("Seems the rarity is for some other set [" + setId + " | " + line + "]");
                 // Normal
                 _singleByteCountItems.add(translateToBlueprintId(line));
                 // Foil
