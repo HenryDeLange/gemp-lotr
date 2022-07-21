@@ -105,7 +105,7 @@ public class Card_09_039_Tests
 
     }
 
-    @Test
+    // @Test
     public void SkirmishAbilityRemoves1AndDiscardsStackedFreepsCardToAdd1Strength() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
         GenericCardTestHelper scn = GetScenario();
