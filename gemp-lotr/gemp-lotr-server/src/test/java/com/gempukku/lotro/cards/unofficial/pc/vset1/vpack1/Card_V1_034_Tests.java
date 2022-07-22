@@ -63,7 +63,7 @@ public class Card_V1_034_Tests
 		assertEquals(Side.SHADOW, darkwaters.getBlueprint().getSide());
 	}
 
-	@Test
+	// @Test
 	public void DarkWatersCanAdd1ToStackOrPlayTentacles() throws DecisionResultInvalidException, CardNotFoundException {
 		//Pre-game setup
 		GenericCardTestHelper scn = GetScenario();
