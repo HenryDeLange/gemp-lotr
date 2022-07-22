@@ -3,6 +3,7 @@ package com.gempukku.lotro.cards.unofficial.pc.vset1.vpack1;
 import com.gempukku.lotro.cards.GenericCardTestHelper;
 import com.gempukku.lotro.common.Keyword;
 import com.gempukku.lotro.common.Phase;
+import com.gempukku.lotro.common.Zone;
 import com.gempukku.lotro.game.CardNotFoundException;
 import com.gempukku.lotro.game.PhysicalCardImpl;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
@@ -119,18 +120,20 @@ public class Card_V1_002_Tests
 
         // scn.SkipToPhase(Phase.MANEUVER);
 
-        // assertEquals(0, scn.GetWoundsOn(gimli));
-        // assertEquals(0, scn.GetFreepsHandCount());
-        // assertEquals(1, scn.GetStackedCards(deep).size());
-        // assertTrue(scn.FreepsActionAvailable("Deepest"));
+        assertEquals(0, scn.GetWoundsOn(gimli));
+        assertEquals(0, scn.GetFreepsHandCount());
+        assertEquals(1, scn.GetStackedCards(deep).size());
+        assertEquals(Zone.STACKED, strike.getZone());
+        assertEquals(deep, strike.getStackedOn());
+        assertTrue(scn.FreepsActionAvailable("Deepest"));
 
         // scn.FreepsUseCardAction(deep);
 
-        //for some reason, pulling cards stacked on a condition flat out doesn't work here in the test rig.
-        // assertEquals(1, scn.GetWoundsOn(gimli));
-        // assertEquals(1, scn.GetFreepsHandCount());
-        // assertEquals(1, scn.GetStackedCards(deep).size());
-        //for some reason, pulling cards stacked on a condition flat out doesn't work here in the test rig.
+        assertEquals(1, scn.GetWoundsOn(gimli));
+        assertEquals(1, scn.GetFreepsHandCount());
+        assertEquals(0, scn.GetStackedCards(deep).size());
+        assertEquals(Zone.HAND, strike.getZone());
+
     }
 
 }
