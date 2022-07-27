@@ -1,18 +1,21 @@
 package com.gempukku.lotro.cards;
 
 import com.gempukku.lotro.at.AbstractAtTest;
-import com.gempukku.lotro.common.Keyword;
-import com.gempukku.lotro.common.Phase;
-import com.gempukku.lotro.common.Side;
-import com.gempukku.lotro.common.Zone;
-import com.gempukku.lotro.game.CardNotFoundException;
-import com.gempukku.lotro.game.PhysicalCard;
-import com.gempukku.lotro.game.PhysicalCardImpl;
+import com.gempukku.lotro.cards.build.*;
+import com.gempukku.lotro.cards.build.field.effect.filter.FilterFactory;
+import com.gempukku.lotro.common.*;
+import com.gempukku.lotro.filters.Filters;
+import com.gempukku.lotro.game.*;
 import com.gempukku.lotro.game.state.Assignment;
+import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.GameUtils;
+import com.gempukku.lotro.logic.actions.RequiredTriggerAction;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
+import com.gempukku.lotro.logic.effects.DiscardCardsFromPlayEffect;
 import com.gempukku.lotro.logic.modifiers.Modifier;
+import com.gempukku.lotro.logic.modifiers.cost.DiscardFromPlayExtraPlayCostModifier;
+import com.gempukku.lotro.logic.timing.EffectResult;
 import com.gempukku.lotro.logic.timing.RuleUtils;
 import com.gempukku.lotro.logic.vo.LotroDeck;
 
@@ -51,6 +54,12 @@ public class GenericCardTestHelper extends AbstractAtTest {
     public static final String FOTRFrodo = "1_290";
     public static final String GimliRB = "9_4";
     public static final String FOTRRing = "1_2";
+    public static final String GreatRing = "19_1";
+
+    private final FilterFactory FilterFactory = new FilterFactory();
+    private final CardGenerationEnvironment Environment = new LotroCardBlueprintBuilder();
+    private final ActionContext FreepsFilterContext = new DefaultActionContext(P1, _game, null, null, null);
+    private final ActionContext ShadowFilterContext = new DefaultActionContext(P2, _game, null, null, null);
 
 
     // Player key, then name/card
@@ -197,6 +206,8 @@ public class GenericCardTestHelper extends AbstractAtTest {
     public List<String> GetADParamAsList(String playerID, String paramName) { return Arrays.asList(GetAwaitingDecisionParam(playerID, paramName)); }
     public String[] FreepsGetADParam(String paramName) { return GetAwaitingDecisionParam(P1, paramName); }
     public String[] ShadowGetADParam(String paramName) { return GetAwaitingDecisionParam(P2, paramName); }
+    public String FreepsGetFirstADParam(String paramName) { return GetAwaitingDecisionParam(P1, paramName)[0]; }
+    public String ShadowGetFirstADParam(String paramName) { return GetAwaitingDecisionParam(P2, paramName)[0]; }
     public String[] GetAwaitingDecisionParam(String playerID, String paramName) {
         AwaitingDecision decision = _userFeedback.getAwaitingDecision(playerID);
         return decision.getDecisionParameters().get(paramName);
@@ -287,9 +298,11 @@ public class GenericCardTestHelper extends AbstractAtTest {
         }
     }
 
+    public void FreepsAttachCardsTo(PhysicalCardImpl bearer, PhysicalCardImpl...cards) { AttachCardsTo(bearer, cards); }
     public void FreepsAttachCardsTo(PhysicalCardImpl bearer, String...names) {
         Arrays.stream(names).forEach(name -> AttachCardsTo(bearer, GetFreepsCard(name)));
     }
+    public void ShadowAttachCardsTo(PhysicalCardImpl bearer, PhysicalCardImpl...cards) { AttachCardsTo(bearer, cards); }
     public void ShadowAttachCardsTo(PhysicalCardImpl bearer, String...names) {
         Arrays.stream(names).forEach(name -> AttachCardsTo(bearer, GetShadowCard(name)));
     }
@@ -338,7 +351,7 @@ public class GenericCardTestHelper extends AbstractAtTest {
     public void FreepsMoveCardsToBottomOfDeck(PhysicalCardImpl...cards) {
         Arrays.stream(cards).forEach(card -> {
             RemoveCardZone(card.getOwner(), card);
-            _game.getGameState().putCardOnTopOfDeck(card);
+            _game.getGameState().putCardOnBottomOfDeck(card);
         });
     }
     public void ShadowMoveCardsToBottomOfDeck(String...cardNames) {
@@ -347,7 +360,7 @@ public class GenericCardTestHelper extends AbstractAtTest {
     public void ShadowMoveCardsToBottomOfDeck(PhysicalCardImpl...cards) {
         Arrays.stream(cards).forEach(card -> {
             RemoveCardZone(card.getOwner(), card);
-            _game.getGameState().putCardOnTopOfDeck(card);
+            _game.getGameState().putCardOnBottomOfDeck(card);
         });
     }
 
@@ -475,7 +488,9 @@ public class GenericCardTestHelper extends AbstractAtTest {
     public int GetTwilight() { return _game.getGameState().getTwilightPool(); }
     public void SetTwilight(int amount) { _game.getGameState().setTwilight(amount); }
 
-    public int GetMoveLimit() { return _game.getGameState().getMoveCount(); }
+    public int GetMoveLimit() { return _game.getModifiersQuerying().getMoveLimit(_game, 2); }
+
+    public int GetMoveCount() { return _game.getGameState().getMoveCount(); }
 
     public PhysicalCardImpl GetRingBearer() { return (PhysicalCardImpl)_game.getGameState().getRingBearer(P1); }
 
@@ -559,12 +574,12 @@ public class GenericCardTestHelper extends AbstractAtTest {
 
     public void FreepsResolveSkirmish(String name) throws DecisionResultInvalidException { FreepsResolveSkirmish(GetFreepsCard(name)); }
     public void FreepsResolveSkirmish(PhysicalCardImpl comp) throws DecisionResultInvalidException { FreepsChooseCard(comp); }
-    public void FreepsChooseCard(PhysicalCardImpl card) throws DecisionResultInvalidException {
-        playerDecided(P1, String.valueOf(card.getCardId()));
-    }
-    public void ShadowChooseCard(PhysicalCardImpl card) throws DecisionResultInvalidException {
-        playerDecided(P2, String.valueOf(card.getCardId()));
-    }
+
+    public void FreepsChooseCard(String name) throws DecisionResultInvalidException { FreepsChooseCard(GetFreepsCard(name)); }
+    public void FreepsChooseCard(PhysicalCardImpl card) throws DecisionResultInvalidException { playerDecided(P1, String.valueOf(card.getCardId())); }
+    public void ShadowChooseCard(String name) throws DecisionResultInvalidException { ShadowChooseCard(GetShadowCard(name)); }
+    public void ShadowChooseCard(PhysicalCardImpl card) throws DecisionResultInvalidException { playerDecided(P2, String.valueOf(card.getCardId())); }
+
 
     public void FreepsChooseCards(PhysicalCardImpl...cards) throws DecisionResultInvalidException { ChooseCards(P1, cards); }
     public void ShadowChooseCards(PhysicalCardImpl...cards) throws DecisionResultInvalidException { ChooseCards(P2, cards); }
@@ -593,15 +608,20 @@ public class GenericCardTestHelper extends AbstractAtTest {
     public void ChooseCardBPFromSelection(String player, PhysicalCardImpl...cards) throws DecisionResultInvalidException {
         String[] choices = GetAwaitingDecisionParam(player,"blueprintId");
         ArrayList<String> bps = new ArrayList<String>();
+        ArrayList<PhysicalCardImpl> found = new ArrayList<PhysicalCardImpl>();
 
         for(int i = 0; i < choices.length; i++)
         {
             for(PhysicalCardImpl card : cards)
             {
+                if(found.contains(card))
+                    continue;
+
                 if(card.getBlueprintId() == choices[i])
                 {
                     // I have no idea why the spacing is required, but the BP parser skips to the fourth position
                     bps.add("    " + i);
+                    found.add(card);
                     break;
                 }
             }
@@ -672,6 +692,11 @@ public class GenericCardTestHelper extends AbstractAtTest {
         _game.getModifiersEnvironment().addUntilEndOfTurnModifier(mod);
     }
 
+    public void ApplyAdHocAction(ActionProxy action)
+    {
+        _game.getActionsEnvironment().addUntilEndOfTurnActionProxy(action);
+    }
+
     public void FreepsChoose(String choice) throws DecisionResultInvalidException { playerDecided(P1, choice); }
     public void FreepsChoose(String...choices) throws DecisionResultInvalidException { playerDecided(P1, String.join(",", choices)); }
     public void ShadowChoose(String choice) throws DecisionResultInvalidException { playerDecided(P2, choice); }
@@ -689,6 +714,8 @@ public class GenericCardTestHelper extends AbstractAtTest {
     public void ShadowAcceptOptionalTrigger() throws DecisionResultInvalidException { playerDecided(P2, "0"); }
     public void ShadowDeclineOptionalTrigger() throws DecisionResultInvalidException { playerDecided(P2, ""); }
 
+    public void ShadowDeclineReconciliation() throws DecisionResultInvalidException { playerDecided(P2, ""); }
+
     public void FreepsChooseYes() throws DecisionResultInvalidException { ChooseMultipleChoiceOption(P1, "Yes"); }
     public void ShadowChooseYes() throws DecisionResultInvalidException { ChooseMultipleChoiceOption(P2, "Yes"); }
     public void FreepsChooseNo() throws DecisionResultInvalidException { ChooseMultipleChoiceOption(P1, "No"); }
@@ -697,7 +724,9 @@ public class GenericCardTestHelper extends AbstractAtTest {
     public void ShadowChooseMultipleChoiceOption(String option) throws DecisionResultInvalidException { ChooseMultipleChoiceOption(P2, option); }
     public void ChooseMultipleChoiceOption(String playerID, String option) throws DecisionResultInvalidException { ChooseAction(playerID, "results", option); }
     public void FreepsChooseAction(String paramName, String option) throws DecisionResultInvalidException { ChooseAction(P1, paramName, option); }
+    public void FreepsChooseAction(String option) throws DecisionResultInvalidException { ChooseAction(P1, "actionText", option); }
     public void ShadowChooseAction(String paramName, String option) throws DecisionResultInvalidException { ChooseAction(P2, paramName, option); }
+    public void ShadowChooseAction(String option) throws DecisionResultInvalidException { ChooseAction(P2, "actionText", option); }
     public void ChooseAction(String playerID, String paramName, String option) throws DecisionResultInvalidException {
         List<String> choices = GetADParamAsList(playerID, paramName);
         for(String choice : choices){
@@ -712,4 +741,44 @@ public class GenericCardTestHelper extends AbstractAtTest {
 
     public void FreepsResolveActionOrder(String option) throws DecisionResultInvalidException { ChooseAction(P1, "actionText", option); }
 
+    public Filterable GenerateFreepsFilter(String filter) throws InvalidCardDefinitionException {
+        return FilterFactory.generateFilter(filter, Environment).getFilterable(FreepsFilterContext);
+    }
+    public Filterable GenerateShadowFilter(String filter) throws InvalidCardDefinitionException {
+        return FilterFactory.generateFilter(filter, Environment).getFilterable(ShadowFilterContext);
+    }
+
+    public void ApplyAdHocFreepsAutoDiscard(String filter)  {
+        try{
+            ApplyAdHocAutoDiscard(GenerateFreepsFilter(filter));
+        }
+        catch(InvalidCardDefinitionException ex) {}
+
+    }
+
+    public void ApplyAdHocShadowAutoDiscard(String filter)  {
+        try {
+            ApplyAdHocAutoDiscard(GenerateShadowFilter(filter));
+        }
+        catch(InvalidCardDefinitionException ex) {}
+    }
+
+    private void ApplyAdHocAutoDiscard(Filterable...filterables)  {
+
+        ApplyAdHocAction(new AbstractActionProxy() {
+            @Override
+            public List<? extends RequiredTriggerAction> getRequiredAfterTriggers(LotroGame game, EffectResult effectResult)  {
+                RequiredTriggerAction action = new RequiredTriggerAction(null);
+                action.appendEffect(
+                        new DiscardCardsFromPlayEffect(P2, null, filterables));
+                return Collections.singletonList(action);
+            }
+        });
+    }
+
+    public void AcknowledgeReveal() throws DecisionResultInvalidException
+    {
+        playerDecided(P1, "");
+        playerDecided(P2, "");
+    }
 }

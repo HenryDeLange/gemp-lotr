@@ -31,6 +31,7 @@ public class FilterFactory {
 
         simpleFilters.put("ring bearer", (actionContext) -> Filters.ringBearer);
         simpleFilters.put("ringbearer", (actionContext) -> Filters.ringBearer);
+        simpleFilters.put("ring-bearer", (actionContext) -> Filters.ringBearer);
         simpleFilters.put("any", (actionContext) -> Filters.any);
         simpleFilters.put("self", (actionContext) -> actionContext.getSource());
         simpleFilters.put("another", (actionContext) -> Filters.not(actionContext.getSource()));
@@ -174,6 +175,7 @@ public class FilterFactory {
         parameterFilters.put("name",
                 (parameter, environment) -> (actionContext) -> (Filter)
                         (game, physicalCard) -> physicalCard.getBlueprint().getTitle().equalsIgnoreCase(parameter));
+        parameterFilters.put("title",parameterFilters.get("name"));
         parameterFilters.put("nameInStackedOn",
                 (parameter, environment) -> {
                     final FilterableSource filterableSource = environment.getFilterFactory().generateFilter(parameter, environment);
@@ -214,6 +216,11 @@ public class FilterFactory {
                 (parameter, environment) -> {
                     int amount = Integer.parseInt(parameter);
                     return (actionContext) -> Filters.lessStrengthThan(amount);
+                });
+        parameterFilters.put("strengthMoreThan",
+                (parameter, environment) -> {
+                    int amount = Integer.parseInt(parameter);
+                    return (actionContext) -> Filters.moreStrengthThan(amount);
                 });
         parameterFilters.put("vitalityMoreThan",
                 (parameter, environment) -> {

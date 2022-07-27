@@ -12,22 +12,24 @@ import com.gempukku.lotro.cards.build.field.effect.appender.resolver.ValueResolv
 import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.logic.actions.CostToEffectAction;
 import com.gempukku.lotro.logic.effects.PutCardFromDeckIntoHandEffect;
+import com.gempukku.lotro.logic.effects.PutCardFromDeckOnTopOfDeckEffect;
+import com.gempukku.lotro.logic.effects.PutCardsFromDeckOnTopOfDrawDeckEffect;
 import com.gempukku.lotro.logic.effects.ShuffleDeckEffect;
 import com.gempukku.lotro.logic.timing.Effect;
 import org.json.simple.JSONObject;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-public class PutCardsFromDeckIntoHand implements EffectAppenderProducer {
+public class PutCardsFromDeckOnTopOfDeck implements EffectAppenderProducer {
     @Override
     public EffectAppender createEffectAppender(JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
-        FieldUtils.validateAllowedFields(effectObject, "count", "filter", "shuffle");
+        FieldUtils.validateAllowedFields(effectObject, "count", "filter");
 
         final ValueSource valueSource = ValueResolver.resolveEvaluator(effectObject.get("count"), 1, environment);
         final String filter = FieldUtils.getString(effectObject.get("filter"), "filter", "choose(any)");
-        final boolean shuffle = FieldUtils.getBoolean(effectObject.get("shuffle"), "shuffle", true);
 
         MultiEffectAppender result = new MultiEffectAppender();
 
@@ -40,21 +42,12 @@ public class PutCardsFromDeckIntoHand implements EffectAppenderProducer {
                         final Collection<? extends PhysicalCard> cards = actionContext.getCardsFromMemory("_temp");
                         List<Effect> result = new LinkedList<>();
                         for (PhysicalCard card : cards) {
-                            result.add(
-                                    new PutCardFromDeckIntoHandEffect(card));
+                            result.add(new PutCardFromDeckOnTopOfDeckEffect(action.getActionSource().getOwner(), card));
                         }
 
                         return result;
                     }
                 });
-        if (shuffle)
-            result.addEffectAppender(
-                    new DelayedAppender() {
-                @Override
-                protected Effect createEffect(boolean cost, CostToEffectAction action, ActionContext actionContext) {
-                    return new ShuffleDeckEffect(actionContext.getPerformingPlayer());
-                }
-            });
 
         return result;
 

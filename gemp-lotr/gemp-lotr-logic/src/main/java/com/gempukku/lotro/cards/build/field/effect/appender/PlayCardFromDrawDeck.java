@@ -47,7 +47,7 @@ public class PlayCardFromDrawDeck implements EffectAppenderProducer {
                             }
                             return Filters.playable(actionContext.getGame(), costModifier);
                         },
-                        new ConstantEvaluator(1), memorize, "you", "Choose card to play", environment));
+                        new ConstantEvaluator(1), memorize, "you", "you", "Choose card to play", environment));
         result.addEffectAppender(
                 new DelayedAppender() {
                     @Override
@@ -61,7 +61,7 @@ public class PlayCardFromDrawDeck implements EffectAppenderProducer {
                             final CostToEffectAction playCardAction = PlayUtils.getPlayCardAction(actionContext.getGame(), cardsToPlay.iterator().next(), costModifier, onFilterable, false);
                             return new StackActionEffect(playCardAction);
                         } else {
-                            return null;
+                            return null; //Fix Wizard is Never Late by changing this to a DoNothingEffect?
                         }
                     }
 

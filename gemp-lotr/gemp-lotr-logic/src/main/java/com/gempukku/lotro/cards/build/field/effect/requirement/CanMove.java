@@ -9,17 +9,13 @@ import com.gempukku.lotro.cards.build.field.effect.appender.resolver.PlayerResol
 import com.gempukku.lotro.logic.timing.PlayConditions;
 import org.json.simple.JSONObject;
 
-public class ControlsSite implements RequirementProducer {
+public class CanMove implements RequirementProducer {
     @Override
     public Requirement getPlayRequirement(JSONObject object, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
-        FieldUtils.validateAllowedFields(object, "player");
-
-        final String player = FieldUtils.getString(object.get("player"), "player", "you");
-        final PlayerSource playerSource = PlayerResolver.resolvePlayer(player, environment);
+        FieldUtils.validateAllowedFields(object);
 
         return (actionContext) -> {
-            return PlayConditions.controlsSite(actionContext.getGame(),
-                    playerSource.getPlayer(actionContext));
+            return PlayConditions.canMove(actionContext.getGame());
         };
     }
 }
