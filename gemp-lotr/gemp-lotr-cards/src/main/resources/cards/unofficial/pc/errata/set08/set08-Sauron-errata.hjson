@@ -1,0 +1,171 @@
+{
+
+	58_103: {
+		cardInfo: {
+			//id: 8_103.1
+			parent: 8_103
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/58_103.jpg
+			collInfo: 8R103
+			rarity: R
+		}
+		title: Grond
+		subtitle: Hammer of the Underworld
+		unique: true
+		culture: Sauron
+		twilight: 3
+		type: possession
+		keyword: [
+			Support Area
+			Engine
+		]
+		effects: [
+			{
+				type: activated
+				phase: shadow
+				cost: {
+					type: PlayCardFromHand
+					select: choose(culture(sauron),minion)
+				}
+				effect: {
+					type: AddCultureTokens
+					culture: sauron
+					select: self
+				}
+			}
+			{
+				type: activated
+				phase: regroup
+				cost: [
+					{
+						type: chooseANumber
+						text: Choose how many {sauron} tokens to remove
+						from: 0
+						to: {
+							type: ForEachCultureToken
+							culture: sauron
+							filter: self
+						}
+						memorize: numberOfTokens
+					}
+					{
+						type: RemoveCultureTokens
+						select: self
+						count: memory(numberOfTokens)
+						ignoreCostCheckFailure: true
+					}
+					{
+						type: discard
+						select: choose(and(culture(sauron),minion))
+					}
+					{
+						type: chooseActiveCards
+						text: Choose a card for GROND to SMASH
+						select: choose(side(free people),not(companion),minTwilight(memory(numberOfTokens)),maxTwilight(memory(numberOfTokens)))
+						memorize: chosenCard
+					}
+				]
+				effect: [
+					{
+						type: If
+						check: [
+							{
+								type: MemoryMatches
+								memory: chosenCard
+								filter: not(or(zone(SUPPORT),and(zone(ATTACHED),attachedTo(zone(SUPPORT)))))
+							}
+						]
+						true: {
+							type: discard
+							select: self
+						}
+					}
+					{
+						type: discard
+						select: memory(chosenCard)
+					}
+				]
+			}
+		]
+		gametext: <b>Engine.</b> <b>Shadow:</b> Play a [sauron] minion to add a [sauron] token here.<br> Regroup: Discard a [sauron] minion and remove  X [sauron] tokens here to discard a Free Peoples card (except a companion) with a twilight cost of X. If that card is not in the support area, discard this possession.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	58_102: {
+		cardInfo: {
+			//id: 8_102.1
+			parent: 8_102
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/58_102.jpg
+			collInfo: 8C102
+			rarity: C
+		}
+		title: Great Hill Troll
+		side: shadow
+		culture: Sauron
+		type: minion
+		race: Troll
+		twilight: 9
+		strength: 16
+		vitality: 4
+		site: 5
+		keyword: [
+			Fierce
+			Besieger
+		]
+		effects: [
+			{
+				type: modifyOwnCost
+				amount: {
+					type: forEachYouCanSpot
+					filter: and(engine,culture(sauron))
+					multiplier: -1
+					limit: 5
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				optional:true
+				trigger: {
+					type: played
+					filter: self
+				}
+				requires: [
+					{
+						type: location
+						filter: siteNumber(5-9)
+					}
+				]
+				cost: {
+					type: discard
+					select: choose(engine)
+				}
+				effect: {
+					type: discard
+					select: choose(condition,side(free people))
+				}
+			}
+		]
+		gametext: <b>Besieger.</b> <b>Fierce.</b> <br>The twilight cost of this minion is -1 for each [Sauron] engine you can spot (limit -5). <br>When you play this minion at any site 5 or higher, you may discard an engine to discard a Free Peoples condition.
+		lore: "...and wielded heavy hammers in their knotted hands."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

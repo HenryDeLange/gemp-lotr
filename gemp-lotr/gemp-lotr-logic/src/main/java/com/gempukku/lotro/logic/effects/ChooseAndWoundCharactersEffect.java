@@ -1,6 +1,7 @@
 package com.gempukku.lotro.logic.effects;
 
 import com.gempukku.lotro.common.Filterable;
+import com.gempukku.lotro.common.SpotOverride;
 import com.gempukku.lotro.filters.Filter;
 import com.gempukku.lotro.filters.Filters;
 import com.gempukku.lotro.game.PhysicalCard;
@@ -11,8 +12,8 @@ import com.gempukku.lotro.logic.timing.Action;
 import java.util.Collection;
 
 public class ChooseAndWoundCharactersEffect extends ChooseActiveCardsEffect {
-    private Action _action;
-    private int _count;
+    private final Action _action;
+    private final int _count;
 
     private String _sourceText;
 
@@ -21,7 +22,7 @@ public class ChooseAndWoundCharactersEffect extends ChooseActiveCardsEffect {
     }
 
     public ChooseAndWoundCharactersEffect(Action action, String playerId, int minimum, int maximum, int count, Filterable... filters) {
-        super(action.getActionSource(), playerId, "Choose characters to wound", minimum, maximum, filters);
+        super(action.getActionSource(), playerId, "Choose characters to wound", minimum, maximum, SpotOverride.NONE, filters);
         _action = action;
         _count = count;
     }
@@ -51,10 +52,5 @@ public class ChooseAndWoundCharactersEffect extends ChooseActiveCardsEffect {
             subAction.appendEffect(woundEffect);
         }
         game.getActionsEnvironment().addActionToStack(subAction);
-        woundedCardsCallback(cards);
-    }
-
-    protected void woundedCardsCallback(Collection<PhysicalCard> cards) {
-
     }
 }

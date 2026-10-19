@@ -1,0 +1,35 @@
+{
+	
+	100_1: {
+		cardInfo: {
+			//id: 101_57
+			image: errata/LOTR-ENV0E001.0.jpg
+			collInfo: 18U139+
+			rarity: U
+		}
+		title: Rath Dínen
+		unique: false
+		twilight: 0
+		type: Site
+		block: Shadows
+		direction: Left
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: modifySanctuaryHeal
+					amount: -2
+				}
+			}
+		]
+		gametext: When sanctuary healing at this site, the Free Peoples player heals only 3 wounds instead of 5.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

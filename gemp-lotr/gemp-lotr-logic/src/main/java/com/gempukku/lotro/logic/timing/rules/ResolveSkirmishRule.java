@@ -17,8 +17,8 @@ import java.util.List;
 import java.util.Set;
 
 public class ResolveSkirmishRule {
-    private LotroGame _lotroGame;
-    private DefaultActionsEnvironment _actionsEnvironment;
+    private final LotroGame _lotroGame;
+    private final DefaultActionsEnvironment _actionsEnvironment;
 
     public ResolveSkirmishRule(LotroGame lotroGame, DefaultActionsEnvironment actionsEnvironment) {
         _lotroGame = lotroGame;
@@ -36,11 +36,11 @@ public class ResolveSkirmishRule {
                             return Collections.singletonList(action);
                         } else if (effectResult.getType() == EffectResult.Type.SKIRMISH_FINISHED_WITH_OVERWHELM) {
                             OverwhelmSkirmishResult skirmishResult = (OverwhelmSkirmishResult) effectResult;
-                            Set<PhysicalCard> losers = new HashSet<PhysicalCard>(skirmishResult.getInSkirmishLosers());
+                            Set<PhysicalCard> losers = new HashSet<>(skirmishResult.getInSkirmishLosers());
 
                             RequiredTriggerAction action = new RequiredTriggerAction(null);
                             action.setText("Resolve skirmish overwhelm");
-                            action.appendEffect(new KillEffect(losers, KillEffect.Cause.OVERWHELM));
+                            action.appendEffect(new KillEffect(losers, skirmishResult.getWinners(), KillEffect.Cause.OVERWHELM));
 
                             return Collections.singletonList(action);
                         }

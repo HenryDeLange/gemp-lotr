@@ -23,7 +23,7 @@ var GempLotrMerchantUI = Class.extend({
 
         this.comm = new GempLotrCommunication("/gemp-lotr-server", that.processError);
 
-        this.cardFilter = new CardFilter(cardFilterElem, cardFilterElem,
+        this.cardFilter = new LegacyCardFilter(cardFilterElem, 
                 function (filter, start, count, callback) {
                     that.comm.getMerchant(filter, that.ownedMin, start, count, callback);
                 },
@@ -37,7 +37,7 @@ var GempLotrMerchantUI = Class.extend({
                     that.finishList();
                 });
         this.cardFilter.setType("card");
-        this.cardFilter.setFilter("type:card");
+        this.cardFilter.setFilter("product:card");
 
         this.cardsDiv = cardListElem;
         this.cardsGroup = new NormalCardGroup(this.cardsDiv, function (card) {
@@ -102,6 +102,15 @@ var GempLotrMerchantUI = Class.extend({
                 function (event) {
                     return that.clickCardFunction(event);
                 });
+        $("body")[0].addEventListener("contextmenu",
+            function (event) {
+                if(!that.clickCardFunction(event))
+                {
+                    event.preventDefault();
+                    return false;
+                }
+                return true;
+            });
         $("body").mousedown(
                 function (event) {
                     return that.dragStartCardFunction(event);
@@ -163,9 +172,9 @@ var GempLotrMerchantUI = Class.extend({
 
         if (tar.hasClass("actionArea")) {
             var selectedCardElem = tar.closest(".card");
-            if (event.which == 1) {
+            if (event.which >= 1) {
                 if (!this.successfulDrag) {
-                    if (event.shiftKey) {
+                    if (event.shiftKey || event.which > 1) {
                         this.displayCardInfo(selectedCardElem.data("card"));
                     }
                     event.stopPropagation();
@@ -179,7 +188,7 @@ var GempLotrMerchantUI = Class.extend({
     displayCardInfo:function (card) {
         this.infoDialog.html("");
         this.infoDialog.html("<div style='scroll: auto'></div>");
-        this.infoDialog.append(createFullCardDiv(card.imageUrl, card.foil, card.horizontal, card.isPack()));
+        this.infoDialog.append(Card.CreateFullCardDiv(card.imageUrl, null, card.foil, card.horizontal, card.isPack()));
         if (card.hasWikiInfo())
             this.infoDialog.append("<div><a href='" + card.getWikiLink() + "' target='_blank'>Wiki</a></div>");
         var windowWidth = $(window).width();
@@ -224,13 +233,13 @@ var GempLotrMerchantUI = Class.extend({
 
         if (type == "pack") {
             card = new Card(blueprintId, "merchant", "collection", "player");
-            cardDiv = createCardDiv(card.imageUrl, null, false, true, true, false);
+            cardDiv = Card.CreateCardDiv(card.imageUrl, null, null, false, true, true, false, false);
             cardDiv.data("card", card);
             cardDiv.data("sizeListeners", sizeListeners);
             this.cardsDiv.append(cardDiv);
         } else if (type == "card") {
             card = new Card(blueprintId, "merchant", "collection", "player");
-            cardDiv = createCardDiv(card.imageUrl, null, card.isFoil(), true, false, card.hasErrata());
+            cardDiv = Card.CreateCardDiv(card.imageUrl, null, null, card.isFoil(), true, false, card.hasErrata(), false);
             cardDiv.data("card", card);
             cardDiv.data("sizeListeners", sizeListeners);
             this.cardsDiv.append(cardDiv);
@@ -294,7 +303,7 @@ var GempLotrMerchantUI = Class.extend({
         this.questionDialog.html("");
         this.questionDialog.html("<div style='scroll: auto'></div>");
         var floatCardDiv = $("<div style='float: left;'></div>");
-        floatCardDiv.append(createFullCardDiv(card.imageUrl, card.foil, card.horizontal, card.isPack()));
+        floatCardDiv.append(Card.CreateFullCardDiv(card.imageUrl, null, card.foil, card.horizontal, card.isPack()));
         if (card.hasWikiInfo())
             floatCardDiv.append("<div><a href='" + card.getWikiLink() + "' target='_blank'>Wiki</a></div>");
         this.questionDialog.append(floatCardDiv);

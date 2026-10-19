@@ -1,0 +1,407 @@
+{
+
+	101_37: {
+		cardInfo: {
+			//id: 101_37
+			image: sets/vset1/LOTR-ENV1S037.0_card.jpg
+			collInfo: V1U37
+			rarity: U
+		}
+		title: Fell Voices Call
+		unique: false
+		side: Shadow
+		culture: Wraith
+		twilight: 0
+		type: Event
+		timewords: Shadow
+		effects: {
+			type: event
+			effect: {
+				type: choice
+				texts: [
+					Play a WRAITH item from your draw deck
+					Play a WRAITH item from your discard pile
+				]
+				effects: [
+					{
+						type: playCardFromDrawDeck
+						select: choose(culture(wraith),item)
+						showAll: true
+						shuffle: true
+						mustExist: true
+					}
+					{
+						type: playCardFromDiscard
+						select: choose(culture(wraith),item)
+					}
+				]
+			}
+		}
+		gametext: Play a [ringwraith] item from your draw deck or discard pile.
+		lore: "A breath of deadly cold pierced him like a spear..."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	101_38: {
+		cardInfo: {
+			//id: 101_38
+			image: sets/vset1/LOTR-ENV1S038.0_card.jpg
+			collInfo: V1R38
+			rarity: R
+		}
+		title: Harry Goatleaf
+		subtitle: In Thrall to the Nine
+		unique: true
+		side: Shadow
+		culture: Wraith
+		twilight: 1
+		type: Minion
+		race: Man
+		strength: 3
+		vitality: 1
+		site: 2
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: modifyCost
+					filter: nazgul
+					amount: -1
+				}
+			}
+			{
+				type: activated
+				phase: assignment
+				requires: {
+					type: canSpot
+					filter: companion,minStrength(5)
+					count: 1
+				}
+				effect: {
+					type: assignFpCharacterToSkirmish
+					player: fp
+					fpCharacter: choose(companion,minStrength(5))
+					minion: self
+				}
+			}
+		]
+		gametext: Nazgul are twilight cost -1.<br>Assignment: Make the Free Peoples player assign a companion with 5 strength or more to skirmish this minion.
+		lore: "'But you'll find maybe that more folk than old Harry at the gate will be asking you questions.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	101_39: {
+		cardInfo: {
+			//id: 101_39
+			image: sets/vset1/LOTR-ENV1S039.0_card.jpg
+			collInfo: V1R39
+			rarity: R
+		}
+		title: Pale Crown
+		unique: false
+		side: Shadow
+		culture: Wraith
+		twilight: 1
+		type: Artifact
+		vitality: 1
+		itemclass: Helm
+		#target: 
+		keywords: Support Area
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: cancelKeywordBonus
+					filter: inSkirmishAgainst(bearer)
+					from: attachedTo(inSkirmishAgainst(bearer))
+					keyword: damage
+					requires: {
+						type: canSpot
+						filter: bearer,twilight
+					}
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: cancelStrengthBonus
+					filter: any
+					from: attachedTo(inSkirmishAgainst(bearer))
+					requires: {
+						type: canSpot
+						filter: bearer,twilight
+					}
+				}
+			}
+			
+			{
+				type: activated
+				phase: skirmish
+				cost: {
+					type: removeTwilight
+					amount: 1
+				}
+				effect: {
+					type: transfer
+					select: self
+					fromSupport: true
+					where: choose(nazgul,not(hasAttached(helm)))
+				}
+			}
+		]
+		gametext: Plays to your support area.<br>While bearer is twilight, characters skirmishing bearer do not receive strength or damage bonuses from cards they bear.<br>Skirmish: Remove (1) to transfer this artifact from your support area to a Nazgul.
+		lore: "'They were once men.  Great kings of men.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	101_40: {
+		cardInfo: {
+			//id: 101_40
+			image: sets/vset1/LOTR-ENV1S040.0_card.jpg
+			collInfo: V1U40
+			rarity: U
+		}
+		title: Ringwraith in Twilight
+		unique: false
+		side: Shadow
+		culture: Wraith
+		twilight: 4
+		type: Minion
+		race: Nazgul
+		strength: 9
+		vitality: 3
+		site: 3
+		keywords: Twilight
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: modifyStrength
+					filter: self
+					amount: {
+						type: forEachWound
+						filter: ring bearer
+						multiplier: 1
+					}
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: startofphase
+					phase: maneuver
+				}
+				optional: true
+				cost: {
+					type: exert
+					select: self
+				}
+				effect: {
+					type: preventable
+					effect: {
+						type: addKeyword
+						select: self
+						keyword: fierce
+						until: start(regroup)				 
+					}
+					text: Would you like to exert the Ring-bearer to prevent this minion from being fierce?
+					player: freeps
+					cost: {
+						type: exert
+						select: choose(ring-bearer)
+					}
+				}
+			}
+		]
+		gametext: Twilight.<br>This minion is strength +1 for each wound on the Ring-bearer.<br>At the start of the maneuver phase, you may exert this minion to make it <b>fierce</b> until the regroup phase. The Free Peoples player may exert the Ring-bearer to prevent this.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	101_41: {
+		cardInfo: {
+			//id: 101_41
+			image: sets/vset1/LOTR-ENV1S041.0_card.jpg
+			collInfo: V1U41
+			rarity: U
+		}
+		title: Their Eyes Fell Upon Him
+		unique: false
+		side: Shadow
+		culture: Wraith
+		twilight: 1
+		type: Condition
+		keywords: Support Area
+		effects: [
+			{
+				type: toPlay
+				requires: {
+					type: canSpot
+					filter: twilight,nazgul
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: moves
+				}
+				requires: {
+					type: canspotwounds
+					filter: ring bearer
+					amount: 1
+				}
+				effect: [
+					{
+						type: drawCards
+						count: 1
+					}
+					{
+						type: If
+						check: {
+							type: canSpot
+							filter: exhausted,ring bearer
+						}
+						true: {
+								type: drawCards
+								count: 1
+						}
+					}
+				]
+			}
+		]
+		gametext: To play, spot a twilight Nazgul.<br>Each time the fellowship moves, you may spot a wound on the Ring-bearer to draw a card (or 2 cards if the Ring-bearer is exhausted).
+		lore: "'...you had become visible to them, being already on the threshold of their world.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	101_42: {
+		cardInfo: {
+			//id: 101_42
+			image: sets/vset1/LOTR-ENV1S042.0_card.jpg
+			collInfo: V1U42
+			rarity: U
+		}
+		title: Walks in Twilight
+		unique: true
+		side: Shadow
+		culture: Wraith
+		twilight: 2
+		type: Condition
+		keywords: Support Area
+		effects: [
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: winsSkirmish
+					filter: and(twilight,nazgul)
+				}
+				cost: {
+					type: exert
+					select: choose(twilight,nazgul)
+				}
+				effect: {
+					type: shufflecardsfromdiscardintodrawdeck
+					select: choose(culture(wraith))
+					count: 1
+				}
+			}
+		]
+		gametext: Each time a twilight Nazgul wins a skirmish, you may exert a twilight Nazgul to shuffle a [ringwraith] card from your discard pile into your draw deck.
+		lore: "The Riders made straight for you, as soon as you fled.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	101_43: {
+		cardInfo: {
+			//id: 101_43
+			image: sets/vset1/LOTR-ENV1S043.0_card.jpg
+			collInfo: V1U43
+			rarity: U
+		}
+		title: White Faces Burned
+		unique: false
+		side: Shadow
+		culture: Wraith
+		twilight: 1
+		type: Event
+		timewords: Skirmish
+		effects: {
+			type: event
+			effect: [
+				{
+					type: modifyStrength
+					select: choose(twilight,nazgul,inSkirmish)
+					memorize: chosenNazzy
+					amount: {
+						type: forEachWound
+						filter: ring bearer
+						multiplier: 1
+					}
+				 
+				}
+				{
+					type: If
+					check: {
+						type: memorymatches
+						memory: chosenNazzy
+						filter: name(The Witch-king)
+					}
+					true: {
+						type: addKeyword
+						select: memory(chosenNazzy)
+						keyword: damage+1
+					}
+				}
+			]
+		}
+		gametext: Make a skirmishing twilight Nazgul strength +1 for each wound on the Ring- bearer (and damage +1 if that Nazgul is The Witch-king).
+		lore: "Immediately, though everything else remained as before, dim and dark, the shapes became terribly clear."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+}

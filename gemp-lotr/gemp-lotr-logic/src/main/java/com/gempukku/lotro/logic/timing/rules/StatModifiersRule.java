@@ -8,7 +8,7 @@ import com.gempukku.lotro.logic.modifiers.*;
 import com.gempukku.lotro.logic.modifiers.evaluator.Evaluator;
 
 public class StatModifiersRule {
-    private ModifiersLogic modifiersLogic;
+    private final ModifiersLogic modifiersLogic;
 
     public StatModifiersRule(ModifiersLogic modifiersLogic) {
         this.modifiersLogic = modifiersLogic;
@@ -21,7 +21,10 @@ public class StatModifiersRule {
                             @Override
                             public int evaluateExpression(LotroGame game, PhysicalCard cardAffected) {
                                 int sum = 0;
-                                for (PhysicalCard attachedCard : game.getGameState().getAttachedCards(cardAffected)) {
+                                var gameState = game.getGameState();
+                                for (PhysicalCard attachedCard : gameState.getAttachedCards(cardAffected)) {
+                                    if(gameState.isHindered(attachedCard))
+                                        continue;
                                     final int strength = attachedCard.getBlueprint().getStrength();
                                     if (strength <= 0 || modifiersLogic.appliesStrengthBonusModifier(game, attachedCard, cardAffected))
                                         sum += strength;
@@ -31,13 +34,17 @@ public class StatModifiersRule {
                             }
                         }, true));
         modifiersLogic.addAlwaysOnModifier(
-                new VitalityModifier(null, Filters.and(Filters.inPlay, Filters.character, Filters.hasAttached(Filters.any)),
+                new VitalityModifier(null, Filters.and(Filters.inPlay, Filters.character, Filters.hasAttached(Filters.any)), null,
                         new Evaluator() {
                             @Override
                             public int evaluateExpression(LotroGame game, PhysicalCard cardAffected) {
                                 int sum = 0;
-                                for (PhysicalCard attachedCard : game.getGameState().getAttachedCards(cardAffected))
+                                var gameState = game.getGameState();
+                                for (PhysicalCard attachedCard : gameState.getAttachedCards(cardAffected)) {
+                                    if (gameState.isHindered(attachedCard))
+                                        continue;
                                     sum += attachedCard.getBlueprint().getVitality();
+                                }
 
                                 return sum;
                             }
@@ -48,8 +55,12 @@ public class StatModifiersRule {
                             @Override
                             public int evaluateExpression(LotroGame game, PhysicalCard cardAffected) {
                                 int sum = 0;
-                                for (PhysicalCard attachedCard : game.getGameState().getAttachedCards(cardAffected))
+                                var gameState = game.getGameState();
+                                for (PhysicalCard attachedCard : gameState.getAttachedCards(cardAffected)) {
+                                    if (gameState.isHindered(attachedCard))
+                                        continue;
                                     sum += attachedCard.getBlueprint().getResistance();
+                                }
 
                                 return sum;
                             }
@@ -60,8 +71,12 @@ public class StatModifiersRule {
                             @Override
                             public int evaluateExpression(LotroGame game, PhysicalCard cardAffected) {
                                 int sum = 0;
-                                for (PhysicalCard attachedCard : game.getGameState().getAttachedCards(cardAffected))
+                                var gameState = game.getGameState();
+                                for (PhysicalCard attachedCard : gameState.getAttachedCards(cardAffected)) {
+                                    if (gameState.isHindered(attachedCard))
+                                        continue;
                                     sum += attachedCard.getBlueprint().getSiteNumber();
+                                }
 
                                 return sum;
                             }

@@ -8,11 +8,7 @@ import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.timing.Action;
 
 public class CantPlayCardsModifier extends AbstractModifier {
-    private Filter _filters;
-
-    public CantPlayCardsModifier(PhysicalCard source, Filterable... filters) {
-        this(source, null, filters);
-    }
+    private final Filter _filters;
 
     public CantPlayCardsModifier(PhysicalCard source, Condition condition, Filterable... filters) {
         super(source, null, null, condition, ModifierEffect.ACTION_MODIFIER);

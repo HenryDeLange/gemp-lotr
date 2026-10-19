@@ -7,15 +7,17 @@ import com.gempukku.lotro.game.state.Skirmish;
 import com.gempukku.lotro.logic.actions.SkirmishPhaseAction;
 import com.gempukku.lotro.logic.timing.UnrespondableEffect;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
 
 public class AdditionalSkirmishPhaseEffect extends UnrespondableEffect {
-    private PhysicalCard _fpCard;
-    private Set<PhysicalCard> _shadowCards;
+    private final PhysicalCard _fpCard;
+    private final Set<PhysicalCard> _shadowCards;
 
-    public AdditionalSkirmishPhaseEffect(PhysicalCard fpCard, Set<PhysicalCard> shadowCards) {
+    public AdditionalSkirmishPhaseEffect(PhysicalCard fpCard, Collection<? extends PhysicalCard> shadowCards) {
         _fpCard = fpCard;
-        _shadowCards = shadowCards;
+        _shadowCards = new HashSet<>(shadowCards);
     }
 
     @Override
@@ -23,6 +25,7 @@ public class AdditionalSkirmishPhaseEffect extends UnrespondableEffect {
         final Phase currentPhase = game.getGameState().getCurrentPhase();
         final Skirmish skirmish = game.getGameState().getSkirmish();
         final boolean fierce = game.getGameState().isFierceSkirmishes();
+        final boolean relentless = game.getGameState().isRelentlessSkirmishes();
         final boolean extra = game.getGameState().isExtraSkirmishes();
 
         if (skirmish != null)
@@ -39,11 +42,13 @@ public class AdditionalSkirmishPhaseEffect extends UnrespondableEffect {
                             game.getGameState().restartSkirmish(skirmish);
                         game.getGameState().setCurrentPhase(currentPhase);
                         game.getGameState().setFierceSkirmishes(fierce);
+                        game.getGameState().setRelentlessSkirmishes(relentless);
                         game.getGameState().setExtraSkirmishes(extra);
                     }
                 });
 
         game.getGameState().setFierceSkirmishes(false);
+        game.getGameState().setRelentlessSkirmishes(false);
         game.getGameState().setExtraSkirmishes(true);
         game.getActionsEnvironment().addActionToStack(
                 skirmishPhaseAction);

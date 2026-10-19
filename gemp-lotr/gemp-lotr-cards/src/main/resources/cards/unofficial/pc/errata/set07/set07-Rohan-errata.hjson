@@ -1,0 +1,205 @@
+{
+	
+	57_236: {
+		cardInfo: {
+			//id: 57_236.1
+			parent: 7_236
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN07E236.1_card.jpg
+			collInfo: 7R236
+			rarity: R
+		}
+		title: Herugrim
+		subtitle: Sword of the Mark
+		unique: true
+		side: Free Peoples
+		culture: Rohan
+		twilight: 3
+		type: Artifact
+		strength: 2
+		vitality: 1
+		itemclass: Hand weapon
+		target: title(Théoden)
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: addKeyword
+					filter: bearer
+					keyword: damage
+					amount: 1
+				}
+			}
+			{
+				type: Response
+				trigger: {
+					type: aboutToTakeWound
+					filter: bearer
+				}
+				requires: {
+					type: cantSpotThreats
+					amount: 3
+				}
+				cost: {
+					type: addThreats
+					amount: 2
+				}
+				effect: {
+					type: preventWound
+					select: bearer
+				}
+			}
+		]
+		gametext: Bearer must be Théoden.<br>He is <b>damage +1</b>.<br><b>Response:</b> If Théoden is about to take a wound and you cannot spot 3 threats, add 2 threats to prevent that wound.
+		lore: "Out swept his sword, and he spurred to the standard, hewed staff and bearer...."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	57_242: {
+		cardInfo: {
+			//id: 57_242.1
+			parent: 7_242
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN07E242.1_card.jpg
+			collInfo: 7R242
+			rarity: R
+		}
+		title: Merry's Sword
+		unique: true
+		side: Free Peoples
+		culture: Rohan
+		twilight: 1
+		type: Possession
+		strength: 2
+		itemclass: Hand weapon
+		target: title(Merry)
+		effects: {
+			type: activated
+			phase: maneuver
+			requires: {
+				type: canSpot
+				filter: title(merry),canExert
+			}
+			cost: [
+				{
+					type: chooseANumber
+					from: 1
+					to: {
+						type: subtract
+						firstNumber: {
+							type: forEachVitality
+							filter: bearer
+						}
+						secondNumber: 1
+					}
+					memorize: exertCount
+				}
+				{
+					type: exert
+					select: bearer
+					times: {
+						type: fromMemory
+						memory: exertCount
+					}
+					ignoreCostCheckFailure: true
+				}
+			]
+			effect: {
+				type: repeat
+				times: {
+					type: fromMemory
+					memory: exertCount
+				}
+				effect: {
+					type: exert
+					select: choose(minion)
+				}
+			}
+		}
+		gametext: Bearer must be Merry.<br><b>Maneuver:</b> Exert Merry X times to exert a minion once for each [rohan] companion you spot (limit X).
+		lore: "Merry's sword had stabbed him from behind, shearing through the black mantle...."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	57_256: {
+		cardInfo: {
+			//id: 7_256.1
+			parent: 7_256
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN07E256.1.jpg
+			collInfo: 7C256
+			rarity: C
+		}
+		title: They Sang as They Slew
+		culture: rohan
+		twilight: 1
+		type: event
+		timeword: regroup
+		effects: {
+			type: event
+			cost: {
+				type: Exert
+				select: choose(mounted,companion)
+				count: {
+					type: range
+					from: 0
+					to: {
+						type: max
+						firstNumber: {
+							type: ForEachBurden
+						}
+						secondNumber: {
+							type: ForEachYouCanSpot
+							filter: minion
+						}
+					}
+				}
+				memorize: exertedComps 
+			}
+			effect: [
+				{
+					type: Wound
+					select: choose(minion)
+					count: {
+						type: ForEachInMemory
+						memory: exertedComps
+					}
+				}
+				{
+					type: RemoveBurdens
+					amount: {
+						type: ForEachInMemory
+						memory: exertedComps
+					}
+				}
+			]
+		}
+		gametext: Exert X mounted companions to wound X minions and remove X burdens.
+		lore: "...for the joy of battle was on them, and the sound of their singing that was fair and terrible came even to the City."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

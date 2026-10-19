@@ -14,22 +14,22 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class BestOfOneStandingsProducer {
-    private static Comparator<PlayerStanding> LEAGUE_STANDING_COMPARATOR =
-            new MultipleComparator<PlayerStanding>(
-                    new DescComparator<PlayerStanding>(new PointsComparator()),
+    private static final Comparator<PlayerStanding> LEAGUE_STANDING_COMPARATOR =
+            new MultipleComparator<>(
+                    new DescComparator<>(new PointsComparator()),
                     new GamesPlayedComparator(),
-                    new DescComparator<PlayerStanding>(new OpponentsWinComparator()));
+                    new DescComparator<>(new OpponentsWinComparator()));
 
 
     public static List<PlayerStanding> produceStandings(Collection<String> participants, Collection<? extends CompetitiveMatchResult> matches,
                                                         int pointsForWin, int pointsForLoss, Map<String, Integer> playersWithByes) {
-        Map<String, List<String>> playerOpponents = new HashMap<String, List<String>>();
-        Map<String, AtomicInteger> playerWinCounts = new HashMap<String, AtomicInteger>();
-        Map<String, AtomicInteger> playerLossCounts = new HashMap<String, AtomicInteger>();
+        Map<String, List<String>> playerOpponents = new HashMap<>();
+        Map<String, AtomicInteger> playerWinCounts = new HashMap<>();
+        Map<String, AtomicInteger> playerLossCounts = new HashMap<>();
 
         // Initialize the list
         for (String playerName : participants) {
-            playerOpponents.put(playerName, new ArrayList<String>());
+            playerOpponents.put(playerName, new ArrayList<>());
             playerWinCounts.put(playerName, new AtomicInteger(0));
             playerLossCounts.put(playerName, new AtomicInteger(0));
         }
@@ -41,72 +41,78 @@ public class BestOfOneStandingsProducer {
             playerLossCounts.get(leagueMatch.getLoser()).incrementAndGet();
         }
 
-        List<PlayerStanding> leagueStandings = new LinkedList<PlayerStanding>();
+        var standings = new HashMap<String, PlayerStanding>();
         for (String playerName : participants) {
             int playerWins = playerWinCounts.get(playerName).intValue();
             int playerLosses = playerLossCounts.get(playerName).intValue();
             int points = playerWins * pointsForWin + playerLosses * pointsForLoss;
             int gamesPlayed = playerWins + playerLosses;
+            var byes = new ArrayList<Integer>();
 
-            int byesCount = 0;
+            int byeRound = 0;
             if (playersWithByes.containsKey(playerName)) {
-                byesCount = playersWithByes.get(playerName);
-
-                points += pointsForWin * byesCount;
-                gamesPlayed += byesCount;
+                byeRound = playersWithByes.get(playerName);
+                points += pointsForWin;
+                gamesPlayed += 1;
             }
 
-            PlayerStanding standing = new PlayerStanding(playerName, points, gamesPlayed, playerWins, playerLosses, byesCount);
+
             List<String> opponents = playerOpponents.get(playerName);
             int opponentWins = 0;
             int opponentGames = 0;
+
             for (String opponent : opponents) {
                 opponentWins += playerWinCounts.get(opponent).intValue();
                 opponentGames += playerWinCounts.get(opponent).intValue() + playerLossCounts.get(opponent).intValue();
             }
+            float score = 0f;
             if (opponentGames != 0) {
-                standing.setOpponentWin(opponentWins * 1f / opponentGames);
-            } else {
-                standing.setOpponentWin(0f);
+                score = opponentWins * 1f / opponentGames;
             }
-            leagueStandings.add(standing);
+
+            var standing = new PlayerStanding(playerName, points, gamesPlayed, playerWins, playerLosses, byeRound);
+            standing.opponentWinRate = score;
+            standings.put(playerName, standing);
         }
 
-        Collections.sort(leagueStandings, LEAGUE_STANDING_COMPARATOR);
+        var tempStandings = new ArrayList<>(standings.values());
+        tempStandings.sort(LEAGUE_STANDING_COMPARATOR);
 
         int standing = 0;
         int position = 1;
         PlayerStanding lastStanding = null;
-        for (PlayerStanding leagueStanding : leagueStandings) {
-            if (lastStanding == null || LEAGUE_STANDING_COMPARATOR.compare(leagueStanding, lastStanding) != 0) {
+        for (var eventStanding : tempStandings) {
+            if (lastStanding == null || LEAGUE_STANDING_COMPARATOR.compare(eventStanding, lastStanding) != 0) {
                 standing = position;
             }
-            leagueStanding.setStanding(standing);
+            var newStanding = PlayerStanding.CopyStanding(eventStanding);
+            newStanding.standing = standing;
+            standings.put(newStanding.playerName, newStanding);
             position++;
-            lastStanding = leagueStanding;
+            lastStanding = eventStanding;
         }
-        return leagueStandings;
+        return new ArrayList<>(standings.values());
 
     }
 
     private static class PointsComparator implements Comparator<PlayerStanding> {
         @Override
         public int compare(PlayerStanding o1, PlayerStanding o2) {
-            return o1.getPoints() - o2.getPoints();
+            return o1.points - o2.points;
         }
     }
 
     private static class GamesPlayedComparator implements Comparator<PlayerStanding> {
         @Override
         public int compare(PlayerStanding o1, PlayerStanding o2) {
-            return o1.getGamesPlayed() - o2.getGamesPlayed();
+            return o1.gamesPlayed - o2.gamesPlayed;
         }
     }
 
     private static class OpponentsWinComparator implements Comparator<PlayerStanding> {
         @Override
         public int compare(PlayerStanding o1, PlayerStanding o2) {
-            final float diff = o1.getOpponentWin() - o2.getOpponentWin();
+            final float diff = o1.opponentWinRate - o2.opponentWinRate;
             if (diff < 0) {
                 return -1;
             }

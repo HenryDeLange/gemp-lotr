@@ -6,17 +6,26 @@ import java.io.File;
 import java.util.Map;
 
 public interface ResponseWriter {
-    public void writeError(int status);
-    public void writeError(int status, Map<String, String> headers);
+    void writeError(int status);
+    void writeError(int status, Map<String, String> headers);
 
-    public void writeFile(File file, Map<String, String> headers);
+    void writeFile(File file, Map<String, String> headers);
 
-    public void writeHtmlResponse(String html);
-    public void writeJsonResponse(String html);
+    void writeHtmlResponse(String html);
+    void writeJsonResponse(String json);
 
-    public void writeByteResponse(byte[] bytes, Map<? extends CharSequence, String> headers);
+    /**
+     * A JSON body under a status other than 200, for the endpoints whose contract gives errors a readable body
+     * (writeError sends an empty body and puts the message in a header).
+     */
+    void writeJsonResponse(int status, String json);
 
-    public void writeXmlResponse(Document document);
+    void writeByteResponse(byte[] bytes, Map<? extends CharSequence, String> headers);
 
-    public void writeXmlResponse(Document document, Map<? extends CharSequence, String> addHeaders);
+    void sendOK();
+    void sendXmlOK();
+    void sendJsonOK();
+    void writeXmlResponse(Document document);
+
+    void writeXmlResponse(Document document, Map<? extends CharSequence, String> addHeaders);
 }

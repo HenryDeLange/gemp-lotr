@@ -1,12 +1,10 @@
 package com.gempukku.lotro.logic.decisions;
 
-public abstract class IntegerAwaitingDecision extends AbstractAwaitingDecision {
-    private Integer _min;
-    private Integer _max;
+import com.alibaba.fastjson2.JSONObject;
 
-    public IntegerAwaitingDecision(int id, String text) {
-        this(id, text, null);
-    }
+public abstract class IntegerAwaitingDecision extends AbstractAwaitingDecision {
+    private final Integer _min;
+    private final Integer _max;
 
     public IntegerAwaitingDecision(int id, String text, Integer min) {
         this(id, text, min, null);
@@ -28,10 +26,6 @@ public abstract class IntegerAwaitingDecision extends AbstractAwaitingDecision {
             setParam("defaultValue", defaultValue.toString());
     }
 
-    public void setDefaultValue(int defaultValue) {
-        setParam("defaultValue", String.valueOf(defaultValue));
-    }
-
     protected int getValidatedResult(String result) throws DecisionResultInvalidException {
         try {
             int value = Integer.parseInt(result);
@@ -44,5 +38,27 @@ public abstract class IntegerAwaitingDecision extends AbstractAwaitingDecision {
         } catch (NumberFormatException exp) {
             throw new DecisionResultInvalidException();
         }
+    }
+
+    @Override
+    public JSONObject toJson() {
+        JSONObject obj = new JSONObject();
+        obj.put("type", "IntegerAwaitingDecision");
+        obj.put("id", getAwaitingDecisionId());
+        obj.put("text", getText());
+        if (_min != null)
+            obj.put("min", _min);
+        if (_max != null)
+            obj.put("max", _max);
+        return obj;
+    }
+
+    public static IntegerAwaitingDecision fromJson(JSONObject obj) {
+        return new IntegerAwaitingDecision(obj.getInteger("id"), obj.getString("text"), obj.getInteger("min"), obj.getInteger("max")) {
+            @Override
+            public void decisionMade(String result) throws DecisionResultInvalidException {
+                throw new UnsupportedOperationException("Not implemented in training context");
+            }
+        };
     }
 }

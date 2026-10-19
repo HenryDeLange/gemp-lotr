@@ -10,11 +10,11 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class ShuffleCardsFromHandIntoDeckEffect extends AbstractEffect {
-    private PhysicalCard _source;
-    private String _playerDeck;
-    private Collection<PhysicalCard> _cards;
+    private final PhysicalCard _source;
+    private final String _playerDeck;
+    private final Collection<? extends PhysicalCard> _cards;
 
-    public ShuffleCardsFromHandIntoDeckEffect(PhysicalCard source, String playerDeck, Collection<PhysicalCard> cards) {
+    public ShuffleCardsFromHandIntoDeckEffect(PhysicalCard source, String playerDeck, Collection<? extends PhysicalCard> cards) {
         _source = source;
         _playerDeck = playerDeck;
         _cards = cards;
@@ -42,7 +42,7 @@ public class ShuffleCardsFromHandIntoDeckEffect extends AbstractEffect {
 
     @Override
     protected FullEffectResult playEffectReturningResult(LotroGame game) {
-        Set<PhysicalCard> toShuffleIn = new HashSet<PhysicalCard>();
+        Set<PhysicalCard> toShuffleIn = new HashSet<>();
         for (PhysicalCard card : _cards) {
             if (card.getZone() == Zone.HAND)
                 toShuffleIn.add(card);
@@ -53,7 +53,7 @@ public class ShuffleCardsFromHandIntoDeckEffect extends AbstractEffect {
 
             game.getGameState().shuffleCardsIntoDeck(toShuffleIn, _playerDeck);
 
-            game.getGameState().sendMessage(getAppendedNames(toShuffleIn) + " shuffled cards from hand into " + _playerDeck + " deck");
+            game.getGameState().sendMessage(getAppendedNames(toShuffleIn) + " shuffled cards from hand into " + _playerDeck + "'s deck");
         }
 
         return new FullEffectResult(toShuffleIn.size() == _cards.size());

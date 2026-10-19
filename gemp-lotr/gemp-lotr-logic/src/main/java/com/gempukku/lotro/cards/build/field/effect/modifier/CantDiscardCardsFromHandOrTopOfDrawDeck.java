@@ -8,17 +8,17 @@ import org.json.simple.JSONObject;
 public class CantDiscardCardsFromHandOrTopOfDrawDeck implements ModifierSourceProducer {
     @Override
     public ModifierSource getModifierSource(JSONObject object, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
-        FieldUtils.validateAllowedFields(object, "condition", "filter");
+        FieldUtils.validateAllowedFields(object, "requires", "filter");
 
         final String filter = FieldUtils.getString(object.get("filter"), "filter");
-        final JSONObject[] conditionArray = FieldUtils.getObjectArray(object.get("condition"), "condition");
+        final JSONObject[] conditionArray = FieldUtils.getObjectArray(object.get("requires"), "requires");
 
         final FilterableSource filterableSource = environment.getFilterFactory().generateFilter(filter, environment);
         final Requirement[] requirements = environment.getRequirementFactory().getRequirements(conditionArray, environment);
 
         return actionContext ->
                 new CantDiscardCardsFromHandOrTopOfDeckModifier(actionContext.getSource(),
-                        new RequirementCondition(requirements, actionContext),
+                        RequirementCondition.createCondition(requirements, actionContext),
                         actionContext.getPerformingPlayer(),
                         filterableSource.getFilterable(actionContext));
     }

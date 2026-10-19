@@ -1,28 +1,31 @@
 package com.gempukku.lotro.game.packs;
 
+import com.gempukku.lotro.common.JSONDefs;
+
 import java.util.*;
 
 public class DefaultSetDefinition implements SetDefinition {
-    private List<String> _tengwarCards = new LinkedList<String>();
-    private Map<String, List<String>> _rarityList = new HashMap<String, List<String>>();
-    private Map<String, String> _cardsRarity = new LinkedHashMap<String, String>();
-    private String _setId;
-    private String _setName;
-    private Set<String> _flags;
+    private final List<String> _tengwarCards = new LinkedList<>();
+    private final Map<String, List<String>> _rarityList = new HashMap<>();
+    private final Map<String, String> _cardsRarity = new LinkedHashMap<>();
 
-    public DefaultSetDefinition(String setId, String setName, Set<String> flags) {
-        _setId = setId;
-        _setName = setName;
-        _flags = flags;
+    public final String ID;
+    public final String Name;
+    public final boolean IsDecipherSet;
+    public final boolean Merchantable;
+    public final boolean NeedsLoading;
+
+    public DefaultSetDefinition(JSONDefs.Set setdef) {
+        ID = String.valueOf(setdef.setId);
+        Name = setdef.setName;
+        IsDecipherSet = setdef.originalSet;
+        Merchantable = setdef.merchantable;;
+        NeedsLoading = setdef.needsLoading;;
     }
 
     public void addCard(String blueprintId, String rarity) {
         _cardsRarity.put(blueprintId, rarity);
-        List<String> cardsOfRarity = _rarityList.get(rarity);
-        if (cardsOfRarity == null) {
-            cardsOfRarity = new LinkedList<String>();
-            _rarityList.put(rarity, cardsOfRarity);
-        }
+        var cardsOfRarity = _rarityList.computeIfAbsent(rarity, k -> new LinkedList<>());
         cardsOfRarity.add(blueprintId);
     }
 
@@ -32,18 +35,20 @@ public class DefaultSetDefinition implements SetDefinition {
 
     @Override
     public String getSetName() {
-        return _setName;
+        return Name;
     }
 
     @Override
     public String getSetId() {
-        return _setId;
+        return ID;
     }
 
     @Override
-    public boolean hasFlag(String flag) {
-        return _flags.contains(flag);
-    }
+    public boolean IsDecipherSet() { return IsDecipherSet; };
+    @Override
+    public boolean Merchantable() { return Merchantable; };
+    @Override
+    public boolean NeedsLoading() { return NeedsLoading; };
 
     @Override
     public List<String> getCardsOfRarity(String rarity) {

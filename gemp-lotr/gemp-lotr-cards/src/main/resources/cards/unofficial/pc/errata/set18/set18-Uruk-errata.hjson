@@ -1,0 +1,53 @@
+{
+	68_115: {
+		cardInfo: {
+			//id: 8_115.1
+			revision: 1
+			image: errata/LOTR-EN18E115.1.jpg
+			collInfo: 18R115
+			rarity: R
+		}
+		title: Final Triumph
+		culture: uruk-hai
+		twilight: 4
+		type: event
+		timeword: skirmish
+		effects: {
+			type: event
+			requires: {
+				type: CanSpot
+				filter: your,Uruk-hai,InSkirmishAgainst(companion)
+			}
+			effect: [
+				{
+					type: setFPStrengthOverride
+					amount: {
+						type: forEachVitality
+					}
+				}
+				{
+					type: setShadowStrengthOverride
+					amount: {
+						type: forEachVitality
+					}
+				}
+				{
+					type: addModifier
+					modifier: {
+						type: CantBeOverwhelmed
+						filter: InSkirmish
+					}
+				}
+			]
+		}
+		gametext: Spot your Uruk-hai skirmishing a companion to use vitality to resolve that skirmish instead of strength.  Characters in this skirmish cannot be overwhelmed.
+		lore: Now left alone, it stopped before its foe. With a snarl it pulled back the bow, ready to deliver the last blow.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

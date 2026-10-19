@@ -1,0 +1,74 @@
+{
+	59_4: {
+		cardInfo: {
+			//id: 9_4.1
+			parent: 9_4
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN09E004.1_card.jpg
+			collInfo: 9R+4
+			rarity: R+
+		}
+		title: Gimli
+		subtitle: Bearer of Grudges
+		unique: true
+		culture: dwarven
+		twilight: 2
+		type: companion
+		race: dwarf
+		strength: 6
+		vitality: 3
+		resistance: 5
+		canStartWithRing: true
+		keyword: [
+			damage+1
+		]
+		effects: [
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: startOfPhase
+					phase: skirmish
+				}
+				requires: {
+					type: canSpot
+					filter: self,ring bearer,inSkirmish
+				}
+				effect: {
+					type: choice
+					texts: [
+						Add 2 burdens
+						Add 2 threats
+					]
+					effects: [
+						{
+							type: addBurdens
+							amount: 2
+						}
+						{
+							type: addThreats
+							amount: 2
+						}
+					]
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: modifyResistance
+					filter: self
+					amount: {
+						type: forEachKeyword
+						filter: self
+						keyword: damage
+					}
+				}
+			}
+		]
+		gametext: <b>Damage +1</b>.<br>While Gimli is the Ring-bearer, at the start of each skirmish involving him, add 2 burdens or 2 threats.<br>While Gimli is damage +X, he is resistance +X.
+		lore: "'Never trust an Elf.'"
+		promotext: ""
+	}
+}

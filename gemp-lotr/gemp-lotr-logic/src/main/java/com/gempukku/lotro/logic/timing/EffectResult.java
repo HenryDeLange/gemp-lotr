@@ -6,18 +6,19 @@ import java.util.HashSet;
 import java.util.Set;
 
 public abstract class EffectResult {
-    private Set<String> _optionalTriggersUsed = new HashSet<String>();
+    private final Set<String> _optionalTriggersUsed = new HashSet<>();
 
     public enum Type {
         // Translated to new format
         ANY_NUMBER_KILLED, FOR_EACH_KILLED, FOR_EACH_HEALED,
         FOR_EACH_WOUNDED, FOR_EACH_EXERTED, FOR_EACH_DISCARDED_FROM_PLAY,
-        FOR_EACH_RETURNED_TO_HAND,
+        FOR_EACH_RETURNED_TO_HAND, FOR_EACH_HINDERED, FOR_EACH_RESTORED,
 
         FOR_EACH_DISCARDED_FROM_HAND,
         FOR_EACH_DISCARDED_FROM_DECK,
 
         FREE_PEOPLE_PLAYER_STARTS_ASSIGNING,
+        FREE_PEOPLE_PLAYER_DECIDED_IF_MOVING,
         SKIRMISH_ABOUT_TO_END,
         THREAT_WOUND_TRIGGER,
 
@@ -45,9 +46,9 @@ public abstract class EffectResult {
 
         PUT_ON_THE_ONE_RING,
 
-        REMOVE_BURDEN, ADD_BURDEN, ADD_THREAT,
+        REMOVE_BURDEN, ADD_BURDEN, ADD_THREAT, ADD_TWILIGHT, ADD_CULTURE_TOKEN, REMOVE_CULTURE_TOKEN,
 
-        FOR_EACH_REVEALED_FROM_HAND, FOR_EACH_REVEALED_FROM_TOP_OF_DECK,
+        FOR_EACH_REVEALED_FROM_HAND, FOR_EACH_REVEALED_FROM_DECK,
 
         SKIRMISH_FINISHED_WITH_OVERWHELM, SKIRMISH_FINISHED_NORMALLY,
 
@@ -55,14 +56,14 @@ public abstract class EffectResult {
 
         ASSIGNED_AGAINST, ASSIGNED_TO_SKIRMISH, CARD_TRANSFERRED,
 
-        REPLACE_SITE, TAKE_CONTROL_OF_SITE,
+        REPLACE_SITE, CONTROL_SITE, LIBERATE_SITE,
 
         FINISHED_PLAYING_FELLOWSHIP,
 
-        TAKE_OFF_THE_ONE_RING
+        TAKE_OFF_THE_ONE_RING, NEW_RING_BEARER
     }
 
-    private Type _type;
+    private final Type _type;
 
     protected EffectResult(Type type) {
         _type = type;

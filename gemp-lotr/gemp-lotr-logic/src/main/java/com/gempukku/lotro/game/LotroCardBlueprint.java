@@ -7,6 +7,9 @@ import com.gempukku.lotro.logic.modifiers.Modifier;
 import com.gempukku.lotro.logic.timing.Action;
 import com.gempukku.lotro.logic.timing.Effect;
 import com.gempukku.lotro.logic.timing.EffectResult;
+import com.gempukku.lotro.logic.timing.results.DiscardCardsFromPlayResult;
+import com.gempukku.lotro.logic.timing.results.HinderedResult;
+import org.json.simple.JSONObject;
 
 import java.util.List;
 import java.util.Set;
@@ -16,6 +19,19 @@ public interface LotroCardBlueprint {
         LEFT, RIGHT
     }
 
+    JSONObject getJsonDefinition();
+
+    default LotroCardBlueprint getParent() {
+        return this;
+    }
+
+    String getId();
+
+    boolean canStartWithRing();
+
+    //This isn't ideal, but there's 2,000 java cards that already exist.
+    // Adding the argument to their constructors would be a chore.
+    void setId(String id);
     Side getSide();
 
     CardType getCardType();
@@ -26,15 +42,29 @@ public interface LotroCardBlueprint {
 
     boolean isUnique();
 
+    int getUniqueRestriction();
+
     String getTitle();
+    String getSanitizedTitle();
+    String getSanitizedSubtitle();
+    String getFullName();
+    String getSanitizedFullName();
 
     String getSubtitle();
+    String getGameText();
+    String getFormattedGameText();
+    default String getHelpText() { return null; }
+    String getLore();
+    String getPromoText();
+    CardInfo getCardInfo();
 
     Signet getSignet();
 
     boolean hasKeyword(Keyword keyword);
 
     int getKeywordCount(Keyword keyword);
+
+    boolean hasTimeword(Timeword timeword);
 
     Filterable getValidTargetFilter(String playerId, LotroGame game, PhysicalCard self);
 
@@ -48,9 +78,12 @@ public interface LotroCardBlueprint {
 
     int getResistance();
 
-    int[] getAllyHomeSiteNumbers();
+    default int getIntensity() { return 0; }
 
-    SitesBlock getAllyHomeSiteBlock();
+    default DeckValidationContext getDeckBuildingOverrides() { return null; }
+
+    Set<AllyHome> getAllyHomes();
+    boolean hasAllyHome(AllyHome home);
 
     PlayEventAction getPlayEventCardAction(String playerId, LotroGame game, PhysicalCard self);
 
@@ -61,12 +94,15 @@ public interface LotroCardBlueprint {
     List<? extends Modifier> getInDiscardModifiers(LotroGame game, PhysicalCard self);
 
     List<? extends Modifier> getControlledSiteModifiers(LotroGame game, PhysicalCard self);
+    List<? extends Modifier> getPermanentSiteModifiers(LotroGame game, PhysicalCard self);
 
     boolean checkPlayRequirements(LotroGame game, PhysicalCard self);
 
     List<? extends Action> getPhaseActionsInHand(String playerId, LotroGame game, PhysicalCard self);
 
     List<? extends Action> getPhaseActionsFromDiscard(String playerId, LotroGame game, PhysicalCard self);
+
+    List<? extends Action> getPhaseActionsFromDrawDeck(String playerId, LotroGame game, PhysicalCard self);
 
     List<? extends ActivateCardAction> getPhaseActionsInPlay(String playerId, LotroGame game, PhysicalCard self);
 
@@ -85,6 +121,8 @@ public interface LotroCardBlueprint {
     List<? extends ActivateCardAction> getOptionalInPlayBeforeActions(String playerId, LotroGame game, Effect effect, PhysicalCard self);
 
     List<? extends ActivateCardAction> getOptionalInPlayAfterActions(String playerId, LotroGame game, EffectResult effectResult, PhysicalCard self);
+    List<? extends ActivateCardAction> getOptionalInDiscardBeforeActions(String playerId, LotroGame game, Effect effect, PhysicalCard self);
+    List<? extends ActivateCardAction> getOptionalInDiscardAfterActions(String playerId, LotroGame game, EffectResult effectResult, PhysicalCard self);
 
 
     List<PlayEventAction> getPlayResponseEventAfterActions(String playerId, LotroGame game, EffectResult effectResult, PhysicalCard self);
@@ -95,9 +133,13 @@ public interface LotroCardBlueprint {
     List<OptionalTriggerAction> getOptionalInHandAfterTriggers(String playerId, LotroGame game, EffectResult effectResult, PhysicalCard self);
 
 
-    RequiredTriggerAction getDiscardedFromPlayRequiredTrigger(LotroGame game, PhysicalCard self);
+    RequiredTriggerAction getDiscardedFromPlayRequiredTrigger(LotroGame game, DiscardCardsFromPlayResult result);
 
-    OptionalTriggerAction getDiscardedFromPlayOptionalTrigger(String playerId, LotroGame game, PhysicalCard self);
+    OptionalTriggerAction getDiscardedFromPlayOptionalTrigger(LotroGame game, DiscardCardsFromPlayResult result);
+
+    RequiredTriggerAction getHinderedFromPlayRequiredTrigger(LotroGame game, HinderedResult result);
+
+    OptionalTriggerAction getHinderedFromPlayOptionalTrigger(LotroGame game, HinderedResult result);
 
 
     RequiredTriggerAction getKilledRequiredTrigger(LotroGame game, PhysicalCard self);
@@ -127,4 +169,9 @@ public interface LotroCardBlueprint {
     void appendAidCosts(LotroGame game, CostToEffectAction action, PhysicalCard self);
 
     boolean skipUniquenessCheck();
+
+    default Result validatePreGameDeckCheck(List<PhysicalCardImpl> freeps, List<PhysicalCardImpl> shadow,
+            List<PhysicalCardImpl> sites, PhysicalCardImpl rb, PhysicalCardImpl ring, PhysicalCardImpl map) {
+        return new Result(true, null);
+    }
 }

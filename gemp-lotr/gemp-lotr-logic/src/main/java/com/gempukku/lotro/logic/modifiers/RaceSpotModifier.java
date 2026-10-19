@@ -6,10 +6,10 @@ import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.LotroGame;
 
 public class RaceSpotModifier extends AbstractModifier {
-    private Race _race;
+    private final Race _race;
 
-    public RaceSpotModifier(PhysicalCard source, Race race) {
-        super(source, "Spotting modifier", null, ModifierEffect.SPOT_MODIFIER);
+    public RaceSpotModifier(PhysicalCard source, Condition condition, Race race) {
+        super(source, "Spotting modifier", null, condition, ModifierEffect.SPOT_MODIFIER);
         _race = race;
     }
 

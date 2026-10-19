@@ -13,7 +13,7 @@ public class RemoveThreatsToDiscountEffect extends AbstractSubActionEffect imple
     private int _minimalThreatsToRemove;
     private int _threatsRemoved;
 
-    private Action _action;
+    private final Action _action;
 
     public RemoveThreatsToDiscountEffect(Action action) {
         _action = action;
@@ -60,6 +60,7 @@ public class RemoveThreatsToDiscountEffect extends AbstractSubActionEffect imple
                                     new RemoveThreatsEffect(_action.getActionSource(), threats));
                             processSubAction(game, subAction);
                             _threatsRemoved = threats;
+                            discountPaidCallback(threats);
                         }
                     }
                 }
@@ -78,4 +79,6 @@ public class RemoveThreatsToDiscountEffect extends AbstractSubActionEffect imple
     public int getDiscountPaidFor() {
         return _threatsRemoved;
     }
+
+    protected void discountPaidCallback(int paid) {  }
 }

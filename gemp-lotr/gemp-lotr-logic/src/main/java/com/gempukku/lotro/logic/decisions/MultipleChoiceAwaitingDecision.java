@@ -1,7 +1,9 @@
 package com.gempukku.lotro.logic.decisions;
 
+import com.alibaba.fastjson2.JSONObject;
+
 public abstract class MultipleChoiceAwaitingDecision extends AbstractAwaitingDecision {
-    private String[] _possibleResults;
+    private final String[] _possibleResults;
 
     public MultipleChoiceAwaitingDecision(int id, String text, String[] possibleResults) {
         super(id, text, AwaitingDecisionType.MULTIPLE_CHOICE);
@@ -22,6 +24,30 @@ public abstract class MultipleChoiceAwaitingDecision extends AbstractAwaitingDec
         } catch (NumberFormatException exp) {
             throw new DecisionResultInvalidException("Unknown response number");
         }
+        // A stale or duplicated answer (decision ids are reused, so a late answer to an earlier decision can pass
+        // the id check) must be rejected as an invalid answer rather than crashing the game with an
+        // ArrayIndexOutOfBoundsException (#1023).
+        if (index < 0 || index >= _possibleResults.length)
+            throw new DecisionResultInvalidException("Unknown response number");
         validDecisionMade(index, _possibleResults[index]);
+    }
+
+    @Override
+    public JSONObject toJson() {
+        JSONObject obj = new JSONObject();
+        obj.put("type", "MultipleChoiceAwaitingDecision");
+        obj.put("id", getAwaitingDecisionId());
+        obj.put("text", getText());
+        obj.put("results", getDecisionParameters().get("results"));
+        return obj;
+    }
+
+    public static MultipleChoiceAwaitingDecision fromJson(JSONObject obj) {
+        return new MultipleChoiceAwaitingDecision(obj.getInteger("id"), obj.getString("text"), obj.getObject("results", String[].class)) {
+            @Override
+            protected void validDecisionMade(int index, String result) {
+                throw new UnsupportedOperationException("Not implemented in training context");
+            }
+        };
     }
 }

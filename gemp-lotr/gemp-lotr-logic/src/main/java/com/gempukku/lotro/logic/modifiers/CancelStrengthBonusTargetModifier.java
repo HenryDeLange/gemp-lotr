@@ -7,15 +7,11 @@ import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.LotroGame;
 
 public class CancelStrengthBonusTargetModifier extends AbstractModifier {
-    private Filter _sourceFilter;
-
-    public CancelStrengthBonusTargetModifier(PhysicalCard source, Filterable affectFilter, Filterable sourceFilter) {
-        this(source, null, affectFilter, sourceFilter);
-    }
+    private final Filter _sourceFilter;
 
     public CancelStrengthBonusTargetModifier(PhysicalCard source, Condition condition, Filterable affectFilter, Filterable sourceFilter) {
-        super(source, "Has some strength bonuses cancelled", affectFilter, condition, ModifierEffect.STRENGTH_BONUS_TARGET_MODIFIER);
-        _sourceFilter = Filters.and(sourceFilter);
+        super(source, "Has some strength bonuses cancelled", affectFilter, condition, ModifierEffect.STRENGTH_BONUS_MODIFIER);
+        _sourceFilter = Filters.changeToFilter(sourceFilter);
     }
 
     @Override

@@ -1,0 +1,77 @@
+{
+
+	60_52: {
+		cardInfo: {
+			//id: 0_52.1
+			revision: 1
+			image: errata/LOTR-EN10E052.1_card.jpg
+			collInfo: 10C52
+			rarity: C
+		}
+		title: Under Foot
+		unique: true
+		side: Shadow
+		culture: Raider
+		twilight: 1
+		type: Condition
+		keyword: support area
+		effects: [
+			{
+				type: activated
+				phase: shadow
+				limitPerPhase: 1
+				requires: [
+					{
+						type: HaveInitiative
+						side: shadow
+					}
+					{
+						type: CanSpot
+						filter: culture(raider),man
+					}
+				]
+				effect: [
+					{
+						type: ReconcileHand
+						player: you
+					}
+					{
+						type: AddTrigger
+						optional: false
+						until: end(Regroup)
+						trigger: {
+							type: StartOfPhase
+							phase: regroup
+						}
+						effect: {
+							type: discard
+							select: self
+						}
+					}
+				]
+			},
+			{
+				type: activated
+				phase: skirmish
+				cost: {
+					type: discard
+					select: self
+				}
+				effect: {
+					type: modifyStrength
+					select: choose(culture(raider),man)
+					amount: 2
+				}
+			}
+		]
+		gametext: <b>Shadow:</b> If you have initiative, spot a [raider] Man to reconcile your hand (limit once per phase). At the start of the regroup phase, discard this condition. <br><b>Skirmish:</b> Discard this condition to make a [raider] Man strength +2.
+		lore: "'I make the earth shake, / As I tramp through the grass; / Trees crack as I pass.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

@@ -1,38 +1,38 @@
 package com.gempukku.lotro.tournament;
 
-import com.gempukku.lotro.DateUtils;
+import com.gempukku.lotro.common.DateUtils;
 import com.gempukku.lotro.collection.CollectionsManager;
-import com.gempukku.lotro.db.vo.CollectionType;
 
-import java.util.Date;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.time.Duration;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 
 public class RecurringScheduledQueue extends AbstractTournamentQueue implements TournamentQueue {
-    private static final long _signupTimeBeforeStart = 1000 * 60 * 60; // 60 minutes before start
+    private static final Duration _signupTimeBeforeStart = Duration.ofMinutes(60);
 
-    private long _repeatEvery;
-    private long _nextStart;
+    private final Duration _repeatEvery;
+    private ZonedDateTime _nextStart;
     private String _nextStartText;
 
-    private String _tournamentIdPrefix;
-    private String _tournamentQueueName;
+    private final int _minimumPlayers;
+    private final int _maximumPlayers;
 
-    private int _minimumPlayers;
-    private TournamentService _tournamentService;
+    public RecurringScheduledQueue(TournamentService tournamentService, String queueId, String queueName, TournamentInfo info, Duration repeatEvery,
+                                   TournamentQueueCallback tournamentQueueCallback, CollectionsManager collectionsManager) {
+        super(tournamentService, queueId, queueName, info, tournamentQueueCallback, collectionsManager, false);
+        _minimumPlayers = info._params.minimumPlayers;
+        _maximumPlayers = info._params.maximumPlayers;
 
-    public RecurringScheduledQueue(long originalStart, long repeatEvery, String tournamentIdPrefix,
-                                              String tournamentQueueName, int cost, boolean requiresDeck,
-                                              CollectionType collectionType,
-                                              TournamentService tournamentService, TournamentPrizes tournamentPrizes, PairingMechanism pairingMechanism, String format, int minimumPlayers) {
-        super(cost, requiresDeck, collectionType, tournamentPrizes, pairingMechanism, format);
         _repeatEvery = repeatEvery;
-        _tournamentIdPrefix = tournamentIdPrefix;
-        _tournamentQueueName = tournamentQueueName;
-        _tournamentService = tournamentService;
-        _minimumPlayers = minimumPlayers;
-        long number = (System.currentTimeMillis() - originalStart) / repeatEvery;
+        var sinceOriginal = Duration.between(info.StartTime, ZonedDateTime.now());
+        long intervals = (sinceOriginal.getSeconds() / repeatEvery.getSeconds()) + 1;
 
-        _nextStart = originalStart + (number + 1) * repeatEvery;
-        _nextStartText = DateUtils.formatDateWithHour(new Date(_nextStart));
+        _nextStart = info.StartTime.plus(intervals * repeatEvery.getSeconds(), ChronoUnit.SECONDS);
+        _nextStartText = DateUtils.FormatDateTime(_nextStart);
+
+        _tournamentInfo.StartTime = _nextStart;
     }
 
     @Override
@@ -47,36 +47,40 @@ public class RecurringScheduledQueue extends AbstractTournamentQueue implements 
 
     @Override
     public String getPairingDescription() {
-        return _pairingMechanism.getPlayOffSystem() + ", minimum players: " + _minimumPlayers;
+        return _tournamentInfo.PairingMechanism.getPlayOffSystem() + ", minimum players: " + _minimumPlayers;
     }
 
     @Override
     public boolean isJoinable() {
-        return System.currentTimeMillis() >= _nextStart - _signupTimeBeforeStart;
+        return ZonedDateTime.now().isAfter(_nextStart.minus(_signupTimeBeforeStart)) && (_maximumPlayers < 0 || _players.size() < _maximumPlayers);
     }
 
     @Override
-    public boolean process(TournamentQueueCallback tournamentQueueCallback, CollectionsManager collectionsManager) {
-        long now = System.currentTimeMillis();
-        if (now > _nextStart) {
+    protected String getJoinRefusal() {
+        var opens = _nextStart.minus(_signupTimeBeforeStart);
+        if (!ZonedDateTime.now().isAfter(opens))
+            return "Sign-up for the next " + getTournamentQueueName() + " opens at " + DateUtils.FormatDateTime(opens) + ".";
+        if (_maximumPlayers >= 0 && _players.size() >= _maximumPlayers)
+            return describeFull(_maximumPlayers);
+        return super.getJoinRefusal();
+    }
+
+    @Override
+    public boolean shouldBeDisplayedAsWaiting() {
+        // Display in waiting tables section 1 hour before start
+        return ZonedDateTime.now().isAfter(_nextStart.minus(_signupTimeBeforeStart));
+    }
+
+    @Override
+    public boolean process() throws SQLException, IOException {
+        if (ZonedDateTime.now().isAfter(_nextStart)) {
             if (_players.size() >= _minimumPlayers) {
-                String tournamentId = _tournamentIdPrefix+System.currentTimeMillis();
-                String tournamentName = _tournamentQueueName + " - " + DateUtils.getStringDateWithHour();
-
-                for (String player : _players)
-                    _tournamentService.addPlayer(tournamentId, player, _playerDecks.get(player));
-
-                Tournament tournament = _tournamentService.addTournament(tournamentId, null, tournamentName, _format, _collectionType, Tournament.Stage.PLAYING_GAMES,
-                        _pairingMechanism.getRegistryRepresentation(), _tournamentPrizes.getRegistryRepresentation(), new Date());
-                tournamentQueueCallback.createTournament(tournament);
-
-                _players.clear();
-                _playerDecks.clear();
+                startTournament();
             } else {
-                leaveAllPlayers(collectionsManager);
+                leaveAllPlayers();
             }
-            _nextStart+=_repeatEvery;
-            _nextStartText = DateUtils.formatDateWithHour(new Date(_nextStart));
+            _nextStart = _nextStart.plus(_repeatEvery);
+            _nextStartText = DateUtils.FormatDateTime(_nextStart);
         }
         return false;
     }

@@ -1,7 +1,7 @@
-FROM alpine
+FROM amazoncorretto:21-alpine-jdk
 
 RUN apk update; \
-	apk update --allow-untrusted --repository=https://dl-cdn.alpinelinux.org/alpine/latest-stable/community; \
+	apk update \
 	apk add --no-cache procps; \
 	apk add --no-cache net-tools; \
 	apk add --no-cache iputils; \
@@ -15,29 +15,27 @@ RUN apk update; \
 	apk add --no-cache freetype; \
 	apk add --no-cache fontconfig; \
 	apk add --no-cache git; \
-	apk add --no-cache nano; \
-	apk add --no-cache openjdk14-jdk --allow-untrusted --repository=https://dl-cdn.alpinelinux.org/alpine/latest-stable/community; 
+	# Telnet etc
+	#apk add --no-cache busybox-extras; \
+	apk add --no-cache nano; 
 		
 		
 		
 #####################################################################
 # The following is pulled from the official maven dockerfile:
-# https://github.com/carlossg/docker-maven/blob/26ba49149787c85b9c51222b47c00879b2a0afde/openjdk-14/Dockerfile
+# https://github.com/carlossg/docker-maven/blob/e545dcfa4d312e08330f4e07701763db3889db79/amazoncorretto-21/Dockerfile
 #####################################################################
 
-ARG MAVEN_VERSION=3.6.3
-ARG USER_HOME_DIR="/root"
-ARG SHA=c35a1803a6e70a126e80b2b3ae33eed961f83ed74d18fcd16909b2d44d7dada3203f1ffe726c17ef8dcca2dcaa9fca676987befeadc9b9f759967a8cb77181c0
-ARG BASE_URL=https://apache.osuosl.org/maven/maven-3/${MAVEN_VERSION}/binaries
-
-RUN mkdir -p /usr/share/maven /usr/share/maven/ref \
-  && curl -fsSkL -o /tmp/apache-maven.tar.gz ${BASE_URL}/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
-  && echo "${SHA}  /tmp/apache-maven.tar.gz" | sha512sum -c - \
-  && tar -xzf /tmp/apache-maven.tar.gz -C /usr/share/maven --strip-components=1 \
-  && rm -f /tmp/apache-maven.tar.gz \
-  && ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
-
 ENV MAVEN_HOME /usr/share/maven
+
+COPY --from=maven:3.9.6-eclipse-temurin-11 ${MAVEN_HOME} ${MAVEN_HOME}
+COPY --from=maven:3.9.6-eclipse-temurin-11 /usr/local/bin/mvn-entrypoint.sh /usr/local/bin/mvn-entrypoint.sh
+COPY --from=maven:3.9.6-eclipse-temurin-11 /usr/share/maven/ref/settings-docker.xml /usr/share/maven/ref/settings-docker.xml
+
+RUN ln -s ${MAVEN_HOME}/bin/mvn /usr/bin/mvn
+
+ARG MAVEN_VERSION=3.9.6
+ARG USER_HOME_DIR="/root"
 ENV MAVEN_CONFIG "$USER_HOME_DIR/.m2"
 
 # Enables the JRE remote debugging; perhaps comment this out in a production build
@@ -50,6 +48,7 @@ ENV MAVEN_CONFIG "$USER_HOME_DIR/.m2"
 RUN apk add --no-cache openrc; \
 	apk add --no-cache apache2
 	
-#RUN nohup java -jar /etc/gemp-lotr/gemp-lotr-async/target/web.jar &
-
+RUN touch /nohup.out
+	
+WORKDIR /etc/gemp-lotr
 

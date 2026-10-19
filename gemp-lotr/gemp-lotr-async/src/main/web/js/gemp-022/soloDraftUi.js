@@ -11,14 +11,14 @@ var GempLotrSoloDraftUI = Class.extend({
     picksCardGroup:null,
     draftedCardGroup:null,
 
-    leagueType:null,
+    eventId:null,
 
     init:function () {
         var that = this;
 
         this.comm = new GempLotrCommunication("/gemp-lotr-server", that.processError);
 
-        this.leagueType = getUrlParam("leagueType");
+        this.eventId = getUrlParam("eventId");
 
         this.topDiv = $("#topDiv");
         this.bottomDiv = $("#bottomDiv");
@@ -51,6 +51,15 @@ var GempLotrSoloDraftUI = Class.extend({
                 function (event) {
                     return that.dragStopCardFunction(event);
                 });
+        $("body")[0].addEventListener("contextmenu",
+            function (event) {
+                if(!that.clickCardFunction(event))
+                {
+                    event.preventDefault();
+                    return false;
+                }
+                return true;
+            });
 
         var width = $(window).width();
         var height = $(window).height();
@@ -81,7 +90,7 @@ var GempLotrSoloDraftUI = Class.extend({
 
     getDraftState:function () {
         var that = this;
-        this.comm.getDraft(this.leagueType,
+        this.comm.getDraft(this.eventId,
             function (xml) {
                 var root = xml.documentElement;
                 if (root.tagName == "availablePicks") {
@@ -93,14 +102,14 @@ var GempLotrSoloDraftUI = Class.extend({
                         var blueprintId = availablePick.getAttribute("blueprintId");
 
                         if (blueprintId != null) {
-                            var card = new Card(blueprintId, "picks", "deck", "player");
-                            var cardDiv = createCardDiv(card.imageUrl, null, card.isFoil(), false, false, card.hasErrata());
+                            var card = new Card(blueprintId, null, null, "picks", "deck", "player");
+                            var cardDiv = Card.CreateCardDiv(card.imageUrl, null, null, card.isFoil(), false, false, card.hasErrata(), false);
                             cardDiv.data("card", card);
                             cardDiv.data("choiceId", id);
                             that.picksDiv.append(cardDiv);
                         } else {
-                            var card = new Card("rules", "picks", "deck", "player");
-                            var cardDiv = createCardDiv(url, null, false, false, true, false);
+                            var card = new Card("rules", null, null, "picks", "deck", "player");
+                            var cardDiv = Card.CreateCardDiv(url, null, null, false, false, true, false, false);
                             cardDiv.data("card", card);
                             cardDiv.data("choiceId", id);
                             that.picksDiv.append(cardDiv);
@@ -114,7 +123,7 @@ var GempLotrSoloDraftUI = Class.extend({
                 }
             });
 
-        this.comm.getCollection(this.leagueType, "sort:cardType,culture,name", 0, 1000,
+        this.comm.getCollection(this.eventId, "sort:cardType,culture,name", 0, 1000,
             function (xml) {
                 var root = xml.documentElement;
                 if (root.tagName == "collection") {
@@ -124,8 +133,8 @@ var GempLotrSoloDraftUI = Class.extend({
                         var count = card.getAttribute("count");
                         var blueprintId = card.getAttribute("blueprintId");
                         for (var no = 0; no < count; no++) {
-                            var card = new Card(blueprintId, "drafted", "deck", "player");
-                            var cardDiv = createCardDiv(card.imageUrl, null, card.isFoil(), false, false, card.hasErrata());
+                            var card = new Card(blueprintId, null, null, "drafted", "deck", "player");
+                            var cardDiv = Card.CreateCardDiv(card.imageUrl, null, null, card.isFoil(), false, false, card.hasErrata(), false);
                             cardDiv.data("card", card);
                             that.draftedDiv.append(cardDiv);
                         }
@@ -150,14 +159,17 @@ var GempLotrSoloDraftUI = Class.extend({
 
         if (tar.hasClass("actionArea")) {
             var selectedCardElem = tar.closest(".card");
-            if (event.which == 1) {
+            var card = selectedCardElem.data("card");
+            debugger;
+            if (event.which >= 1) {
                 if (!this.successfulDrag) {
-                    if (event.shiftKey) {
+                    if (event.shiftKey || event.which > 1) {
                         this.displayCardInfo(selectedCardElem.data("card"));
+                        return false;
                     } else {
                         if (selectedCardElem.data("card").zone == "picks") {
                             var choiceId = selectedCardElem.data("choiceId");
-                            that.comm.makeDraftPick(that.leagueType, choiceId, function (xml) {
+                            that.comm.makeDraftPick(that.eventId, choiceId, function (xml) {
                                 var root = xml.documentElement;
                                 if (root.tagName == "pickResult") {
                                     var pickedCards = root.getElementsByTagName("pickedCard");
@@ -166,8 +178,8 @@ var GempLotrSoloDraftUI = Class.extend({
                                         var blueprintId = pickedCard.getAttribute("blueprintId");
                                         var count = pickedCard.getAttribute("count");
                                         for (var no = 0; no < count; no++) {
-                                            var card = new Card(blueprintId, "drafted", "deck", "player");
-                                            var cardDiv = createCardDiv(card.imageUrl, null, card.isFoil(), false, false, card.hasErrata());
+                                            var card = new Card(blueprintId, null, null, "drafted", "deck", "player");
+                                            var cardDiv = Card.CreateCardDiv(card.imageUrl, null, null, card.isFoil(), false, false, card.hasErrata(), false);
                                             cardDiv.data("card", card);
                                             that.draftedDiv.append(cardDiv);
                                         }
@@ -182,14 +194,14 @@ var GempLotrSoloDraftUI = Class.extend({
                                         var blueprintId = availablePick.getAttribute("blueprintId");
 
                                         if (blueprintId != null) {
-                                            var card = new Card(blueprintId, "picks", "deck", "player");
-                                            var cardDiv = createCardDiv(card.imageUrl, null, card.isFoil(), false, false, card.hasErrata());
+                                            var card = new Card(blueprintId, null, null, "picks", "deck", "player");
+                                            var cardDiv = Card.CreateCardDiv(card.imageUrl, null, null, card.isFoil(), false, false, card.hasErrata(), false);
                                             cardDiv.data("card", card);
                                             cardDiv.data("choiceId", id);
                                             that.picksDiv.append(cardDiv);
                                         } else {
-                                            var card = new Card("rules", "picks", "deck", "player");
-                                            var cardDiv = createCardDiv(url, null, false, false, true, false);
+                                            var card = new Card("rules", null, null, "picks", "deck", "player");
+                                            var cardDiv = Card.CreateCardDiv(url, null, null, false, false, true, false, false);
                                             cardDiv.data("card", card);
                                             cardDiv.data("choiceId", id);
                                             that.picksDiv.append(cardDiv);
@@ -251,7 +263,7 @@ var GempLotrSoloDraftUI = Class.extend({
     displayCardInfo:function (card) {
         this.infoDialog.html("");
         this.infoDialog.html("<div style='scroll: auto'></div>");
-        this.infoDialog.append(createFullCardDiv(card.imageUrl, card.foil, card.horizontal, card.isPack()));
+        this.infoDialog.append(Card.CreateFullCardDiv(card.imageUrl, null, card.foil, card.horizontal, card.isPack()));
         if (card.hasWikiInfo())
             this.infoDialog.append("<div><a href='" + card.getWikiLink() + "' target='_blank'>Wiki</a></div>");
         var windowWidth = $(window).width();

@@ -8,7 +8,7 @@ import java.util.Map;
 
 public class CollectionUtils {
     public static Map<String, Integer> getTotalCardCountForDeck(LotroDeck deck) {
-        Map<String, Integer> counts = new HashMap<String, Integer>();
+        Map<String, Integer> counts = new HashMap<>();
         String ring = deck.getRing();
         if (ring != null)
             incrementCardCount(counts, ring, 1);
@@ -17,13 +17,13 @@ public class CollectionUtils {
             incrementCardCount(counts, ringBearer, 1);
         for (String site : deck.getSites())
             incrementCardCount(counts, site, 1);
-        for (String adventureCard : deck.getAdventureCards())
+        for (String adventureCard : deck.getDrawDeckCards())
             incrementCardCount(counts, adventureCard, 1);
         return counts;
     }
 
     public static Map<String, Integer> getTotalCardCount(List<String> cards) {
-        Map<String, Integer> counts = new HashMap<String, Integer>();
+        Map<String, Integer> counts = new HashMap<>();
         for (String card : cards)
             incrementCardCount(counts, card, 1);
         return counts;

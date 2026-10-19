@@ -1,0 +1,99 @@
+{
+
+	57_332: {
+		cardInfo: {
+			//id: 7_332.1
+			parent: 7_332
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/57_332.jpg
+			collInfo: 7U332
+			rarity: U
+		}
+		title: Rohirrim Road
+		type: site
+		block: King
+		twilight: 0
+		site: 1
+		direction: left
+		effects: {
+			type: activated
+			phase: fellowship
+			cost: [
+				{
+					type: exert
+					count: 1
+					select: choose(culture(rohan),Man)
+				}
+			]
+			effect: {
+				type: AddModifier
+				modifier: {
+					type: ModifyCost
+					filter: or(condition,possession),side(shadow)
+					amount: 2
+				}
+				until: start(regroup)
+			}
+		}
+		gametext: <b>Fellowship:</b> Exert a [Rohan] Man to make the twilight cost of each Shadow condition and possession +2 until the regroup phase.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	57_359: {
+		cardInfo: {
+			//id: 7_359.1
+			parent: 7_359
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/57_359.jpg
+			collInfo: 7U359
+			rarity: U
+		}
+		title: Northern Ithilien
+		type: site
+		block: King
+		twilight: 8
+		site: 8
+		direction: right
+		effects: {
+			type: activated
+			phase: shadow
+			limitPerPhase: 1
+			cost: [
+				{
+					type: removeThreats
+					amount: 2
+				}
+				{
+					type: playCardFromDiscard
+					select: choose(name(Gollum))
+				}
+			]
+			effect: {
+				type: addBurdens
+				amount: 2
+			}
+		}
+		gametext: <b>Shadow:</b> Remove 2 threats and play Gollum from your<br> discard pile to add 2 burdens (limit once per phase).
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	
+}

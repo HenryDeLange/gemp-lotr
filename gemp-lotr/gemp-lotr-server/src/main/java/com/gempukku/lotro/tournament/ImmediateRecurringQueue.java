@@ -1,60 +1,59 @@
 package com.gempukku.lotro.tournament;
 
-import com.gempukku.lotro.DateUtils;
 import com.gempukku.lotro.collection.CollectionsManager;
-import com.gempukku.lotro.db.vo.CollectionType;
 
-import java.util.Date;
-
+// Made obsolete by PlayerMadeQueue -> those queues have no longer support in ui and won't be displayed if empty
 public class ImmediateRecurringQueue extends AbstractTournamentQueue implements TournamentQueue {
-    private String _tournamentQueueName;
-    private int _playerCap;
-    private TournamentService _tournamentService;
-    private String _tournamentIdPrefix;
+    private final int _playerCap;
+    private final int maxPlayers;
 
-    public ImmediateRecurringQueue(int cost, String format, CollectionType collectionType, String tournamentIdPrefix,
-                                           String tournamentQueueName, int playerCap, boolean requiresDeck,
-                                           TournamentService tournamentService, TournamentPrizes tournamentPrizes, PairingMechanism pairingMechanism) {
-        super(cost, requiresDeck, collectionType, tournamentPrizes, pairingMechanism, format);
-        _tournamentQueueName = tournamentQueueName;
-        _playerCap = playerCap;
-        _tournamentIdPrefix = tournamentIdPrefix;
-        _tournamentService = tournamentService;
+
+    public ImmediateRecurringQueue(TournamentService tournamentService, String queueId, String queueName, TournamentInfo info,
+                                   TournamentQueueCallback tournamentQueueCallback, CollectionsManager collectionsManager) {
+        this(tournamentService, queueId, queueName, info, false, -1, tournamentQueueCallback, collectionsManager);
     }
 
-    @Override
-    public String getTournamentQueueName() {
-        return _tournamentQueueName;
+    public ImmediateRecurringQueue(TournamentService tournamentService, String queueId, String queueName, TournamentInfo info, boolean startableEarly, int readyCheckTimeSecs,
+                                   TournamentQueueCallback tournamentQueueCallback, CollectionsManager collectionsManager) {
+        super(tournamentService, queueId, queueName, info, startableEarly, readyCheckTimeSecs, tournamentQueueCallback, collectionsManager, false);
+        _playerCap = info.Parameters().minimumPlayers;
+        maxPlayers = info.Parameters().maximumPlayers;
     }
 
     @Override
     public String getStartCondition() {
-        return "When "+_playerCap+" players join";
+        String playerLimit = "When " + _playerCap + " players join";
+        String orRequest = " or when start is requested";
+        if (isStartableEarly()) {
+            return playerLimit + orRequest;
+        } else {
+            return playerLimit;
+        }
     }
 
     @Override
-    public synchronized boolean process(TournamentQueueCallback tournamentQueueCallback, CollectionsManager collectionsManager) {
-        if (_players.size() >= _playerCap) {
-            String tournamentId = _tournamentIdPrefix + System.currentTimeMillis();
+    public synchronized boolean process() {
+        if (_players.size() < _playerCap)
+            return false;
 
-            String tournamentName = _tournamentQueueName + " - " + DateUtils.getStringDateWithHour();
-
-            for (int i=0; i<_playerCap; i++) {
-                String player = _players.poll();
-                _tournamentService.addPlayer(tournamentId, player, _playerDecks.get(player));
-                _playerDecks.remove(player);
-            }
-
-            Tournament tournament = _tournamentService.addTournament(tournamentId, null, tournamentName, _format, _collectionType, Tournament.Stage.PLAYING_GAMES, "singleElimination",
-                    _tournamentPrizes.getRegistryRepresentation(), new Date());
-
-            tournamentQueueCallback.createTournament(tournament);
-        }
+        startTournament();
         return false;
     }
 
     @Override
     public boolean isJoinable() {
-        return true;
+        return (maxPlayers < 0 || _players.size() < maxPlayers);
+    }
+
+    @Override
+    protected String getJoinRefusal() {
+        if (maxPlayers >= 0 && _players.size() >= maxPlayers)
+            return describeFull(maxPlayers);
+        return super.getJoinRefusal();
+    }
+
+    @Override
+    public boolean shouldBeDisplayedAsWaiting() {
+        return _players.size() > 0;
     }
 }

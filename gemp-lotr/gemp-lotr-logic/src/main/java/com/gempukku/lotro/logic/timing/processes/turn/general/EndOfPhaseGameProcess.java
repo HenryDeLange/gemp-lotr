@@ -11,8 +11,8 @@ import com.gempukku.lotro.logic.timing.processes.GameProcess;
 import com.gempukku.lotro.logic.timing.results.EndOfPhaseResult;
 
 public class EndOfPhaseGameProcess implements GameProcess {
-    private Phase _phase;
-    private GameProcess _followingGameProcess;
+    private final Phase _phase;
+    private final GameProcess _followingGameProcess;
 
     public EndOfPhaseGameProcess(Phase phase, GameProcess followingGameProcess) {
         _phase = phase;
@@ -41,6 +41,7 @@ public class EndOfPhaseGameProcess implements GameProcess {
                     public void playEffect(LotroGame game) {
                         ((ModifiersLogic) game.getModifiersEnvironment()).signalEndOfPhase(_phase);
                         ((DefaultActionsEnvironment) game.getActionsEnvironment()).signalEndOfPhase(_phase);
+                        game.getGameState().sendMessage("End of " + _phase + " phase.");
                     }
                 });
         game.getActionsEnvironment().addActionToStack(action);

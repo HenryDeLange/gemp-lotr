@@ -2,6 +2,7 @@ package com.gempukku.lotro.async.handler;
 
 import com.gempukku.lotro.async.HttpProcessingException;
 import com.gempukku.lotro.async.ResponseWriter;
+import com.gempukku.lotro.common.AppConfig;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
 
@@ -13,7 +14,11 @@ import java.util.Collections;
 import java.util.Map;
 
 public class WebRequestHandler implements UriRequestHandler {
-    private String _root;
+    private final String _root;
+
+    public WebRequestHandler() {
+        this(AppConfig.getWebPath());
+    }
 
     public WebRequestHandler(String root) {
         _root = root;
@@ -43,7 +48,7 @@ public class WebRequestHandler implements UriRequestHandler {
         if (clientHasCurrentVersion(request, etag))
             throw new HttpProcessingException(304);
 
-        responseWriter.writeFile(file, Collections.singletonMap(HttpHeaders.Names.ETAG, etag));
+        responseWriter.writeFile(file, Collections.singletonMap(HttpHeaderNames.ETAG.toString(), etag));
     }
 
     private boolean clientHasCurrentVersion(HttpRequest request, String etag) {

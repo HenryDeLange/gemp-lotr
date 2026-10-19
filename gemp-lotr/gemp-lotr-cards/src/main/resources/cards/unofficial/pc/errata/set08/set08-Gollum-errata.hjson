@@ -1,0 +1,44 @@
+{
+
+	58_24: {
+		cardInfo: {
+			//id: 8_24.1
+			parent: 8_24
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/58_24.jpg
+			collInfo: 8R24
+			rarity: R
+		}
+		title: Promise Keeping
+		unique: true
+		side: shadow
+		culture: gollum
+		twilight: 4
+		type: condition
+		keyword: support area
+		effects: {
+			type: Trigger
+			optional: false
+			trigger: {
+				type: takesWound
+				filter: companion,inSkirmishAgainst(culture(gollum),minion)
+				memorize: woundedCompanion
+			}
+			effect: {
+				type: exert
+				select: choose(companion)
+			}
+		}
+		gametext: Each time a companion skirmishing a [Gollum] minion takes a wound, exert a companion.
+		lore: "'And we'll save the Precious, as we promised.... Then we'll pay everyone back'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

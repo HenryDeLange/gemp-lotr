@@ -1,0 +1,143 @@
+{
+	
+	57_35: {
+		cardInfo: {
+			//id: 57_35.1
+			parent: 7_35
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN07E035.1_card.jpg
+			collInfo: 7U35
+			rarity: U
+		}
+		title: Fool's Hope
+		unique: false
+		side: Free Peoples
+		culture: Gandalf
+		twilight: 3
+		type: Event
+		timewords: Fellowship
+		effects: {
+			type: event
+			requires: {
+				type: canSpot
+				filter: name(Gandalf)
+			}
+			cost: {
+				type: discardFromHand
+				forced: false
+				count: any
+				memorize: discardedCards
+			},
+			effect: [
+				{
+					type: MemorizeNumber
+					amount: {
+						type: forEachInMemory
+						memory: discardedCards
+					}
+					memory: discardedCount
+				}
+				{
+					type: Choice
+					player: Shadow
+					texts: [
+						Discard {discardedCount} Shadow conditions
+						Make your opponent hinder {discardedCount} of your Shadow conditions
+					]
+					effects: [
+						{
+							type: Discard
+							player: Shadow
+							count: memory(discardedCount)
+							select: choose(side(Shadow),condition)
+						}
+						{
+							type: Hinder
+							player: Free Peoples
+							count: memory(discardedCount)
+							select: choose(side(Shadow),condition)
+						}
+					]
+				}
+			]
+		}
+		gametext: Spot Gandalf and discard X cards from hand to make an opponent choose to discard X Shadow conditions or make you hinder X Shadow conditions.
+		lore: "'There never was much hope....'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	57_49: {
+		cardInfo: {
+			//id: 7_49.1
+			parent: 7_49
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/57_49.jpg
+			collInfo: 7U49
+			rarity: U
+		}
+		title: Steadfast Champion
+		unique: true
+		culture: gandalf
+		twilight: 2
+		type: condition
+		target: name(gandalf)
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: addActivated
+					filter: minion
+					phase: assignment
+					text: Assign to Gandalf
+					effect: {
+						type: assignFpCharacterToSkirmish
+						fpCharacter: choose(name(gandalf))
+						minion: self
+					}
+				}
+			}
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: startOfPhase
+					phase: regroup
+				}
+				cost: {
+					type: discard
+					select: self
+				}
+				effect: [
+					{
+						type: discard
+						select: choose(minion)
+					}
+					{
+						type: heal
+						select: choose(companion)
+						times: 3
+					}
+				]
+			}
+		]
+		gametext: Bearer must be Gandalf.<br>Each minion gains this ability: "Assignment: Assign this minion to Gandalf."<br>At the start of the regroup phase, you may discard this condition to discard a minion and heal a companion 3 times.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

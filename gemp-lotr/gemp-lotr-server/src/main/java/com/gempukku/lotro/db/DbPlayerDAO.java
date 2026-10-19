@@ -1,5 +1,7 @@
 package com.gempukku.lotro.db;
 
+import com.gempukku.lotro.common.DBDefs;
+import com.gempukku.lotro.db.vo.CollectionType;
 import com.gempukku.lotro.game.Player;
 
 import java.security.MessageDigest;
@@ -11,12 +13,26 @@ import java.util.*;
 
 public class DbPlayerDAO implements PlayerDAO {
     private final String validLoginChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
-    private final String _selectPlayer = "select id, name, password, type, last_login_reward, banned_until, create_ip, last_ip from player";
+    private final String _selectPlayer = """
+        SELECT 
+            id, 
+            name, 
+            password, 
+            type, 
+            last_login_reward, 
+            banned_until, 
+            create_ip, 
+            last_ip 
+        FROM player
+        """;
 
-    private DbAccess _dbAccess;
 
-    public DbPlayerDAO(DbAccess dbAccess) {
+    private final DbAccess _dbAccess;
+    private final CollectionDAO _collectionDAO;
+
+    public DbPlayerDAO(DbAccess dbAccess, CollectionDAO colldao) {
         _dbAccess = dbAccess;
+        _collectionDAO = colldao;
     }
 
     @Override
@@ -64,7 +80,7 @@ public class DbPlayerDAO implements PlayerDAO {
                     nextParamIndex += 2;
                 }
                 try (ResultSet rs = statement.executeQuery()) {
-                    List<Player> players = new LinkedList<Player>();
+                    List<Player> players = new LinkedList<>();
                     while (rs.next())
                         players.add(getPlayerFromResultSet(rs));
                     return players;
@@ -74,13 +90,13 @@ public class DbPlayerDAO implements PlayerDAO {
     }
 
     @Override
-    public Set<String> getBannedUsernames() throws SQLException {
+    public Set<String> getBannedUsernames() {
         try {
             try (Connection connection = _dbAccess.getDataSource().getConnection()) {
                 try (PreparedStatement statement = connection.prepareStatement("SELECT name FROM player WHERE type = '' ORDER BY ID DESC LIMIT 50")) {
 
                     try (ResultSet resultSet = statement.executeQuery()) {
-                        TreeSet<String> users = new TreeSet<String>();
+                        TreeSet<String> users = new TreeSet<>();
                         while (resultSet.next()) {
                             users.add(resultSet.getString(1));
                         }
@@ -90,6 +106,30 @@ public class DbPlayerDAO implements PlayerDAO {
             }
         } catch (SQLException exp) {
             throw new RuntimeException("Unable to get banned users", exp);
+        }
+    }
+
+    @Override
+    public boolean resetUserPassword(String login) throws SQLException {
+        try {
+            var db = _dbAccess.openDB();
+
+            try (org.sql2o.Connection conn = db.beginTransaction()) {
+                String sql = """
+                                UPDATE player
+                                SET password = ''
+                                WHERE name = :login
+                            """;
+                conn.createQuery(sql)
+                        .addParameter("login", login)
+                        .executeUpdate();
+
+                conn.commit();
+
+                return conn.getResult() == 1;
+            }
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to reset password", ex);
         }
     }
 
@@ -125,43 +165,85 @@ public class DbPlayerDAO implements PlayerDAO {
     }
 
     @Override
-    public boolean addPlayerFlag(String login, String flag) throws SQLException {
-        try (Connection conn = _dbAccess.getDataSource().getConnection()) {
-            try (PreparedStatement statement = conn.prepareStatement("UPDATE player SET type = CONCAT(type, ?) WHERE name=? AND type NOT LIKE CONCAT('%', ?, '%');")) {
-                statement.setString(1, flag);
-                statement.setString(2, login);
-                statement.setString(3, flag);
-                return statement.executeUpdate() == 1;
+    public boolean addPlayerFlag(String login, Player.Type flag) throws SQLException {
+        try {
+            var db = _dbAccess.openDB();
+
+            try (org.sql2o.Connection conn = db.beginTransaction()) {
+                String sql = """
+                                UPDATE player
+                                SET type = CONCAT(type, :type)
+                                WHERE name= :login
+                                    AND type NOT LIKE CONCAT('%', :type, '%');
+                            """;
+                conn.createQuery(sql)
+                        .addParameter("login", login)
+                        .addParameter("type", flag.getValue())
+                        .executeUpdate();
+
+                conn.commit();
+                return conn.getResult() == 1;
             }
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to update player with playtester flag", ex);
         }
     }
 
     @Override
-    public boolean removePlayerFlag(String login, String flag) throws SQLException {
-        try (Connection conn = _dbAccess.getDataSource().getConnection()) {
-            try (PreparedStatement statement = conn.prepareStatement("UPDATE player SET type = REPLACE(type, ?, '') WHERE name=? AND type LIKE CONCAT('%', ?, '%');")) {
-                statement.setString(1, flag);
-                statement.setString(2, login);
-                statement.setString(3, flag);
-                return statement.executeUpdate() == 1;
+    public boolean removePlayerFlag(String login, Player.Type flag) throws SQLException {
+        try {
+            var db = _dbAccess.openDB();
+
+            try (org.sql2o.Connection conn = db.beginTransaction()) {
+                String sql = """
+                                UPDATE player
+                                SET type = REPLACE(type, :type, '')
+                                WHERE name= :login
+                                    AND type LIKE CONCAT('%', :type, '%');
+                            """;
+                conn.createQuery(sql)
+                        .addParameter("login", login)
+                        .addParameter("type", flag.getValue())
+                        .executeUpdate();
+
+                conn.commit();
+                return conn.getResult() == 1;
             }
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to update player to remove playtester flag", ex);
         }
     }
 
     @Override
     public Player loginUser(String login, String password) throws SQLException {
-        try (Connection conn = _dbAccess.getDataSource().getConnection()) {
-            try (PreparedStatement statement = conn.prepareStatement(_selectPlayer + " where name=? and password=?")) {
-                statement.setString(1, login);
-                statement.setString(2, encodePassword(password));
-                try (ResultSet rs = statement.executeQuery()) {
-                    if (rs.next()) {
-                        return getPlayerFromResultSet(rs);
-                    } else
-                        return null;
-                }
+
+        try {
+            var db = _dbAccess.openDB();
+
+            try (org.sql2o.Connection conn = db.open()) {
+                String sql = _selectPlayer +
+                        """
+                            WHERE name = :login
+                                AND (password = :password OR password = '')
+                        """;
+                List<DBDefs.Player> result = conn.createQuery(sql)
+                        .addParameter("login", login)
+                        .addParameter("password", encodePassword(password))
+                        .executeAndFetch(DBDefs.Player.class);
+
+                var def = result.stream().findFirst().orElse(null);
+                if(def == null)
+                    return null;
+
+                return new Player(def, doesPlayerHaveTrophies(def.id));
             }
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to retrieve login entries", ex);
         }
+    }
+
+    private boolean doesPlayerHaveTrophies(int playerId) {
+        return _collectionDAO.doesPlayerHaveCardsInCollection(playerId, CollectionType.TROPHY.getCode());
     }
 
     private Player getPlayerFromResultSet(ResultSet rs) throws SQLException {
@@ -182,7 +264,9 @@ public class DbPlayerDAO implements PlayerDAO {
         String createIp = rs.getString(7);
         String lastIp = rs.getString(8);
 
-        return new Player(id, name, password, type, lastLoginReward, bannedUntil, createIp, lastIp);
+        boolean hasTrophies = doesPlayerHaveTrophies(id);
+
+        return new Player(id, name, password, type, lastLoginReward, bannedUntil, createIp, lastIp, hasTrophies);
     }
 
     @Override
@@ -214,25 +298,96 @@ public class DbPlayerDAO implements PlayerDAO {
     }
 
     @Override
-    public synchronized boolean registerUser(String login, String password, String remoteAddr) throws SQLException, LoginInvalidException {
-        boolean result = validateLogin(login);
-        if (!result)
+    public synchronized boolean registerUser(String login, String password, String remoteAddr) throws LoginInvalidException {
+        if (!validLoginName(login))
             return false;
 
-        try (Connection conn = _dbAccess.getDataSource().getConnection()) {
-            try (PreparedStatement statement = conn.prepareStatement("insert into player (name, password, type, create_ip) values (?, ?, ?, ?)")) {
-                statement.setString(1, login);
-                statement.setString(2, encodePassword(password));
-                statement.setString(3, "u");
-                statement.setString(4, remoteAddr);
-                statement.execute();
-                return true;
+        if(loginExists(login)) {
+            if(!needsPasswordReset(login))
+                return false;
+
+            //Login exists but has a blank/null password, meaning this user is actually performing a password reset
+            try {
+                var db = _dbAccess.openDB();
+
+                try (org.sql2o.Connection conn = db.beginTransaction()) {
+                    String sql = """
+                                UPDATE player
+                                SET password = :password
+                                WHERE name = :login
+                            """;
+                    conn.createQuery(sql)
+                            .addParameter("login", login)
+                            .addParameter("password", encodePassword(password))
+                            .executeUpdate();
+
+                    conn.commit();
+                    return conn.getResult() == 1;
+                }
+            } catch (Exception ex) {
+                throw new RuntimeException("Unable to update password", ex);
             }
+        }
+
+
+        try {
+            var db = _dbAccess.openDB();
+
+            try (org.sql2o.Connection conn = db.beginTransaction()) {
+                String sql = """
+                                INSERT INTO player (name, password, type, create_ip)
+                                VALUES (:login, :password, :type, :create_ip)
+                            """;
+                conn.createQuery(sql)
+                        .addParameter("login", login)
+                        .addParameter("password", encodePassword(password))
+                        .addParameter("type", Player.Type.USER.toString())
+                        .addParameter("create_ip", remoteAddr)
+                        .executeUpdate();
+
+                conn.commit();
+                return conn.getResult() == 1;
+            }
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to insert new user", ex);
         }
     }
 
-    private boolean validateLogin(String login) throws SQLException, LoginInvalidException {
-        if (login.length() < 2 || login.length() > 10)
+    @Override
+    public synchronized boolean registerBot(String login) throws LoginInvalidException {
+        if (!login.startsWith("~"))
+            throw new LoginInvalidException();
+
+        if (loginExists(login)) {
+            return false;
+        }
+
+
+        try {
+            var db = _dbAccess.openDB();
+
+            try (org.sql2o.Connection conn = db.beginTransaction()) {
+                String sql = """
+                                INSERT INTO player (name, password, type, create_ip)
+                                VALUES (:login, :password, :type, :create_ip)
+                            """;
+                conn.createQuery(sql)
+                        .addParameter("login", login)
+                        .addParameter("password", "")
+                        .addParameter("type", Player.Type.BOT.toString())
+                        .addParameter("create_ip", "")
+                        .executeUpdate();
+
+                conn.commit();
+                return conn.getResult() == 1;
+            }
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to insert new user", ex);
+        }
+    }
+
+    private boolean validLoginName(String login) throws LoginInvalidException {
+        if (login.length() < 2 || login.length() > 30)
             throw new LoginInvalidException();
         for (int i = 0; i < login.length(); i++) {
             char c = login.charAt(i);
@@ -244,16 +399,50 @@ public class DbPlayerDAO implements PlayerDAO {
         if (lowerCase.startsWith("admin") || lowerCase.startsWith("guest") || lowerCase.startsWith("system") || lowerCase.startsWith("bye"))
             return false;
 
-        try (Connection conn = _dbAccess.getDataSource().getConnection()) {
-            try (PreparedStatement statement = conn.prepareStatement("select id, name from player where LOWER(name)=?")) {
-                statement.setString(1, lowerCase);
-                try (ResultSet rs = statement.executeQuery()) {
-                    if (rs.next()) {
-                        return false;
-                    } else
-                        return true;
-                }
+        return true;
+    }
+
+    private boolean loginExists(String login) {
+
+        try {
+            var db = _dbAccess.openDB();
+
+            try (org.sql2o.Connection conn = db.open()) {
+                String sql = _selectPlayer +
+                        """
+                            WHERE LOWER(name) = :login
+                        """;
+                List<DBDefs.Player> result = conn.createQuery(sql)
+                        .addParameter("login", login.toLowerCase())
+                        .executeAndFetch(DBDefs.Player.class);
+
+                var def = result.stream().findFirst().orElse(null);
+                return def != null;
             }
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to confirm that login exists", ex);
+        }
+    }
+
+    private boolean needsPasswordReset(String login){
+        try {
+            var db = _dbAccess.openDB();
+
+            try (org.sql2o.Connection conn = db.open()) {
+                String sql = _selectPlayer +
+                        """
+                            WHERE LOWER(name) = :login
+                                AND (password = '' OR password IS NULL)
+                        """;
+                List<DBDefs.Player> result = conn.createQuery(sql)
+                        .addParameter("login", login.toLowerCase())
+                        .executeAndFetch(DBDefs.Player.class);
+
+                var def = result.stream().findFirst().orElse(null);
+				return def != null && !def.type.contains(Player.Type.BOT.getValue());
+			}
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to retrieve password reset entries", ex);
         }
     }
 
@@ -269,8 +458,8 @@ public class DbPlayerDAO implements PlayerDAO {
 
     private String convertToHexString(byte[] bytes) {
         StringBuilder hexString = new StringBuilder();
-        for (int i = 0; i < bytes.length; i++) {
-            String hex = Integer.toHexString(0xFF & bytes[i]);
+        for (byte aByte : bytes) {
+            String hex = Integer.toHexString(0xFF & aByte);
             if (hex.length() == 1)
                 hexString.append('0');
             hexString.append(hex);
@@ -316,6 +505,54 @@ public class DbPlayerDAO implements PlayerDAO {
                 statement.setString(2, login);
                 statement.execute();
             }
+        }
+    }
+
+    @Override
+    public List<DBDefs.Player> getAllPlayers() {
+
+        try {
+
+            var db = _dbAccess.openDB();
+
+            try (org.sql2o.Connection conn = db.open()) {
+                String sql = "SELECT id, name FROM player";
+                List<DBDefs.Player> result = conn.createQuery(sql)
+                        .executeAndFetch(DBDefs.Player.class);
+
+                return result;
+            }
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to retrieve players", ex);
+        }
+    }
+
+    @Override
+    public List<String> findPlayerNames(String fragment, int limit) {
+        if (fragment == null || fragment.isBlank() || limit <= 0)
+            return new LinkedList<>();
+        String lower = fragment.trim().toLowerCase();
+        // LIKE wildcards are common in player names ("_"), so escape them
+        String escaped = lower.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        try {
+            var db = _dbAccess.openDB();
+            try (org.sql2o.Connection conn = db.open()) {
+                String sql = """
+                        SELECT name
+                        FROM player
+                        WHERE LOWER(name) LIKE :contains
+                        ORDER BY (LOWER(name) = :exact) DESC, (LOWER(name) LIKE :prefix) DESC, CHAR_LENGTH(name), name
+                        LIMIT :maxRows
+                        """;
+                return conn.createQuery(sql)
+                        .addParameter("contains", "%" + escaped + "%")
+                        .addParameter("prefix", escaped + "%")
+                        .addParameter("exact", lower)
+                        .addParameter("maxRows", limit)
+                        .executeScalarList(String.class);
+            }
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to search player names", ex);
         }
     }
 }

@@ -1,6 +1,6 @@
 package com.gempukku.lotro.cards.unofficial.pc.errata.set19;
 
-import com.gempukku.lotro.cards.GenericCardTestHelper;
+import com.gempukku.lotro.framework.VirtualTableScenario;
 import com.gempukku.lotro.common.*;
 import com.gempukku.lotro.game.CardNotFoundException;
 import com.gempukku.lotro.game.PhysicalCardImpl;
@@ -9,16 +9,14 @@ import org.junit.Test;
 
 import java.util.HashMap;
 
-import static junit.framework.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class Card_19_038_ErrataTests
 {
-    protected GenericCardTestHelper GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
-        return new GenericCardTestHelper(
-                new HashMap<String, String>()
-                {{
+    protected VirtualTableScenario GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
+        return new VirtualTableScenario(
+                new HashMap<>() {{
                     put("nertea", "69_38");
                     put("boromir", "1_96");
                     put("aragorn", "1_89");
@@ -48,7 +46,7 @@ public class Card_19_038_ErrataTests
          */
 
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
         PhysicalCardImpl nertea = scn.GetFreepsCard("nertea");
 
@@ -66,7 +64,7 @@ public class Card_19_038_ErrataTests
     @Test
     public void FreepsAddsABurdenToSkirmishNamedRace() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
         PhysicalCardImpl nertea = scn.GetShadowCard("nertea");
 
@@ -75,9 +73,9 @@ public class Card_19_038_ErrataTests
         PhysicalCardImpl arwen = scn.GetFreepsCard("arwen");
         PhysicalCardImpl legolas = scn.GetFreepsCard("legolas");
 
-        scn.ShadowMoveCardToHand(nertea);
+        scn.MoveCardsToHand(nertea);
 
-        scn.FreepsMoveCharToTable(aragorn, boromir, arwen, legolas);
+        scn.MoveCompanionsToTable(aragorn, boromir, arwen, legolas);
 
         scn.StartGame();
 
@@ -100,7 +98,7 @@ public class Card_19_038_ErrataTests
         try {
             scn.FreepsAssignToMinions(boromir, nertea);
         }
-        catch (DecisionResultInvalidException ex) {
+        catch (RuntimeException ex) {
             exc = true;
         }
         assertTrue(exc); // If an exception wasn't thrown, then assigning to a Man was permitted.

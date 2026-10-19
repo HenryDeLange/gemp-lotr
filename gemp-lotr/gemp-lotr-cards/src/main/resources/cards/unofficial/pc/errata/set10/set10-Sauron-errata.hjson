@@ -1,0 +1,62 @@
+{
+
+	60_91: {
+		cardInfo: {
+			//id: 0_91.1
+			revision: 1
+			image: errata/60_91.jpg
+			collInfo: 10C91
+			rarity: C
+		}
+		title: Mordor Fiend
+		culture: sauron
+		twilight: 3
+		type: minion
+		race: orc
+		strength: 9
+		vitality: 3
+		site: 6
+		effects: {
+			type: Trigger
+			optional: false
+			trigger: {
+				type: played
+				filter: self
+			}
+			requires: [
+				{
+					type: twilightPoolLessThan
+					amount: 4
+				}
+				{
+					type: not
+					requires: {
+						type: canSpot
+						filter: not(self),minion
+					}
+				}
+			]
+			effect: {
+				type: addTwilight
+				amount: {
+					type: Conditional
+					requires: {
+						type: canSpot
+						filter: self,roaming
+					}
+					true: 5
+					false: 3
+				}
+			}
+		}
+		gametext: When you play this minion, if you cannot spot another minion and there are 3 or fewer twilight tokens, you may add (3) (or (5) if this minion is roaming).
+		lore: "The onslaught of Mordor broke like a wave on the beleaguered hills...."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

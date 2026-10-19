@@ -2,6 +2,7 @@ package com.gempukku.lotro.communication;
 
 import com.gempukku.lotro.common.Token;
 import com.gempukku.lotro.game.PhysicalCard;
+import com.gempukku.lotro.game.state.PreGameInfo;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.timing.GameStats;
 
@@ -10,51 +11,68 @@ import java.util.List;
 import java.util.Set;
 
 public interface GameStateListener {
-    public void cardCreated(PhysicalCard card);
 
-    public void cardMoved(PhysicalCard card);
+    boolean isLiveConnection();
+    default void cardCreated(PhysicalCard card) {
+        cardCreated(card, false, false);
+    }
+    void cardCreated(PhysicalCard card, boolean overrideOwnerVisibility, boolean forceVisible);
 
-    public void cardsRemoved(String playerPerforming, Collection<PhysicalCard> cards);
+    void cardMoved(PhysicalCard card);
+    void cardsFlipped(Collection<PhysicalCard> cards, boolean down);
 
-    public void setPlayerOrder(List<String> playerIds);
+    default void cardsRemoved(String playerPerforming, Collection<PhysicalCard> cards) {
+        cardsRemoved(playerPerforming, cards, false);
+    }
+    void cardsRemoved(String playerPerforming, Collection<PhysicalCard> cards, boolean forceVisible);
 
-    public void setPlayerPosition(String playerId, int i);
+    void initializeBoard(List<String> playerIds, boolean discardIsPublic);
+    void initializePregameBoard(PreGameInfo preGameInfo);
 
-    public void setTwilight(int twilightPool);
+    void setPlayerPosition(String playerId, int i);
 
-    public void setCurrentPlayerId(String playerId);
+    void setTwilight(int twilightPool);
 
-    public void setCurrentPhase(String currentPhase);
+    void setCurrentPlayerId(String playerId, Set<PhysicalCard> inactiveCards);
+    String getAssignedPlayerId();
 
-    public void addAssignment(PhysicalCard fp, Set<PhysicalCard> minions);
+    void setCurrentPhase(String currentPhase);
 
-    public void removeAssignment(PhysicalCard fp);
+    void addAssignment(PhysicalCard fp, Set<PhysicalCard> minions);
 
-    public void startSkirmish(PhysicalCard fp, Set<PhysicalCard> minions);
+    void addPendingAssignment(PhysicalCard fp, PhysicalCard minion);
 
-    public void addToSkirmish(PhysicalCard card);
+    void removeAssignment(PhysicalCard fp);
 
-    public void removeFromSkirmish(PhysicalCard card);
+    void removePendingAssignment(PhysicalCard freePeople, PhysicalCard minion);
 
-    public void finishSkirmish();
+    void startSkirmish(PhysicalCard fp, Set<PhysicalCard> minions);
 
-    public void addTokens(PhysicalCard card, Token token, int count);
+    void addToSkirmish(PhysicalCard card);
 
-    public void removeTokens(PhysicalCard card, Token token, int count);
+    void removeFromSkirmish(PhysicalCard card);
 
-    public void sendMessage(String message);
+    void finishSkirmish();
 
-    public void setSite(PhysicalCard card);
+    void addTokens(PhysicalCard card, Token token, int count);
 
-    public void sendGameStats(GameStats gameStats);
+    void removeTokens(PhysicalCard card, Token token, int count);
 
-    public void cardAffectedByCard(String playerPerforming, PhysicalCard card, Collection<PhysicalCard> affectedCard);
+    void sendMessage(String message);
 
-    public void eventPlayed(PhysicalCard card);
+    void setSite(PhysicalCard card);
 
-    public void cardActivated(String playerPerforming, PhysicalCard card);
+    void sendGameStats(GameStats gameStats);
 
-    public void decisionRequired(String playerId, AwaitingDecision awaitingDecision);
+    void cardAffectedByCard(String playerPerforming, PhysicalCard card, Collection<PhysicalCard> affectedCard);
 
-    public void sendWarning(String playerId, String warning);
+    void eventPlayed(PhysicalCard card);
+
+    void cardActivated(String playerPerforming, PhysicalCard card);
+
+    void decisionRequired(String playerId, AwaitingDecision awaitingDecision);
+
+    void sendWarning(String playerId, String warning);
+
+    void endGame();
 }

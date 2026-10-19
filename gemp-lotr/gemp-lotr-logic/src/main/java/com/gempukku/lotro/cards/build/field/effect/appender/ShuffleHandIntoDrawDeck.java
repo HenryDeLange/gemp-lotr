@@ -20,11 +20,11 @@ import java.util.List;
 
 public class ShuffleHandIntoDrawDeck implements EffectAppenderProducer {
     @Override
-    public EffectAppender createEffectAppender(JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
+    public EffectAppender createEffectAppender(boolean cost, JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
         FieldUtils.validateAllowedFields(effectObject, "player");
 
         String player = FieldUtils.getString(effectObject.get("player"), "player", "you");
-        final PlayerSource playerSource = PlayerResolver.resolvePlayer(player, environment);
+        final PlayerSource playerSource = PlayerResolver.resolvePlayer(player);
 
         return new DelayedAppender() {
             @Override
@@ -33,7 +33,7 @@ public class ShuffleHandIntoDrawDeck implements EffectAppenderProducer {
                 return new UnrespondableEffect() {
                     @Override
                     protected void doPlayEffect(LotroGame game) {
-                        List<PhysicalCard> hand = new LinkedList<PhysicalCard>(game.getGameState().getHand(handPlayer));
+                        List<PhysicalCard> hand = new LinkedList<>(game.getGameState().getHand(handPlayer));
                         game.getGameState().removeCardsFromZone(actionContext.getPerformingPlayer(), hand);
                         for (PhysicalCard physicalCard : hand) {
                             game.getGameState().putCardOnBottomOfDeck(physicalCard);

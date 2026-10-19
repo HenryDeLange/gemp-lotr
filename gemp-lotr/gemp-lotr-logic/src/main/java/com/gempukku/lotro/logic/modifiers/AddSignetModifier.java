@@ -6,10 +6,10 @@ import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.LotroGame;
 
 public class AddSignetModifier extends AbstractModifier {
-    private Signet _signet;
+    private final Signet _signet;
 
-    public AddSignetModifier(PhysicalCard source, Filterable affectFilter, Signet signet) {
-        super(source, "Has signet " + signet, affectFilter, ModifierEffect.SIGNET_MODIFIER);
+    public AddSignetModifier(PhysicalCard source, Filterable affectFilter, Condition condition, Signet signet) {
+        super(source, "Has signet " + signet, affectFilter, condition, ModifierEffect.SIGNET_MODIFIER);
         _signet = signet;
     }
 

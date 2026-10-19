@@ -22,11 +22,17 @@ import java.util.List;
 
 public class GetCardsFromTopOfDeck implements EffectAppenderProducer {
     @Override
-    public EffectAppender createEffectAppender(JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
+    public EffectAppender createEffectAppender(boolean cost, JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
         FieldUtils.validateAllowedFields(effectObject, "filter", "memorize");
 
         final String filter = FieldUtils.getString(effectObject.get("filter"), "filter");
         final String memorize = FieldUtils.getString(effectObject.get("memorize"), "memorize");
+
+        if (filter == null)
+            throw new InvalidCardDefinitionException("Filter is required for a GetCardsFromTopOfDeck effect.");
+
+        if (memorize == null)
+            throw new InvalidCardDefinitionException("Memorize is required for a GetCardsFromTopOfDeck effect.");
 
         final FilterableSource filterableSource = environment.getFilterFactory().generateFilter(filter, environment);
 
@@ -34,7 +40,7 @@ public class GetCardsFromTopOfDeck implements EffectAppenderProducer {
             @Override
             protected Effect createEffect(boolean cost, CostToEffectAction action, ActionContext actionContext) {
                 final Filterable filterable = filterableSource.getFilterable(actionContext);
-                final Filter acceptFilter = Filters.and(filterable);
+                final Filter acceptFilter = Filters.changeToFilter(filterable);
                 return new UnrespondableEffect() {
                     @Override
                     protected void doPlayEffect(LotroGame game) {

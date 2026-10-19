@@ -1,7 +1,8 @@
 package com.gempukku.lotro.league;
 
-import com.gempukku.lotro.DateUtils;
 import com.gempukku.lotro.collection.CollectionsManager;
+import com.gempukku.lotro.collection.TransferDAO;
+import com.gempukku.lotro.common.DateUtils;
 import com.gempukku.lotro.competitive.BestOfOneStandingsProducer;
 import com.gempukku.lotro.competitive.PlayerStanding;
 import com.gempukku.lotro.db.LeagueDAO;
@@ -11,55 +12,82 @@ import com.gempukku.lotro.db.vo.CollectionType;
 import com.gempukku.lotro.db.vo.League;
 import com.gempukku.lotro.db.vo.LeagueMatchResult;
 import com.gempukku.lotro.draft2.SoloDraftDefinitions;
-import com.gempukku.lotro.game.CardCollection;
-import com.gempukku.lotro.game.CardSets;
-import com.gempukku.lotro.game.Player;
+import com.gempukku.lotro.game.*;
+import com.gempukku.lotro.game.formats.LotroFormatLibrary;
+import com.gempukku.lotro.game.state.RTMDGameInfo;
+import com.gempukku.lotro.packs.ProductLibrary;
+import com.gempukku.lotro.prizes.PrizeService;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class LeagueService {
-    private LeagueDAO _leagueDao;
-    private CardSets _cardSets;
+    private final LeagueDAO _leagueDao;
+    private final LotroCardBlueprintLibrary _cardLibrary;
+    private final LotroFormatLibrary _formatLibrary;
+    private final ProductLibrary _productLibrary;
 
     // Cached on this layer
-    private CachedLeagueMatchDAO _leagueMatchDao;
-    private CachedLeagueParticipationDAO _leagueParticipationDAO;
+    private final CachedLeagueMatchDAO _leagueMatchDao;
+    private final CachedLeagueParticipationDAO _leagueParticipationDAO;
 
-    private CollectionsManager _collectionsManager;
-    private SoloDraftDefinitions _soloDraftDefinitions;
+    private final CollectionsManager _collectionsManager;
+    private final TransferDAO _transferDAO;
+    private final SoloDraftDefinitions _soloDraftDefinitions;
+    // Awards the configurable prize tiers when a league ends; null (tests) means no extra prizes are awarded.
+    private PrizeService _prizeService;
 
-    private Map<String, List<PlayerStanding>> _leagueStandings = new ConcurrentHashMap<String, List<PlayerStanding>>();
-    private Map<String, List<PlayerStanding>> _leagueSerieStandings = new ConcurrentHashMap<String, List<PlayerStanding>>();
+    private final Map<String, List<PlayerStanding>> _leagueStandings = new ConcurrentHashMap<>();
+    private final Map<String, List<PlayerStanding>> _leagueSerieStandings = new ConcurrentHashMap<>();
 
-    private int _activeLeaguesLoadedDate;
+    private ZonedDateTime _activeLeaguesLoadedDate;
     private List<League> _activeLeagues;
 
     public LeagueService(LeagueDAO leagueDao, LeagueMatchDAO leagueMatchDao,
                          LeagueParticipationDAO leagueParticipationDAO, CollectionsManager collectionsManager,
-                         CardSets cardSets, SoloDraftDefinitions soloDraftDefinitions) {
+                         TransferDAO transferDAO,
+                         LotroCardBlueprintLibrary library, LotroFormatLibrary formatLibrary, ProductLibrary productLibrary, SoloDraftDefinitions soloDraftDefinitions) {
+        this(leagueDao, leagueMatchDao, leagueParticipationDAO, collectionsManager, transferDAO, library, formatLibrary,
+                productLibrary, soloDraftDefinitions, null);
+    }
+
+    public LeagueService(LeagueDAO leagueDao, LeagueMatchDAO leagueMatchDao,
+                         LeagueParticipationDAO leagueParticipationDAO, CollectionsManager collectionsManager,
+                         TransferDAO transferDAO,
+                         LotroCardBlueprintLibrary library, LotroFormatLibrary formatLibrary, ProductLibrary productLibrary,
+                         SoloDraftDefinitions soloDraftDefinitions, PrizeService prizeService) {
         _leagueDao = leagueDao;
-        _cardSets = cardSets;
+        _cardLibrary = library;
+        _formatLibrary = formatLibrary;
+        _productLibrary = productLibrary;
         _leagueMatchDao = new CachedLeagueMatchDAO(leagueMatchDao);
         _leagueParticipationDAO = new CachedLeagueParticipationDAO(leagueParticipationDAO);
         _collectionsManager = collectionsManager;
+        _transferDAO = transferDAO;
         _soloDraftDefinitions = soloDraftDefinitions;
+        _prizeService = prizeService;
+    }
+
+    public void setPrizeService(PrizeService prizeService) {
+        _prizeService = prizeService;
     }
 
     public synchronized void clearCache() {
         _leagueSerieStandings.clear();
         _leagueStandings.clear();
-        _activeLeaguesLoadedDate = 0;
+        _activeLeaguesLoadedDate = DateUtils.MinDate();
 
         _leagueMatchDao.clearCache();
         _leagueParticipationDAO.clearCache();
     }
 
     private synchronized void ensureLoadedCurrentLeagues() {
-        int currentDate = DateUtils.getCurrentDate();
-        if (currentDate != _activeLeaguesLoadedDate) {
+        var currentDate = DateUtils.Today();
+
+        if (_activeLeagues == null || !DateUtils.IsSameDay(currentDate, _activeLeaguesLoadedDate)) {
             _leagueMatchDao.clearCache();
             _leagueParticipationDAO.clearCache();
 
@@ -69,14 +97,12 @@ public class LeagueService {
                 processLoadedLeagues(currentDate);
             } catch (SQLException e) {
                 throw new RuntimeException("Unable to load Leagues", e);
-            } catch (IOException e) {
-                throw new RuntimeException("Unable to load Leagues", e);
             }
         }
     }
 
     public synchronized List<League> getActiveLeagues() {
-        if (DateUtils.getCurrentDate() == _activeLeaguesLoadedDate)
+        if (_activeLeaguesLoadedDate != null && DateUtils.IsToday(_activeLeaguesLoadedDate))
             return Collections.unmodifiableList(_activeLeagues);
         else {
             ensureLoadedCurrentLeagues();
@@ -84,27 +110,38 @@ public class LeagueService {
         }
     }
 
-    private void processLoadedLeagues(int currentDate) {
+    private void processLoadedLeagues(ZonedDateTime currentDate) {
         for (League activeLeague : _activeLeagues) {
             int oldStatus = activeLeague.getStatus();
-            int newStatus = activeLeague.getLeagueData(_cardSets, _soloDraftDefinitions).process(_collectionsManager, getLeagueStandings(activeLeague), oldStatus, currentDate);
+            List<PlayerStanding> standings = getLeagueStandings(activeLeague);
+            int newStatus = activeLeague.getLeagueData(_productLibrary, _formatLibrary, _soloDraftDefinitions)
+                    .process(_collectionsManager, standings, oldStatus, currentDate);
             if (newStatus != oldStatus)
                 _leagueDao.setStatus(activeLeague, newStatus);
+            // the league has just ended: hand out its configurable prize tiers on top of the automatic prizes
+            if (oldStatus == 0 && newStatus == 1 && _prizeService != null)
+                _prizeService.awardLeagueTiers(activeLeague, standings);
         }
     }
 
     public synchronized boolean isPlayerInLeague(League league, Player player) {
-        return _leagueParticipationDAO.getUsersParticipating(league.getType()).contains(player.getName());
+        return _leagueParticipationDAO.getUsersParticipating(league.getCodeStr()).contains(player.getName());
     }
 
-    public synchronized boolean playerJoinsLeague(League league, Player player, String remoteAddr) {
+    public synchronized boolean playerJoinsLeague(League league, Player player, String remoteAddr) throws SQLException, IOException {
+        return playerJoinsLeague(league, player, remoteAddr, false, false);
+    }
+
+    public synchronized boolean playerJoinsLeague(League league, Player player, String remoteAddr, boolean skipCost, boolean addedByAdmin) throws SQLException, IOException {
         if (isPlayerInLeague(league, player))
             return false;
+        if (league.inviteOnly() && !addedByAdmin)
+            return false;
         int cost = league.getCost();
-        if (_collectionsManager.removeCurrencyFromPlayerCollection("Joining "+league.getName()+" league", player, CollectionType.MY_CARDS, cost)) {
-            _leagueParticipationDAO.userJoinsLeague(league.getType(), player, remoteAddr);
-            league.getLeagueData(_cardSets, _soloDraftDefinitions).joinLeague(_collectionsManager, player, DateUtils.getCurrentDate());
 
+        if (skipCost || _collectionsManager.removeCurrencyFromPlayerCollection("Joining "+league.getName()+" league", player, CollectionType.MY_CARDS, cost)) {
+            league.getLeagueData(_productLibrary, _formatLibrary, _soloDraftDefinitions).createLeagueCollection(_collectionsManager, player, DateUtils.Now());
+            _leagueParticipationDAO.userJoinsLeague(league.getCodeStr(), player, remoteAddr);
             _leagueStandings.remove(LeagueMapKeys.getLeagueMapKey(league));
 
             return true;
@@ -115,16 +152,26 @@ public class LeagueService {
 
     public synchronized League getLeagueByType(String type) {
         for (League league : getActiveLeagues()) {
-            if (league.getType().equals(type))
+            if (league.getCodeStr().equals(type))
                 return league;
         }
         return null;
     }
 
+    /**
+     * Loads a league by its code from the database, regardless of whether it is
+     * currently active. Used to resolve expired league codes stored in deck
+     * target formats so we can extract the underlying format before stripping
+     * the league association.
+     */
+    public League getLeagueByCode(long code) {
+        return _leagueDao.loadLeagueByCode(code);
+    }
+
     public synchronized CollectionType getCollectionTypeByCode(String collectionTypeCode) {
         for (League league : getActiveLeagues()) {
-            for (LeagueSerieData leagueSerieData : league.getLeagueData(_cardSets, _soloDraftDefinitions).getSeries()) {
-                CollectionType collectionType = leagueSerieData.getCollectionType();
+            for (LeagueSerieInfo leagueSerieInfo : league.getLeagueData(_productLibrary, _formatLibrary, _soloDraftDefinitions).getSeries()) {
+                CollectionType collectionType = leagueSerieInfo.getCollectionType();
                 if (collectionType != null && collectionType.getCode().equals(collectionTypeCode))
                     return collectionType;
             }
@@ -132,28 +179,46 @@ public class LeagueService {
         return null;
     }
 
-    public synchronized LeagueSerieData getCurrentLeagueSerie(League league) {
-        final int currentDate = DateUtils.getCurrentDate();
+    public synchronized LeagueSerieInfo getCurrentLeagueSerie(League league) {
+        var currentDate = DateUtils.Now();
 
-        for (LeagueSerieData leagueSerieData : league.getLeagueData(_cardSets, _soloDraftDefinitions).getSeries()) {
-            if (currentDate >= leagueSerieData.getStart() && currentDate <= leagueSerieData.getEnd())
-                return leagueSerieData;
+        for (LeagueSerieInfo leagueSerieInfo : league.getLeagueData(_productLibrary, _formatLibrary, _soloDraftDefinitions).getSeries()) {
+            if (currentDate.isAfter( leagueSerieInfo.getStart()) && DateUtils.IsBeforeEnd(currentDate, leagueSerieInfo.getEnd()))
+                return leagueSerieInfo;
         }
 
         return null;
     }
 
-    public synchronized void reportLeagueGameResult(League league, LeagueSerieData serie, String winner, String loser) {
-        _leagueMatchDao.addPlayedMatch(league.getType(), serie.getName(), winner, loser);
+    public synchronized void reportLeagueGameResult(League league, LeagueSerieInfo serie, String winner, String loser) {
+        // Capture RTMD position before recording the match
+        LeagueData leagueData = league.getLeagueData(_productLibrary, _formatLibrary, _soloDraftDefinitions);
+        RTMDLeague rtmdLeague = (leagueData instanceof RTMDLeague) ? (RTMDLeague) leagueData : null;
+        int oldPosition = 0;
+        if (rtmdLeague != null) {
+            List<PlayerStanding> oldStandings = getLeagueStandings(league);
+            oldPosition = rtmdLeague.getPlayerPosition(winner, oldStandings);
+        }
+
+        _leagueMatchDao.addPlayedMatch(league.getCodeStr(), serie.getName(), winner, loser);
 
         _leagueStandings.remove(LeagueMapKeys.getLeagueMapKey(league));
         _leagueSerieStandings.remove(LeagueMapKeys.getLeagueSerieMapKey(league, serie));
 
         awardPrizesToPlayer(league, serie, winner, true);
         awardPrizesToPlayer(league, serie, loser, false);
+
+        // Check if winner advanced in RTMD
+        if (rtmdLeague != null) {
+            List<PlayerStanding> newStandings = getLeagueStandings(league);
+            int newPosition = rtmdLeague.getPlayerPosition(winner, newStandings);
+            if (newPosition > oldPosition) {
+                notifyRTMDAdvancement(rtmdLeague, winner, oldPosition, newPosition);
+            }
+        }
     }
 
-    private void awardPrizesToPlayer(League league, LeagueSerieData serie, String player, boolean winner) {
+    private void awardPrizesToPlayer(League league, LeagueSerieInfo serie, String player, boolean winner) {
         int count = 0;
         Collection<LeagueMatchResult> playerMatchesPlayedOn = getPlayerMatchesInSerie(league, serie, player);
         for (LeagueMatchResult leagueMatch : playerMatchesPlayedOn) {
@@ -166,13 +231,36 @@ public class LeagueService {
             prize = serie.getPrizeForLeagueMatchWinner(count, playerMatchesPlayedOn.size());
         else
             prize = serie.getPrizeForLeagueMatchLoser(count, playerMatchesPlayedOn.size());
-        if (prize != null)
+        if (prize != null) {
             _collectionsManager.addItemsToPlayerCollection(true, "Prize for winning league game", player, CollectionType.MY_CARDS, prize.getAll());
+        }
+
+
     }
 
-    public synchronized Collection<LeagueMatchResult> getPlayerMatchesInSerie(League league, LeagueSerieData serie, String player) {
-        final Collection<LeagueMatchResult> allMatches = _leagueMatchDao.getLeagueMatches(league.getType());
-        Set<LeagueMatchResult> result = new HashSet<LeagueMatchResult>();
+    private void notifyRTMDAdvancement(RTMDLeague rtmdLeague, String player, int oldPosition, int newPosition) {
+        List<String> visualPath = rtmdLeague.getVisualPath();
+        List<String> modPath = rtmdLeague.getPath();
+
+        // Build structured contents: oldVisual|oldMod|newVisual|newMod
+        // For position 0 (starting position), use empty strings
+        StringBuilder contents = new StringBuilder();
+        if (visualPath != null && !visualPath.isEmpty()) {
+            String oldVisual = (oldPosition >= 1 && oldPosition <= visualPath.size()) ? visualPath.get(oldPosition - 1) : "";
+            String oldMod = (oldPosition >= 1 && oldPosition <= modPath.size()) ? modPath.get(oldPosition - 1) : "";
+            String newVisual = (newPosition >= 1 && newPosition <= visualPath.size()) ? visualPath.get(newPosition - 1) : "";
+            String newMod = (newPosition >= 1 && newPosition <= modPath.size()) ? modPath.get(newPosition - 1) : "";
+            contents.append(oldVisual).append("|").append(oldMod).append("|").append(newVisual).append("|").append(newMod);
+        }
+
+        String message = rtmdLeague.getParameters().name + ": You have arrived at level " + newPosition + "!";
+
+        _transferDAO.addTransferToRaw(true, player, "League", "Race to Mount Doom", 0, contents.toString(), message);
+    }
+
+    public synchronized Collection<LeagueMatchResult> getPlayerMatchesInSerie(League league, LeagueSerieInfo serie, String player) {
+        final Collection<LeagueMatchResult> allMatches = _leagueMatchDao.getLeagueMatches(league.getCodeStr());
+        Set<LeagueMatchResult> result = new HashSet<>();
         for (LeagueMatchResult match : allMatches) {
             if (match.getSerieName().equals(serie.getName()) && (match.getWinner().equals(player) || match.getLoser().equals(player)))
                 result.add(match);
@@ -191,7 +279,7 @@ public class LeagueService {
         return leagueStandings;
     }
 
-    public synchronized List<PlayerStanding> getLeagueSerieStandings(League league, LeagueSerieData leagueSerie) {
+    public synchronized List<PlayerStanding> getLeagueSerieStandings(League league, LeagueSerieInfo leagueSerie) {
         List<PlayerStanding> serieStandings = _leagueSerieStandings.get(LeagueMapKeys.getLeagueSerieMapKey(league, leagueSerie));
         if (serieStandings == null) {
             synchronized (this) {
@@ -202,11 +290,11 @@ public class LeagueService {
         return serieStandings;
     }
 
-    private List<PlayerStanding> createLeagueSerieStandings(League league, LeagueSerieData leagueSerie) {
-        final Collection<String> playersParticipating = _leagueParticipationDAO.getUsersParticipating(league.getType());
-        final Collection<LeagueMatchResult> matches = _leagueMatchDao.getLeagueMatches(league.getType());
+    private List<PlayerStanding> createLeagueSerieStandings(League league, LeagueSerieInfo leagueSerie) {
+        final Collection<String> playersParticipating = _leagueParticipationDAO.getUsersParticipating(league.getCodeStr());
+        final Collection<LeagueMatchResult> matches = _leagueMatchDao.getLeagueMatches(league.getCodeStr());
 
-        Set<LeagueMatchResult> matchesInSerie = new HashSet<LeagueMatchResult>();
+        Set<LeagueMatchResult> matchesInSerie = new HashSet<>();
         for (LeagueMatchResult match : matches) {
             if (match.getSerieName().equals(leagueSerie.getName()))
                 matchesInSerie.add(match);
@@ -216,17 +304,17 @@ public class LeagueService {
     }
 
     private List<PlayerStanding> createLeagueStandings(League league) {
-        final Collection<String> playersParticipating = _leagueParticipationDAO.getUsersParticipating(league.getType());
-        final Collection<LeagueMatchResult> matches = _leagueMatchDao.getLeagueMatches(league.getType());
+        final Collection<String> playersParticipating = _leagueParticipationDAO.getUsersParticipating(league.getCodeStr());
+        final Collection<LeagueMatchResult> matches = _leagueMatchDao.getLeagueMatches(league.getCodeStr());
 
         return createStandingsForMatchesAndPoints(playersParticipating, matches);
     }
 
     private List<PlayerStanding> createStandingsForMatchesAndPoints(Collection<String> playersParticipating, Collection<LeagueMatchResult> matches) {
-        return BestOfOneStandingsProducer.produceStandings(playersParticipating, matches, 2, 1, Collections.<String, Integer>emptyMap());
+        return BestOfOneStandingsProducer.produceStandings(playersParticipating, matches, 2, 1, Collections.emptyMap());
     }
 
-    public synchronized boolean canPlayRankedGame(League league, LeagueSerieData season, String player) {
+    public synchronized boolean canPlayRankedGame(League league, LeagueSerieInfo season, String player) {
         int maxMatches = season.getMaxMatches();
         Collection<LeagueMatchResult> playedInSeason = getPlayerMatchesInSerie(league, season, player);
         if (playedInSeason.size() >= maxMatches)
@@ -234,12 +322,135 @@ public class LeagueService {
         return true;
     }
 
-    public synchronized boolean canPlayRankedGameAgainst(League league, LeagueSerieData season, String playerOne, String playerTwo) {
+    public synchronized boolean canPlayRankedGameAgainst(League league, LeagueSerieInfo season, String playerOne, String playerTwo) {
         Collection<LeagueMatchResult> playedInSeason = getPlayerMatchesInSerie(league, season, playerOne);
+        int maxGames = league.getLeagueData(_productLibrary, _formatLibrary, _soloDraftDefinitions)
+                .getMaxRepeatMatchesPerSerie();
+        int totalGames = 0;
         for (LeagueMatchResult leagueMatch : playedInSeason) {
             if (playerTwo.equals(leagueMatch.getWinner()) || playerTwo.equals(leagueMatch.getLoser()))
-                return false;
+                totalGames++;
         }
-        return true;
+        return totalGames < maxGames;
+    }
+
+    /**
+     * Builds an RTMDGameInfo for the given league and players, resolving each player's
+     * current position and active meta-site pairs from standings.
+     * Returns null if the league is not RTMD.
+     */
+    public synchronized RTMDGameInfo buildRTMDGameInfo(League league, Collection<String> playerNames) {
+        var leagueData = league.getLeagueData(_productLibrary, _formatLibrary, _soloDraftDefinitions);
+        if (!(leagueData instanceof RTMDLeague rtmd))
+            return null;
+
+        var standings = getLeagueStandings(league);
+        var playerMetaSites = new HashMap<String, List<RTMDGameInfo.MetaSitePair>>();
+        var playerPlacements = new HashMap<String, RTMDGameInfo.LeaguePlacement>();
+
+        for (String playerName : playerNames) {
+            int position = rtmd.getPlayerPosition(playerName, standings);
+            var modifiers = rtmd.getMetaSitesForPosition(position);
+            var visuals = rtmd.getVisualCardsForPosition(position);
+
+            var pairs = new ArrayList<RTMDGameInfo.MetaSitePair>();
+            for (int i = 0; i < modifiers.size(); i++) {
+                String visualId = (i < visuals.size()) ? visuals.get(i) : "";
+                pairs.add(new RTMDGameInfo.MetaSitePair(visualId, modifiers.get(i)));
+            }
+            playerMetaSites.put(playerName, pairs);
+
+            var placement = RTMDTitles.placementOf(playerName, standings);
+            if (placement != null)
+                playerPlacements.put(playerName, placement);
+        }
+
+        return new RTMDGameInfo(playerMetaSites, playerPlacements);
+    }
+
+    /**
+     * Builds a DeckValidationContext for a player in a league, incorporating any
+     * deck building overrides from their RTMD meta-site modifiers.
+     * Returns null if the league is not RTMD or if no overrides apply.
+     */
+    public synchronized DeckValidationContext buildDeckValidationContext(League league, String playerName) {
+        var leagueData = league.getLeagueData(_productLibrary, _formatLibrary, _soloDraftDefinitions);
+        if (!(leagueData instanceof RTMDLeague rtmd))
+            return null;
+
+        var standings = getLeagueStandings(league);
+        int position = rtmd.getPlayerPosition(playerName, standings);
+        var modifiers = rtmd.getMetaSitesForPosition(position);
+
+        DeckValidationContext merged = null;
+        for (String modBlueprintId : modifiers) {
+            try {
+                var bp = _cardLibrary.getLotroCardBlueprint(modBlueprintId);
+                var overrides = bp.getDeckBuildingOverrides();
+                if (overrides != null) {
+                    if (merged == null) {
+                        merged = new DeckValidationContext();
+                    }
+                    merged.merge(overrides);
+                }
+            } catch (CardNotFoundException ignored) {}
+        }
+
+        return merged;
+    }
+
+    // ---- t4-add-items: collections an admin can add items to ----
+
+    /**
+     * A league's own card collection (sealed and draft leagues deal each player a collection of their own).
+     *
+     * @param code           the collection code, what the addItems endpoint takes as collectionType
+     * @param collectionName the collection's own name
+     * @param leagueName     the league's name
+     * @param type           the league type
+     * @param start          start of the first serie
+     * @param end            end of the last serie
+     */
+    public record LeagueCollection(String code, String collectionName, String leagueName, League.LeagueType type,
+                                   ZonedDateTime start, ZonedDateTime end) {
+    }
+
+    /**
+     * The collections of every active (not yet ended) league that plays from its own collection, i.e. every
+     * collection type {@link #getCollectionTypeByCode} can resolve.  Constructed and RTMD leagues play from the
+     * shared collections and are not listed.  Ordered by start date, then name.
+     */
+    public synchronized List<LeagueCollection> getActiveLeagueCollections() {
+        Map<String, LeagueCollection> result = new LinkedHashMap<>();
+        for (League league : getActiveLeagues()) {
+            List<LeagueSerieInfo> series;
+            try {
+                series = league.getLeagueData(_productLibrary, _formatLibrary, _soloDraftDefinitions).getSeries();
+            } catch (RuntimeException exp) {
+                continue; // a league whose parameters no longer parse cannot be added to either
+            }
+            if (series == null || series.isEmpty())
+                continue;
+            ZonedDateTime start = null;
+            ZonedDateTime end = null;
+            for (LeagueSerieInfo serie : series) {
+                if (serie.getStart() != null && (start == null || serie.getStart().isBefore(start)))
+                    start = serie.getStart();
+                if (serie.getEnd() != null && (end == null || serie.getEnd().isAfter(end)))
+                    end = serie.getEnd();
+            }
+            for (LeagueSerieInfo serie : series) {
+                CollectionType collectionType = serie.getCollectionType();
+                if (collectionType == null || CollectionType.parseCollectionCode(collectionType.getCode()) != null)
+                    continue;
+                if (!result.containsKey(collectionType.getCode()))
+                    result.put(collectionType.getCode(), new LeagueCollection(collectionType.getCode(),
+                            collectionType.getFullName(), league.getName(), league.getType(), start, end));
+            }
+        }
+        List<LeagueCollection> list = new ArrayList<>(result.values());
+        list.sort(Comparator.comparing(LeagueCollection::start, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(LeagueCollection::leagueName, Comparator.nullsLast(Comparator.naturalOrder())));
+        return list;
     }
 }

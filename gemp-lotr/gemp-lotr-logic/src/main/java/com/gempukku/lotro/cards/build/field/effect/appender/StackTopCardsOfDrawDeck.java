@@ -18,14 +18,14 @@ import org.json.simple.JSONObject;
 
 public class StackTopCardsOfDrawDeck implements EffectAppenderProducer {
     @Override
-    public EffectAppender createEffectAppender(JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
+    public EffectAppender createEffectAppender(boolean cost, JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
         FieldUtils.validateAllowedFields(effectObject, "deck", "where", "count");
 
         final String deck = FieldUtils.getString(effectObject.get("deck"), "deck", "you");
         final String where = FieldUtils.getString(effectObject.get("where"), "where");
         final int count = FieldUtils.getInteger(effectObject.get("count"), "count", 1);
 
-        final PlayerSource playerSource = PlayerResolver.resolvePlayer(deck, environment);
+        final PlayerSource playerSource = PlayerResolver.resolvePlayer(deck);
 
         MultiEffectAppender result = new MultiEffectAppender();
         String cardMemory = "_temp";

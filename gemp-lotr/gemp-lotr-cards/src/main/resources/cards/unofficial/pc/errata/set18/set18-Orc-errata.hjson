@@ -1,0 +1,119 @@
+{
+
+	68_79: {
+		cardInfo: {
+			//id: 8_79.1
+			revision: 1
+			image: errata/68_79.jpg
+			collInfo: 18U79
+			rarity: U
+		}
+		title: Frenzy of Arrows
+		unique: false
+		culture: Orc
+		twilight: 2
+		type: Event
+		timeword: archery
+		effects: {
+			type: event
+			effect: [
+				{
+					type: addKeyword
+					select: choose(culture(orc),orc)
+					keyword: archer
+					until: start(regroup)
+					count: 2
+				}
+				{
+					type: modifyArcheryTotal
+					side: shadow
+					amount: {
+						type: forEachYouCanSpot
+						filter: follower
+					}
+				}
+			]
+		}
+		gametext: Make 2 [orc] Orcs gain <b>archer</b> until the regroup phase. Then add 1 to the minion archery total for each follower you can spot.
+		lore: The black fletched arrows of Sauron's armies found many targets.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	68_82: {
+		cardInfo: {
+			//id: 8_82.1
+			revision: 1
+			image: errata/LOTR-EN18E082.1.jpg
+			collInfo: 18R82
+			rarity: R
+		}
+		title: Grond
+		subtitle: Forged With Black Steel
+		unique: true
+		culture: Orc
+		twilight: 3
+		type: possession
+		keyword: [
+			Support Area
+		]
+		effects: [
+			{
+				type: toPlay
+				requires: {
+					type: CanSpot
+					filter: culture(Orc),minion
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: moves
+				}
+				requires: {
+					type: phase
+					phase: regroup
+				}
+				optional: true
+				cost: {
+					type: discard
+					select: self
+				}
+				effect: [
+					{
+						type: ShuffleCardsFromHandIntoDrawDeck
+						count: 2
+						player: freeps
+					}
+					{
+						type: DiscardCardsFromDrawDeck
+						select: choose(side(freeps))
+						player: you
+						deck: freeps
+						count: 2
+						showAll: true
+						shuffle: true
+						forced: true
+					}
+				]
+			}
+		]
+		gametext: To play, spot an [orc] minion.<br>Each time the fellowship moves during the regroup phase, you may discard this possession to make the Free Peoples player shuffle 2 cards from their hand into their draw deck.  Search that draw deck and discard 2 Free Peoples cards.
+		lore: "'Grond! Grond! Grond! Grond! Grond! Grond!'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	
+}

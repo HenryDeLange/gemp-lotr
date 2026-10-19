@@ -14,31 +14,42 @@ public class TimeResolver {
     }
 
     private static Time parseTime(String value) throws InvalidCardDefinitionException {
-        if (value.startsWith("start(") && value.endsWith(")")) {
-            final String phaseName = value.substring(value.indexOf("(") + 1, value.lastIndexOf(")"));
-            return new Time(Phase.valueOf(phaseName.toUpperCase()), true, false);
+
+        if(value.toLowerCase().contains("endofgame") || value.toLowerCase().contains("perm")) {
+            return new Time(null, false, false, true);
         }
-        else if (value.startsWith("end(") && value.endsWith(")")) {
+        else if (value.toLowerCase().startsWith("start(") && value.endsWith(")")) {
             final String phaseName = value.substring(value.indexOf("(") + 1, value.lastIndexOf(")"));
-            if (phaseName.equals("current"))
-                return new Time(null, false, false);
-            return new Time(Phase.valueOf(phaseName.toUpperCase()), false, false);
+            return new Time(Phase.findPhase(phaseName), true, false, false);
         }
-        else if (value.equals("endofturn"))
-            return new Time(null, false, true);
+        else if (value.toLowerCase().startsWith("end(") && value.endsWith(")")) {
+            final String phaseName = value.substring(value.indexOf("(") + 1, value.lastIndexOf(")"));
+            if (phaseName.equalsIgnoreCase("current"))
+                return new Time(null, false, false, false);
+            return new Time(Phase.findPhase(phaseName), false, false, false);
+        }
+        else if (value.equalsIgnoreCase("endofturn"))
+            return new Time(null, false, true, false);
+        else {
+            Phase phase = Phase.findPhase(value);
+            if(phase != null)
+                return new Time(phase, true, false, false);
+        }
 
         throw new InvalidCardDefinitionException("Unable to resolve time: " + value);
     }
 
     public static class Time {
-        private Phase phase;
-        private boolean start;
-        private boolean endOfTurn;
+        private final Phase phase;
+        private final boolean start;
+        private final boolean endOfTurn;
+        private final boolean permanent;
 
-        private Time(Phase phase, boolean start, boolean endOfTurn) {
+        private Time(Phase phase, boolean start, boolean endOfTurn, boolean always) {
             this.phase = phase;
             this.start = start;
             this.endOfTurn = endOfTurn;
+            this.permanent = always;
         }
 
         public Phase getPhase() {
@@ -53,9 +64,14 @@ public class TimeResolver {
             return endOfTurn;
         }
 
+        public boolean isPermanent() { return permanent; }
+
         public String getHumanReadable() {
             if (endOfTurn) {
                 return "the end of the turn";
+            }
+            else if (permanent) {
+                return "the end of the game";
             }
             else if (phase == null) {
                 return "the end of the current phase";

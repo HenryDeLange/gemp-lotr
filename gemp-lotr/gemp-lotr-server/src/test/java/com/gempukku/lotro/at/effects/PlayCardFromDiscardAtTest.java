@@ -3,15 +3,14 @@ package com.gempukku.lotro.at.effects;
 import com.gempukku.lotro.at.AbstractAtTest;
 import com.gempukku.lotro.common.Phase;
 import com.gempukku.lotro.common.Zone;
+import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.PhysicalCardImpl;
 import com.gempukku.lotro.logic.decisions.AwaitingDecisionType;
 import org.junit.Test;
 
 import java.util.Map;
 
-import static junit.framework.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.*;
 
 public class PlayCardFromDiscardAtTest extends AbstractAtTest {
     @Test
@@ -121,7 +120,7 @@ public class PlayCardFromDiscardAtTest extends AbstractAtTest {
     public void ulaireNerteaCantPlayMinionsOnGreatRiver() throws Exception {
         initializeSimplestGame();
 
-        for (int i=0; i<4; i++) {
+        for (int i = 0; i < 4; i++) {
             final PhysicalCardImpl greatRiver = createCard(P1, "1_306");
             _game.getGameState().addCardToZone(_game, greatRiver, Zone.FREE_CHARACTERS);
         }
@@ -182,5 +181,19 @@ public class PlayCardFromDiscardAtTest extends AbstractAtTest {
         playerDecided(P1, "");
 
         assertNull(getCardActionId(P2, "Use Azog"));
+    }
+
+    @Test
+    public void activatedInDiscard() throws Exception {
+        initializeSimplestGame();
+
+        PhysicalCard gollumPlottingDeceiver = addToZone(createCard(P2, "7_58"), Zone.DISCARD);
+
+        passUntil(Phase.FELLOWSHIP);
+        setTwilightPool(10);
+        passUntil(Phase.SHADOW);
+
+        selectCardAction(P2, gollumPlottingDeceiver);
+        assertEquals(Zone.SHADOW_CHARACTERS, gollumPlottingDeceiver.getZone());
     }
 }

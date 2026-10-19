@@ -7,21 +7,22 @@ import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.GameUtils;
 import com.gempukku.lotro.logic.actions.ActivateCardAction;
 
-import java.util.Collections;
 import java.util.List;
 
 public abstract class AddActionToCardModifier extends AbstractModifier {
-    public AddActionToCardModifier(PhysicalCard source, Condition condition, Filterable... affectFilter) {
+
+    private final String _targetPlayer;
+    public AddActionToCardModifier(PhysicalCard source, Condition condition, String player, Filterable... affectFilter) {
         super(source, "Has extra action from " + GameUtils.getFullName(source), Filters.and(affectFilter), condition, ModifierEffect.EXTRA_ACTION_MODIFIER);
+        _targetPlayer = player;
     }
 
     @Override
     public List<? extends ActivateCardAction> getExtraPhaseAction(LotroGame game, PhysicalCard card) {
-        final ActivateCardAction extraPhaseAction = createExtraPhaseAction(game, card);
-        if (extraPhaseAction != null)
-            return Collections.singletonList(extraPhaseAction);
-        return null;
+        return createExtraPhaseActions(game, card);
     }
 
-    protected abstract ActivateCardAction createExtraPhaseAction(LotroGame game, PhysicalCard matchingCard);
+    public String getTargetPlayer() { return _targetPlayer; }
+
+    protected abstract List<? extends ActivateCardAction> createExtraPhaseActions(LotroGame game, PhysicalCard matchingCard);
 }

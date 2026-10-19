@@ -13,25 +13,25 @@ import com.gempukku.lotro.logic.timing.results.AssignedToSkirmishResult;
 import java.util.Collections;
 
 public class AssignmentEffect extends AbstractEffect {
-    private String _playerId;
-    private boolean _ignoreSingleMinionRestriction;
-    private boolean _skipAllyLocationCheck;
-    private PhysicalCard _fpChar;
-    private PhysicalCard _minion;
+    private final String _playerId;
+    private boolean _ignoreExistingAssignments;
+    private boolean _ignoreDefender;
+    private final boolean _skipAllyLocationCheck;
+    private final PhysicalCard _fpChar;
+    private final PhysicalCard _minion;
 
     public AssignmentEffect(String playerId, PhysicalCard fpChar, PhysicalCard minion) {
-        this(playerId, fpChar, minion, false);
+        this(playerId, fpChar, minion, false, false, false);
     }
 
-    public AssignmentEffect(String playerId, PhysicalCard fpChar, PhysicalCard minion, boolean skipAllyLocationCheck) {
+    public AssignmentEffect(String playerId, PhysicalCard fpChar, PhysicalCard minion, boolean ignoreExistingAssignments,
+            boolean ignoreDefender, boolean skipAllyLocationCheck) {
         _playerId = playerId;
         _fpChar = fpChar;
         _minion = minion;
         _skipAllyLocationCheck = skipAllyLocationCheck;
-    }
-
-    public void setIgnoreSingleMinionRestriction(boolean ignoreSingleMinionRestriction) {
-        _ignoreSingleMinionRestriction = ignoreSingleMinionRestriction;
+        _ignoreExistingAssignments = ignoreExistingAssignments;
+        _ignoreDefender = ignoreDefender;
     }
 
     @Override
@@ -47,7 +47,7 @@ public class AssignmentEffect extends AbstractEffect {
     @Override
     public boolean isPlayableInFull(LotroGame game) {
         Side side = _playerId.equals(game.getGameState().getCurrentPlayerId()) ? Side.FREE_PEOPLE : Side.SHADOW;
-        return Filters.assignableToSkirmishAgainst(side, _fpChar, _ignoreSingleMinionRestriction, _skipAllyLocationCheck).accepts(game, _minion);
+        return Filters.assignableToSkirmishAgainst(side, _fpChar, _ignoreExistingAssignments, _ignoreDefender, _skipAllyLocationCheck).accepts(game, _minion);
     }
 
     @Override
@@ -64,14 +64,8 @@ public class AssignmentEffect extends AbstractEffect {
             game.getActionsEnvironment().emitEffectResult(new AssignAgainstResult(_playerId, _fpChar, _minion));
             game.getActionsEnvironment().emitEffectResult(new AssignAgainstResult(_playerId, _minion, _fpChar));
 
-            assignmentMadeCallback(_fpChar, _minion);
-
             return new FullEffectResult(true);
         }
         return new FullEffectResult(false);
-    }
-
-    protected void assignmentMadeCallback(PhysicalCard fpChar, PhysicalCard minion) {
-
     }
 }

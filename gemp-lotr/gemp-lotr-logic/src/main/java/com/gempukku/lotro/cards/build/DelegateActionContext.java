@@ -8,13 +8,13 @@ import com.gempukku.lotro.logic.timing.EffectResult;
 import java.util.Collection;
 
 public class DelegateActionContext implements ActionContext {
-    private ActionContext delegate;
+    private final ActionContext delegate;
 
-    private String performingPlayer;
-    private LotroGame game;
-    private PhysicalCard source;
-    private EffectResult effectResult;
-    private Effect effect;
+    private final String performingPlayer;
+    private final LotroGame game;
+    private final PhysicalCard source;
+    private final EffectResult effectResult;
+    private final Effect effect;
 
     public DelegateActionContext(ActionContext delegate, String performingPlayer, LotroGame game, PhysicalCard source, EffectResult effectResult, Effect effect) {
         this.delegate = delegate;
@@ -25,6 +25,10 @@ public class DelegateActionContext implements ActionContext {
         this.effect = effect;
     }
 
+    public DelegateActionContext(ActionContext delegate, String performingPlayer) {
+        this(delegate, performingPlayer, delegate.getGame(), delegate.getSource(), delegate.getEffectResult(), delegate.getEffect());
+    }
+
     @Override
     public void setValueToMemory(String memory, String value) {
         delegate.setValueToMemory(memory, value);
@@ -33,6 +37,11 @@ public class DelegateActionContext implements ActionContext {
     @Override
     public String getValueFromMemory(String memory) {
         return delegate.getValueFromMemory(memory);
+    }
+
+    @Override
+    public String getValueFromMemory(String memory, String defaultValue) {
+        return delegate.getValueFromMemory(memory, defaultValue);
     }
 
     @Override

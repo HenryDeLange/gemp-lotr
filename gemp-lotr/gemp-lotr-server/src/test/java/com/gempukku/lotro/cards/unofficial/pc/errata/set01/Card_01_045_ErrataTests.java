@@ -1,34 +1,31 @@
 package com.gempukku.lotro.cards.unofficial.pc.errata.set01;
 
-import com.gempukku.lotro.cards.GenericCardTestHelper;
-import com.gempukku.lotro.common.Phase;
+import com.gempukku.lotro.framework.VirtualTableScenario;
+import com.gempukku.lotro.common.*;
 import com.gempukku.lotro.game.CardNotFoundException;
 import com.gempukku.lotro.game.PhysicalCardImpl;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
-
-import static junit.framework.Assert.assertEquals;
-import static org.junit.Assert.*;
 import org.junit.Test;
 
-import java.util.Arrays;
 import java.util.HashMap;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class Card_01_045_ErrataTests
 {
-    protected GenericCardTestHelper GetSimplePlayScenario() throws CardNotFoundException, DecisionResultInvalidException {
-        return new GenericCardTestHelper(
-                new HashMap<String, String>()
-                {{
+    protected VirtualTableScenario GetSimplePlayScenario() throws CardNotFoundException, DecisionResultInvalidException {
+        return new VirtualTableScenario(
+                new HashMap<>() {{
                     put("galadriel", "51_45");
                     put("elrond", "1_40");
                 }}
         );
     }
 
-    protected GenericCardTestHelper GetHome6AllyScenario() throws CardNotFoundException, DecisionResultInvalidException {
-        return new GenericCardTestHelper(
-                new HashMap<String, String>()
-                {{
+    protected VirtualTableScenario GetHome6AllyScenario() throws CardNotFoundException, DecisionResultInvalidException {
+        return new VirtualTableScenario(
+                new HashMap<>() {{
                     put("galadriel", "51_45");
                     put("allyHome3_1", "1_60");
                     put("allyHome6_1", "1_56");
@@ -58,31 +55,35 @@ public class Card_01_045_ErrataTests
          */
 
         //Pre-game setup
-        GenericCardTestHelper scn = GetSimplePlayScenario();
+
+        VirtualTableScenario scn = GetSimplePlayScenario();
 
         PhysicalCardImpl galadriel = scn.GetFreepsCard("galadriel");
 
         assertTrue(galadriel.getBlueprint().isUnique());
+        assertEquals(Side.FREE_PEOPLE, galadriel.getBlueprint().getSide());
+        assertEquals(Culture.ELVEN, galadriel.getBlueprint().getCulture());
+        assertEquals(CardType.ALLY, galadriel.getBlueprint().getCardType());
+        assertEquals(Race.ELF, galadriel.getBlueprint().getRace());
         assertEquals(3, galadriel.getBlueprint().getTwilightCost());
-
         assertEquals(3, galadriel.getBlueprint().getStrength());
         assertEquals(3, galadriel.getBlueprint().getVitality());
-        assertEquals(6, Arrays.stream(galadriel.getBlueprint().getAllyHomeSiteNumbers()).findFirst().getAsInt());
+		assertTrue(galadriel.getBlueprint().hasAllyHome(new AllyHome(SitesBlock.FELLOWSHIP, 6)));
     }
 
     @Test
     public void FellowshipActionExertsToDiscountAnElf() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
-        GenericCardTestHelper scn = GetSimplePlayScenario();
+        VirtualTableScenario scn = GetSimplePlayScenario();
 
         PhysicalCardImpl galadriel = scn.GetFreepsCard("galadriel");
-        scn.FreepsMoveCharToTable(galadriel);
-        scn.FreepsMoveCardToHand("elrond");
+        scn.MoveCompanionsToTable(galadriel);
+        scn.MoveCardsToFreepsHand("elrond");
 
         scn.StartGame();
 
         assertEquals(Phase.FELLOWSHIP, scn.GetCurrentPhase());
-        assertTrue(scn.FreepsCardActionAvailable(galadriel));
+        assertTrue(scn.FreepsActionAvailable(galadriel));
 
         assertEquals(0, scn.GetWoundsOn(galadriel));
         assertEquals(1, scn.GetFreepsHandCount());
@@ -99,18 +100,19 @@ public class Card_01_045_ErrataTests
     @Test
     public void AllyHealsCappedAt3() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
-        GenericCardTestHelper scn = GetHome6AllyScenario();
-        scn.FreepsMoveCharToTable("galadriel");
-        scn.FreepsMoveCharToTable("allyHome3_1");
-        scn.FreepsMoveCharToTable("allyHome6_1");
-        scn.FreepsMoveCharToTable("allyHome6_2");
-        scn.FreepsMoveCharToTable("allyHome6_3");
+        VirtualTableScenario scn = GetHome6AllyScenario();
+        var galadriel = scn.GetFreepsCard("galadriel");
+        var allyHome3_1 = scn.GetFreepsCard("allyHome3_1");
+        var allyHome6_1 = scn.GetFreepsCard("allyHome6_1");
+        var allyHome6_2 = scn.GetFreepsCard("allyHome6_2");
+        var allyHome6_3 = scn.GetFreepsCard("allyHome6_3");
+        scn.MoveCompanionsToTable(galadriel, allyHome3_1, allyHome6_1, allyHome6_2, allyHome6_3);
 
-        scn.FreepsAddWoundsToChar("galadriel", 1);
-        scn.FreepsAddWoundsToChar("allyHome3_1", 1);
-        scn.FreepsAddWoundsToChar("allyHome6_1", 1);
-        scn.FreepsAddWoundsToChar("allyHome6_2", 1);
-        scn.FreepsAddWoundsToChar("allyHome6_3", 1);
+        scn.AddWoundsToChar(galadriel, 1);
+        scn.AddWoundsToChar(allyHome3_1, 1);
+        scn.AddWoundsToChar(allyHome6_1, 1);
+        scn.AddWoundsToChar(allyHome6_2, 1);
+        scn.AddWoundsToChar(allyHome6_3, 1);
 
         scn.StartGame();
 

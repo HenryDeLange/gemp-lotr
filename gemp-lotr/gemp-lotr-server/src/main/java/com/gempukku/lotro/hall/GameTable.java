@@ -6,15 +6,21 @@ import com.gempukku.lotro.game.LotroGameParticipant;
 import java.util.*;
 
 public class GameTable {
-    private GameSettings gameSettings;
-    private Map<String, LotroGameParticipant> players = new HashMap<String, LotroGameParticipant>();
+    private final GameSettings gameSettings;
+    private final Map<String, LotroGameParticipant> players = new HashMap<>();
 
     private LotroGameMediator lotroGameMediator;
-    private int capacity;
+    private final int capacity;
+    // When the table was opened (epoch ms, server clock); the hall shows waiting tables' age from it.
+    private final long createdAt = System.currentTimeMillis();
 
     public GameTable(GameSettings gameSettings) {
         this.gameSettings = gameSettings;
-        this.capacity = gameSettings.getLotroFormat().getAdventure().isSolo() ? 1 : 2;
+        if (gameSettings.format().getAdventure().isSolo() || gameSettings.isSolo()) {
+            this.capacity = 1;
+        } else {
+            this.capacity = 2;
+        }
     }
 
     public void startGame(LotroGameMediator lotroGameMediator) {
@@ -36,7 +42,7 @@ public class GameTable {
 
     public boolean removePlayer(String playerId) {
         players.remove(playerId);
-        return players.size() == 0;
+        return players.isEmpty();
     }
 
     public boolean hasPlayer(String playerId) {
@@ -44,14 +50,18 @@ public class GameTable {
     }
 
     public List<String> getPlayerNames() {
-        return new LinkedList<String>(players.keySet());
+        return new LinkedList<>(players.keySet());
     }
 
     public Set<LotroGameParticipant> getPlayers() {
-        return Collections.unmodifiableSet(new HashSet<LotroGameParticipant>(players.values()));
+        return Collections.unmodifiableSet(new HashSet<>(players.values()));
     }
 
     public GameSettings getGameSettings() {
         return gameSettings;
+    }
+
+    public long getCreatedAt() {
+        return createdAt;
     }
 }

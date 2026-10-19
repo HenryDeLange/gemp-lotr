@@ -1,8 +1,9 @@
 package com.gempukku.lotro.tournament;
 
+import com.gempukku.lotro.at.AbstractAtTest;
 import com.gempukku.lotro.competitive.BestOfOneStandingsProducer;
 import com.gempukku.lotro.competitive.PlayerStanding;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
 
 import java.util.*;
@@ -10,7 +11,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static org.junit.Assert.*;
 
-public class SwissPairingMechanismTest {
+public class SwissPairingMechanismTest extends AbstractAtTest {
 //    @Test
 //    public void testPairingLargeTournament() {
 //        int repeatCount = 1;
@@ -37,13 +38,13 @@ public class SwissPairingMechanismTest {
 
         int betterPlayerWins =0;
 
-        Set<String> betterPlayers = new HashSet<String>();
-        Set<String> worsePlayers = new HashSet<String>();
+        Set<String> betterPlayers = new HashSet<>();
+        Set<String> worsePlayers = new HashSet<>();
 
         Random rnd = ThreadLocalRandom.current();
 
         for (int repeat = 0; repeat < repeatCount; repeat++) {
-            Set<String> players = new HashSet<String>();
+            Set<String> players = new HashSet<>();
             for (int i = 0; i < playerCount; i++) {
                 String playerName = String.valueOf(i);
                 players.add(playerName);
@@ -53,21 +54,21 @@ public class SwissPairingMechanismTest {
                     worsePlayers.add(playerName);
             }
 
-            Set<String> droppedPlayers = new HashSet<String>();
-            Map<String, Integer> byes = new HashMap<String, Integer>();
+            Set<String> droppedPlayers = new HashSet<>();
+            Map<String, Integer> byes = new HashMap<>();
 
-            Set<TournamentMatch> matches = new HashSet<TournamentMatch>();
-            Map<String, Set<String>> previouslyPaired = new HashMap<String, Set<String>>();
+            Set<TournamentMatch> matches = new HashSet<>();
+            Map<String, Set<String>> previouslyPaired = new HashMap<>();
             for (String player : players)
-                previouslyPaired.put(player, new HashSet<String>());
+                previouslyPaired.put(player, new HashSet<>());
 
             SwissPairingMechanism pairing = new SwissPairingMechanism("swiss");
             for (int i = 1; i <= roundCount; i++) {
                 if (!pairing.isFinished(i - 1, players, droppedPlayers)) {
                     List<PlayerStanding> standings = BestOfOneStandingsProducer.produceStandings(players, matches, 3, 0, byes);
 
-                    Map<String, String> newPairings = new LinkedHashMap<String, String>();
-                    Set<String> newByes = new HashSet<String>();
+                    Map<String, String> newPairings = new LinkedHashMap<>();
+                    Set<String> newByes = new HashSet<>();
 
                     pairing.pairPlayers(i, players, droppedPlayers, byes, standings, previouslyPaired, newPairings, newByes);
                     if (newByes.size() > 0) {
@@ -91,10 +92,10 @@ public class SwissPairingMechanismTest {
             }
             List<PlayerStanding> standings = BestOfOneStandingsProducer.produceStandings(players, matches, 1, 0, byes);
 
-            String firstSemi = getWinner(rnd, betterPlayers, worsePlayers, standings.get(0).getPlayerName(), standings.get(7).getPlayerName(), chanceToWin);
-            String secondSemi = getWinner(rnd, betterPlayers, worsePlayers, standings.get(1).getPlayerName(), standings.get(6).getPlayerName(), chanceToWin);
-            String thirdSemi = getWinner(rnd, betterPlayers, worsePlayers, standings.get(2).getPlayerName(), standings.get(5).getPlayerName(), chanceToWin);
-            String fourthSemi = getWinner(rnd, betterPlayers, worsePlayers, standings.get(3).getPlayerName(), standings.get(4).getPlayerName(), chanceToWin);
+            String firstSemi = getWinner(rnd, betterPlayers, worsePlayers, standings.get(0).playerName, standings.get(7).playerName, chanceToWin);
+            String secondSemi = getWinner(rnd, betterPlayers, worsePlayers, standings.get(1).playerName, standings.get(6).playerName, chanceToWin);
+            String thirdSemi = getWinner(rnd, betterPlayers, worsePlayers, standings.get(2).playerName, standings.get(5).playerName, chanceToWin);
+            String fourthSemi = getWinner(rnd, betterPlayers, worsePlayers, standings.get(3).playerName, standings.get(4).playerName, chanceToWin);
 
             String firstFinalist = getWinner(rnd, betterPlayers, worsePlayers, firstSemi, fourthSemi, chanceToWin);
             String secondFinalist = getWinner(rnd, betterPlayers, worsePlayers, secondSemi, thirdSemi, chanceToWin);
@@ -158,17 +159,17 @@ public class SwissPairingMechanismTest {
     }
 
     private void testSwissPairingForPlayerCount(int playerCount) {
-        Set<String> players = new HashSet<String>();
+        Set<String> players = new HashSet<>();
         for (int i = 0; i < playerCount; i++)
             players.add("p" + i);
 
-        Set<String> droppedPlayers = new HashSet<String>();
-        Map<String, Integer> byes = new HashMap<String, Integer>();
+        Set<String> droppedPlayers = new HashSet<>();
+        Map<String, Integer> byes = new HashMap<>();
 
-        Set<TournamentMatch> matches = new HashSet<TournamentMatch>();
-        Map<String, Set<String>> previouslyPaired = new HashMap<String, Set<String>>();
+        Set<TournamentMatch> matches = new HashSet<>();
+        Map<String, Set<String>> previouslyPaired = new HashMap<>();
         for (String player : players)
-            previouslyPaired.put(player, new HashSet<String>());
+            previouslyPaired.put(player, new HashSet<>());
 
         SwissPairingMechanism pairing = new SwissPairingMechanism("swiss");
         for (int i = 1; i < 20; i++) {
@@ -176,12 +177,12 @@ public class SwissPairingMechanismTest {
                 System.out.println("Pairing round " + i);
                 List<PlayerStanding> standings = BestOfOneStandingsProducer.produceStandings(players, matches, 1, 0, byes);
                 for (PlayerStanding standing : standings) {
-                    String player = standing.getPlayerName();
-                    log(player + " points - " + standing.getPoints() + " played against: " + StringUtils.join(previouslyPaired.get(player), ","));
+                    String player = standing.playerName;
+                    log(player + " points - " + standing.points + " played against: " + StringUtils.join(previouslyPaired.get(player), ","));
                 }
 
-                Map<String, String> newPairings = new LinkedHashMap<String, String>();
-                Set<String> newByes = new HashSet<String>();
+                Map<String, String> newPairings = new LinkedHashMap<>();
+                Set<String> newByes = new HashSet<>();
 
                 assertFalse("Unable to pair for round " + i, pairing.pairPlayers(i, players, droppedPlayers, byes, standings, previouslyPaired, newPairings, newByes));
                 assertEquals("Invalid number of pairings", playerCount / 2, newPairings.size());
@@ -216,8 +217,8 @@ public class SwissPairingMechanismTest {
         System.out.println("Final standings:");
         List<PlayerStanding> standings = BestOfOneStandingsProducer.produceStandings(players, matches, 1, 0, byes);
         for (PlayerStanding standing : standings) {
-            String player = standing.getPlayerName();
-            System.out.println(standing.getStanding() + ". " + player + " points - " + standing.getPoints() + " played against: " + StringUtils.join(previouslyPaired.get(player), ","));
+            String player = standing.playerName;
+            System.out.println(standing.standing + ". " + player + " points - " + standing.points + " played against: " + StringUtils.join(previouslyPaired.get(player), ","));
         }
     }
 
@@ -227,8 +228,8 @@ public class SwissPairingMechanismTest {
 
     private int getPlayerPoints(List<PlayerStanding> standings, String player) {
         for (PlayerStanding standing : standings) {
-            if (standing.getPlayerName().equals(player))
-                return standing.getPoints();
+            if (standing.playerName.equals(player))
+                return standing.points;
         }
         return -1;
     }

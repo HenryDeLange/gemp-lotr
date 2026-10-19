@@ -1,17 +1,18 @@
 package com.gempukku.lotro.logic.actions;
 
-import com.gempukku.lotro.common.Phase;
+import com.gempukku.lotro.common.Timeword;
 import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.timing.Action;
 import com.gempukku.lotro.logic.timing.Effect;
 
 public class SubAction extends AbstractCostToEffectAction {
-    private Action _action;
+    private final Action _action;
 
     public SubAction(Action action) {
         _action = action;
     }
+    public Action getAction() { return _action; }
 
     @Override
     public Type getType() {
@@ -29,7 +30,7 @@ public class SubAction extends AbstractCostToEffectAction {
     }
 
     @Override
-    public Phase getActionTimeword() {
+    public Timeword getActionTimeword() {
         return _action.getActionTimeword();
     }
 
@@ -39,8 +40,8 @@ public class SubAction extends AbstractCostToEffectAction {
     }
 
     @Override
-    public void setActionTimeword(Phase phase) {
-        _action.setActionTimeword(phase);
+    public void setActionTimeword(Timeword timeword) {
+        _action.setActionTimeword(timeword);
     }
 
     @Override

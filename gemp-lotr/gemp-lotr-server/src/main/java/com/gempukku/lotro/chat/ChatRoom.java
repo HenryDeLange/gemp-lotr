@@ -5,11 +5,11 @@ import java.util.stream.Collectors;
 
 public class ChatRoom {
     private static final int MAX_MESSAGE_HISTORY_COUNT = 500;
-    private LinkedList<ChatMessage> _lastMessages = new LinkedList<>();
-    private Map<String, ChatRoomInfo> _chatRoomListeners = new TreeMap<>(
+    private final LinkedList<ChatMessage> _lastMessages = new LinkedList<>();
+    private final Map<String, ChatRoomInfo> _chatRoomListeners = new TreeMap<>(
             String::compareToIgnoreCase);
-    private boolean muteJoinPartMessages;
-    private boolean allowIncognito;
+    private final boolean muteJoinPartMessages;
+    private final boolean allowIncognito;
 
     public ChatRoom(boolean muteJoinPartMessages, boolean allowIncognito) {
         this.muteJoinPartMessages = muteJoinPartMessages;
@@ -22,6 +22,16 @@ public class ChatRoom {
             if (chatRoomInfo != null)
                 chatRoomInfo.incognito = incognito;
         }
+    }
+
+    /** True when the user is in the room and has turned incognito on (always false in rooms that do not allow it). */
+    public boolean isUserIncognito(String username) {
+        final ChatRoomInfo chatRoomInfo = _chatRoomListeners.get(username);
+        return chatRoomInfo != null && chatRoomInfo.incognito;
+    }
+
+    public boolean isUserInRoom(String username) {
+        return _chatRoomListeners.containsKey(username);
     }
 
     public void postMessage(String from, String message, boolean addToHistory, boolean fromAdmin) {
@@ -66,14 +76,18 @@ public class ChatRoom {
         }
     }
 
+    public long getSecsSinceLastMessage() {
+        return (System.currentTimeMillis() - _lastMessages.getLast().getWhen().getTime()) / 1000;
+    }
+
     private void shrinkLastMessages() {
         while (_lastMessages.size() > MAX_MESSAGE_HISTORY_COUNT) {
             _lastMessages.removeFirst();
         }
     }
 
-    private class ChatRoomInfo {
-        private ChatRoomListener chatRoomListener;
+    private static class ChatRoomInfo {
+        private final ChatRoomListener chatRoomListener;
         private boolean incognito;
 
         public ChatRoomInfo(ChatRoomListener chatRoomListener, boolean incognito) {

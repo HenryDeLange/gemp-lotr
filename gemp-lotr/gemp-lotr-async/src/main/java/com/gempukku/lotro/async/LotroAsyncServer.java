@@ -1,7 +1,7 @@
 package com.gempukku.lotro.async;
 
 import com.gempukku.lotro.async.handler.RootUriRequestHandler;
-import com.gempukku.lotro.common.ApplicationConfiguration;
+import com.gempukku.lotro.common.AppConfig;
 import com.gempukku.polling.LongPollingSystem;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
@@ -14,17 +14,17 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.HttpContentCompressor;
 import io.netty.handler.codec.http.HttpObjectAggregator;
-import io.netty.handler.codec.http.HttpRequestDecoder;
-import io.netty.handler.codec.http.HttpResponseEncoder;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
-import java.net.InetSocketAddress;
-
 public class LotroAsyncServer {
     public static void main(String[] server) throws InterruptedException {
-        int httpPort = Integer.parseInt(ApplicationConfiguration.getProperty("port"));
+        int httpPort = Integer.parseInt(AppConfig.getProperty("port"));
+
+        //Use this to halt gemp on startup long enough for the debugger to attach.
+        //DO NOT commit this line to the main gemp uncommented.
+        //Thread.sleep(10_000);
 
         GempukkuServer gempukkuServer = new GempukkuServer();
 
@@ -43,8 +43,7 @@ public class LotroAsyncServer {
                     .handler(new LoggingHandler(LogLevel.INFO))
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
-                        public void initChannel(SocketChannel ch)
-                                throws Exception {
+                        public void initChannel(SocketChannel ch) {
                             ChannelPipeline pipeline = ch.pipeline();
                             pipeline.addLast(new HttpServerCodec());
                             pipeline.addLast(new HttpObjectAggregator(Short.MAX_VALUE));

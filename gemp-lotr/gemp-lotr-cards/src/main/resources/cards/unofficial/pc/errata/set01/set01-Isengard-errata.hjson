@@ -1,0 +1,753 @@
+{
+	51_126: {
+		cardInfo: {
+			//id: 1_126.1
+			parent: 1_126
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN01E126.1.jpg
+			collInfo: 1C126
+			rarity: U
+		}
+		title: Hunt Them Down!
+		culture: isengard
+		twilight: 2
+		type: event
+		timeword: maneuver
+		effects: {
+			type: event
+			effect: {
+				type: addKeyword
+				select: choose(uruk-hai)
+				keyword: fierce
+				until: start(regroup)
+			}
+		}
+		gametext: <b>Maneuver</b>: Make an Uruk-hai <b>fierce</b> until the regroup phase.
+		lore: "'Do not stop until they are found!'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_136: {
+		cardInfo: {
+			//id: 51_136.1
+			parent: 1_136
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN01E136.1_card.jpg
+			collInfo: 1U136
+			rarity: U
+		}
+		title: Saruman's Power
+		unique: false
+		side: Shadow
+		culture: Isengard
+		twilight: 2
+		type: Event
+		timewords: Shadow
+		keywords: Spell
+		effects: {
+			type: event
+			cost: {
+				type: Exert
+				count: 1
+				select: choose(culture(isengard),minion)
+			}
+			effect: [
+				{
+					type: Discard
+					count: 1
+					select: choose(side(Free Peoples), condition)
+				}
+				{
+					type: Hinder
+					select: all(condition)
+				}
+			]
+		}
+		gametext: <b>Spell</b>.<br>Exert an [isengard] minion to discard a Free Peoples condition and then hinder all conditions.
+		lore: "The Uruks of Saruman are bred to be the instruments of his will, destroying his enemies with foul cruelty."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_138: {
+		cardInfo: {
+			//id: 1_138.1
+			parent: 1_138
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/51_138.jpg
+			collInfo: 1C138
+			rarity: C
+		}
+		title: Saruman's Snows
+		culture: isengard
+		twilight: 2
+		type: condition
+		keyword: [
+			spell
+			weather
+		]
+		target: site
+		effects: [
+			{
+				type: extraCost
+				cost: {
+					type: exert
+					select: choose(culture(isengard),minion)
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: cantPlayPhaseEventsOrPhaseSpecialAbilities
+					requires: [
+						{
+							type: location
+							filter: hasAttached(self)
+						}
+						{
+							type: canSpot
+							filter: culture(isengard),minion,inSkirmish
+						}
+					]
+					phase: skirmish
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: endOfTurn
+				}
+				effect: {
+					type: discard
+					select: self
+				}
+			}
+		]
+		gametext: <b>Spell.</b> <b>Weather.</b> To play, exert an [isengard] minion. Plays on a site.<br>No player may play skirmish events or use skirmish special abilities during skirmishes involving an [isengard] minion at this site.<br>Discard this condition at the end of the turn.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	# 51_139: {
+	# 	cardInfo: {
+	# 	# 		imagePath: errata/51_139.jpg
+	# 		//If this is true, then all gameplay-related info outside this cardInfo definition
+	# 		// will be ignored and the java class loaded instead.
+	# 		javaClass: false
+	# 		//This instructs the blueprint generator to insert this card as an alt of the listed
+	# 		// parent blueprint. Can of course be ommitted if not an errata or promo.
+	# 		parent: 1_139
+	# 		//This is the tree path to use within the alts structure on the parent.
+	# 		// Can of course be ommitted if parent is null. 
+	# 		parentPath: errata/pc
+	# 		//Versioning differentiates releases within a particular alt path, such as PC errata
+	# 		// version 1 vs version 2.  PC version 2 will not conflict with, say, Decipher version 2.
+	# 		//Top-level cards should always be version 0.
+	# 		revision: 1
+	# 		collInfo: 1R139
+	# 		rarity: R
+	# 		setNum: "1"
+	# 		cardNum: 139
+	# 		// Standard, Masterwork, Tengwar, FullArt, etc.  Top-level cards are always Standard.
+	# 		style: Standard
+	# 	}
+	# 	title: Savagery To Match Their Numbers
+	# 	culture: isengard
+	# 	twilight: 0
+	# 	type: event
+	# 	timeword: skirmish
+	# 	effects: {
+	# 		type: event
+	# 		effect: {
+	# 			type: choice
+	# 			texts: [
+	# 				Make an Uruk-hai strength +2
+	# 				Make an Uruk-hai strength +3 (and fierce until the regroup phase)
+	# 			]
+	# 			effects: [
+	# 				{
+	# 					type: modifyStrength
+	# 					select: choose(uruk-hai)
+	# 					amount: 2
+	# 				}
+	# 				{
+	# 					type: conditional
+	# 					requires: {
+	# 						type: canSpot
+	# 						count: 5
+	# 						filter: companion
+	# 					}
+	# 					effect: [
+	# 						{
+	# 							type: modifyStrength
+	# 							select: choose(uruk-hai)
+	# 							amount: 3
+	# 							memorize: chosenUrukHai
+	# 						}
+	# 						{
+	# 							type: addKeyword
+	# 							select: memory(chosenUrukHai)
+	# 							keyword: fierce
+	# 							until: start(regroup)
+	# 						}
+	# 					]
+	# 				}
+	# 			]
+	# 		}
+	# 	}
+	# 	gametext: <b>Skirmish:</b> Make an Uruk-hai strength +2, or spot 5 companions to make an Uruk-hai strength +3 (and <b>fierce</b> until the regroup phase).
+	# 	lore: Uruk-hai match their enemies' strength with their own feral rage.
+	# 	promotext: ""
+	# 	alts: {
+	# 		//These are just CardInfo objects
+	# 		promos: {
+	# 		}
+	# 		//These are full card definitions, with redundant info that is the same as the original card ommitted
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	51_139: {
+		cardInfo: {
+			//id: 1_139.3
+			parent: 1_139
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 3
+			image: errata/LOTR-EN01E139.2.jpg
+			collInfo: 1R139
+			rarity: R
+		}
+		title: Savagery To Match Their Numbers
+		culture: isengard
+		twilight: 1
+		type: event
+		timeword: skirmish
+		effects: {
+			type: event
+			effect: {
+				type: choice
+				texts: [
+					Make an Uruk-hai strength +2
+					Make an Uruk-hai strength +2 (and +2 more and fierce until the regroup phase)
+				]
+				effects: [
+					{
+						type: modifyStrength
+						select: choose(uruk-hai)
+						amount: 2
+					}
+					{
+						type: If
+						check: {
+							type: canSpot
+							count: 5
+							filter: companion
+						}
+						true: [
+							{
+								type: modifyStrength
+								select: choose(uruk-hai)
+								amount: 2
+								memorize: chosenUrukHai
+							}
+							{
+								type: modifyStrength
+								select: memory(chosenUrukHai)
+								amount: 2
+								until: start(regroup)
+							}
+							{
+								type: addKeyword
+								select: memory(chosenUrukHai)
+								keyword: fierce
+								until: start(regroup)
+							}
+						]
+					}
+				]
+			}
+		}
+		gametext: <b>Skirmish:</b> Make an Uruk-hai strength +2.\If you can spot 5 companions, also make it <b>fierce</b> and strength +2 more until the regroup phase).
+		lore: Uruk-hai match their enemies' strength with their own feral rage.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_142: {
+		cardInfo: {
+			//id: 1_142.1
+			parent: 1_142
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN01E142.1.jpg
+			collInfo: 1U142
+			rarity: U
+		}
+		title: Traitor's Voice
+		unique: false
+		side: Shadow
+		culture: Isengard
+		twilight: 2
+		type: Condition
+		keywords: [
+			Search
+			Support Area
+		]
+		effects: [
+			{
+				type: toPlay
+				requires: {
+					type: canSpot
+					filter: isengard, minion
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: ConstantlyCheck
+					requires: [
+						{
+							type: perTurnLimit
+							limit: 1
+						}
+						{
+							type: or
+							requires: [
+								{
+									type: CanSpot
+									filter: Isengard, minion
+									count: 4
+								}
+								{
+									type: canSpot
+									filter: exhausted,ring bearer
+								}
+								{
+									type: canSpotBurdens
+									amount: 5
+								}
+							]
+						}
+					]
+				}
+				effect: [
+					{
+						type: incrementPerTurnLimit
+						limit: 1
+					}
+					{
+						type: addModifier
+						modifier: {
+							type: modifyMoveLimit
+							amount: -1
+						}
+						until: endOfTurn
+					}
+				]
+			}
+		]
+		gametext: <b>Search</b>. To play, spot an [isengard] minion.\Regroup: Spot 4 [isengard] minions, an exhausted Ring-bearer, or 5 burdens to make the move limit for this turn -1 (limit once per phase).
+		lore: "'In all the long wars with the Dark Tower treason has ever been our greatest foe.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_150: {
+		cardInfo: {
+			//id: 1_150.1
+			parent: 1_150
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN01E150.1.jpg
+			collInfo: 1C150
+			rarity: C
+		}
+		title: Uruk Rager
+		culture: isengard
+		twilight: 4
+		type: minion
+		race: uruk-hai
+		strength: 9
+		vitality: 2
+		site: 5
+		keyword: damage+1
+		effects: {
+			type: Trigger
+			optional: false
+			trigger: {
+				type: winsSkirmish
+				filter: self
+			}
+			effect: {
+				type: choice
+				player: freeps
+				texts: [
+					Exert a companion
+					Discard the top 3 cards of your draw deck
+				]
+				effects: [
+					{
+						type: exert
+						select: choose(companion)
+					}
+					{
+						type: discardTopCardsFromDeck
+						deck: freeps
+						count: 3
+						forced: false
+					}
+				]
+			}
+		}
+		gametext: <b>Damage +1</b>.<br>Each time this minion wins a skirmish, the Free Peoples player must exert a companion or discard the top 3 cards of their draw deck.
+		lore: A bloodthirsty bellow from a huge Uruk can win a skirmish before it begins.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_152: {
+		cardInfo: {
+			//id: 51_152.1
+			parent: 1_152
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN01E152.1_card.jpg
+			collInfo: 1C152
+			rarity: C
+		}
+		title: Uruk Shaman
+		unique: false
+		side: Shadow
+		culture: Isengard
+		twilight: 3
+		type: Minion
+		race: Uruk-hai
+		strength: 8
+		vitality: 2
+		site: 5
+		keywords: Damage+1
+		effects: {
+			type: activated
+			phase: maneuver
+			cost: {
+				type: removeTwilight
+				amount: 2
+			}
+			effect: {
+				type: heal
+				select: choose(culture(isengard),minion)
+			}
+		}
+		gametext: <b>Damage +1</b>.<br><b>Maneuver:</b> Remove (2) to heal an [Isengard] minion.
+		lore: "Uruk shamans know the arts of healing as well as those of battle."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_154: {
+		cardInfo: {
+			//id: 1_154.1
+			parent: 1_154
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN01E154.1.jpg
+			collInfo: 1C154
+			rarity: C
+		}
+		title: Uruk Soldier
+		culture: isengard
+		twilight: 2
+		type: minion
+		race: uruk-hai
+		strength: 7
+		vitality: 1
+		site: 5
+		keyword: damage+1
+		effects: {
+			type: Trigger
+			optional: false
+			optional: false
+			trigger: {
+				type: played
+				filter: your,self
+			}
+			effect: [
+				{
+					type: chooseActiveCards
+					select: choose(companion)
+					memorize: chosenComp
+					text: Choose a companion to exert
+				}
+				{
+					type: preventable
+					player: ownerFromMemory(chosenComp)
+					cost: {
+						type: discardTopCardsFromDeck
+						deck: freeps
+						count: 2
+						forced: false
+					}
+					text: Would you like to discard the top 2 cards of your deck to prevent the exertion of {chosenComp}?
+					effect: {
+						type: exert
+						select: memory(chosenComp)
+					}
+				}
+			]
+		}
+		gametext: <b>Damage +1</b>.<br>When you play this minion, exert a companion.  The Free Peoples player may discard the top 2 cards of their draw deck to prevent this.
+		lore: Saruman's Uruk-hai band together as an extremely effective fighting unit.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+		51_157: {
+		cardInfo: {
+			//id: 51_157.1
+			parent: 1_157
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN01E157.1_card.jpg
+			collInfo: 1C157
+			rarity: C
+		}
+		title: Uruk-hai Armory
+		unique: false
+		side: Shadow
+		culture: Isengard
+		twilight: 1
+		type: Condition
+		keywords: Support Area
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: modifyArcheryTotal
+					side: free people
+					requires: {
+						type: canSpot
+						filter: uruk-hai
+					}
+					amount: -1
+				}
+			}
+			{
+				type: activated
+				phase: shadow
+				cost: {
+					type: discard
+					select: self
+				}
+				effect: {
+					type: PlayCardFromDiscard
+					select: choose(culture(isengard),possession)
+				}
+			}
+			{
+				type: Response
+				trigger: {
+					type: aboutToTakeWound
+					filter: your,culture(isengard),minion
+				}
+				cost: [
+					{
+						type: removeTwilight
+						amount: 1
+					}
+					{
+						type: discard
+						select: self
+					}
+				]
+				effect: {
+					type: preventWound
+					select: choose(your,culture(isengard),minion)
+				}
+			}
+		]
+		gametext: While you can spot an Uruk-hai, the fellowship archery total is -1.<br><b>Shadow:</b> Discard this condition to play an [Isengard] possession from your discard pile.<br><b>Response:</b> If your [Isengard] minion is about to take a wound, remove (1) and discard this condition to prevent that wound.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_158: {
+		cardInfo: {
+			//id: 51_158.1
+			parent: 1_158
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN01E158.1_card.jpg
+			collInfo: 1C158
+			rarity: C
+		}
+		title: Uruk-hai Raiding Party
+		unique: false
+		side: Shadow
+		culture: Isengard
+		twilight: 4
+		type: Minion
+		race: Uruk-hai
+		strength: 9
+		vitality: 3
+		site: 5
+		keywords: Damage+1
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: modifyStrength
+					filter: uruk-hai
+					amount: 1
+					requires: {
+						type: canSpot
+						count: 2
+						filter: uruk-hai
+					}
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: addKeyword
+					filter: self
+					keyword: fierce
+					requires: {
+						type: canSpot
+						count: 4
+						filter: uruk-hai
+					}
+				}
+			}
+		]
+		gametext: <b>Damage +1</b>.<br>While you can spot 2 Uruk-hai, each Uruk-hai is strength +1.<br>While you can spot 4 Uruk-hai, this minion is <b>fierce</b>.
+		lore: "'Imagine, Gandalf, an army – born from the earth of Isengard.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_160: {
+		cardInfo: {
+			//id: 1_160.1
+			parent: 1_160
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN01E160.1.jpg
+			collInfo: 1C160
+			rarity: C
+		}
+		title: Uruk-hai Sword
+		culture: isengard
+		twilight: 1
+		type: possession
+		itemclass: hand weapon
+		strength: 2
+		target: uruk-hai
+		effects: {
+			type: Trigger
+			optional: false
+			trigger: {
+				type: winsSkirmish
+				filter: bearer
+			}
+			effect: {
+				type: choice
+				player: freeps
+				texts: [
+					Exert a companion
+					Discard the top 2 cards of your draw deck
+				]
+				effects: [
+					{
+						type: exert
+						select: choose(companion)
+					}
+					{
+						type: discardTopCardsFromDeck
+						deck: freeps
+						count: 2
+						forced: false
+					}
+				]
+			}
+		}
+		gametext: Bearer must be an Uruk-hai.<br>Each time bearer wins a skirmish, the Free Peoples player must exert a companion or discard the top 2 cards of their draw deck.
+		lore: Their malevolent strength worsens the wounds from the gruesome weapons of the Uruks.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

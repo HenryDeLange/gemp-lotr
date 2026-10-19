@@ -1,0 +1,204 @@
+{
+	69_1: {
+		cardInfo: {
+			//id: 9_1.1
+			revision: 1
+			image: errata/LOTR-EN19E001.1.jpg
+			collInfo: 19P1
+			rarity: P
+		}
+		title: The One Ring
+		subtitle: The Great Ring
+		unique: true
+		twilight: 0
+		type: the one ring
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: CantRemoveBurdens
+					filter: any
+					requires: [
+						{
+							type: ringIsOn
+						}
+						{
+							type: ringIsActive
+						}
+					]
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				requires: [
+					{
+						type: ringIsOn
+					}
+					{
+						type: ringIsActive
+					}
+				]
+				trigger: {
+					type: aboutToTakeWound
+					filter: bearer
+				}
+				effect: [
+					{
+						type: negateWound
+						select: all(bearer)
+					}
+					{
+						type: addBurdens
+					}
+				]
+			}
+			{
+				type: activated
+				requires: {
+					type: ringIsActive
+				}
+				phase: maneuver
+				effect: {
+					type: putOnRing
+				}
+			}
+			{
+				type: activated
+				requires: [
+					{
+						type: ringIsOn
+					}
+					{
+						type: ringIsActive
+					}
+				]
+				phase: skirmish
+				cost: {
+					type: addBurdens
+				}
+				effect: {
+					type: modifyStrength
+					select: bearer
+					amount: 3
+				}
+			}
+		]
+		gametext: While wearing The One Ring, burdens may not be removed and each time bearer is about to take a wound, add a burden instead.<br> <b>Maneuver:</b> Wear The One Ring until the regroup phase.\<b>Skirmish:</b> If wearing the One Ring, add a burden to make bearer strength +3.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	69_24: {
+		cardInfo: {
+			//id: 9_24.1
+			revision: 1
+			image: errata/LOTR-EN19E024.1.jpg
+			collInfo: 19P24
+			rarity: P
+		}
+		title: Brought Down From Inside
+		unique: true
+		culture: rohan
+		twilight: 2
+		type: condition
+		strength: 1
+		target: culture(rohan),man
+		effects: [
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: startOfPhase
+					phase: skirmish
+				}
+				effect: {
+					type: transfer
+					select: self
+					where: choose(another,culture(rohan),man)
+					checkTarget: true
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: endOfTurn
+				}
+				requires: {
+					type: not
+					requires: {
+						type: didWinSkirmish
+						filter: bearer
+					}
+				}
+				effect: {
+					type: returnToHand
+					select: self
+				}
+			}
+		]
+		gametext: Plays on a [rohan] Man.\At the start of each skirmish you may transfer this condition to a [rohan] Man.\At the end of each turn, if bearer did not win a skirmish this turn, return this condition to hand.
+		lore: "'Bring it down! Bring it down! Bring it down!'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	69_30: {
+		cardInfo: {
+			//id: 9_30.1
+			revision: 1
+			image: errata/LOTR-EN19E030.1.jpg
+			collInfo: 19P30
+			rarity: P
+		}
+		title: Pippin
+		subtitle: Steadfast Friend
+		unique: true
+		culture: shire
+		twilight: 1
+		type: companion
+		race: hobbit
+		strength: 3
+		vitality: 4
+		resistance: 8
+		keyword: fellowship
+		effects: {
+			type: modifier
+			modifier: {
+				type: ModifyStrength
+				filter: self
+				amount: {
+					type: ForEachYouCanSpot
+					filter: tale
+					limit: {
+						type: ForEachYouCanSpot
+						filter: culture(shire),companion
+					}
+				}
+			}
+		}
+		gametext: <b>Fellowship.</b><br> Pippin is strength +1 for each tale you can spot (limit X, where X is the number of [shire] companions you can spot).
+		lore: "'You must go - and therefore we must, too. Merry and I are coming with you.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	
+}

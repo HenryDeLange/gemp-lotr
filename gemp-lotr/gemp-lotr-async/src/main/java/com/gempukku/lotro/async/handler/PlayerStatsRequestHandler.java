@@ -8,7 +8,8 @@ import com.gempukku.lotro.game.Player;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
-import org.w3c.dom.Document;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -19,7 +20,9 @@ import java.util.List;
 import java.util.Map;
 
 public class PlayerStatsRequestHandler extends LotroServerRequestHandler implements UriRequestHandler {
-    private GameHistoryService _gameHistoryService;
+    private final GameHistoryService _gameHistoryService;
+
+    private static final Logger _log = LogManager.getLogger(PlayerStatsRequestHandler.class);
 
     public PlayerStatsRequestHandler(Map<Type, Object> context) {
         super(context);
@@ -30,7 +33,7 @@ public class PlayerStatsRequestHandler extends LotroServerRequestHandler impleme
     @Override
     public void handleRequest(String uri, HttpRequest request, Map<Type, Object> context, ResponseWriter responseWriter, String remoteIp) throws Exception {
         if (uri.equals("") && request.method() == HttpMethod.GET) {
-            QueryStringDecoder queryDecoder = new QueryStringDecoder(request.getUri());
+            QueryStringDecoder queryDecoder = new QueryStringDecoder(request.uri());
             String participantId = getQueryParameterSafely(queryDecoder, "participantId");
             Player resourceOwner = getResourceOwnerSafely(request, participantId);
 

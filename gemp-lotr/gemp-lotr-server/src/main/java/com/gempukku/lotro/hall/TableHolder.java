@@ -5,23 +5,26 @@ import com.gempukku.lotro.db.vo.League;
 import com.gempukku.lotro.game.LotroGameMediator;
 import com.gempukku.lotro.game.LotroGameParticipant;
 import com.gempukku.lotro.game.Player;
-import com.gempukku.lotro.league.LeagueSerieData;
+import com.gempukku.lotro.league.LeagueSerieInfo;
 import com.gempukku.lotro.league.LeagueService;
 import com.gempukku.lotro.logic.vo.LotroDeck;
+import com.gempukku.lotro.tournament.TournamentService;
 
 import java.util.*;
 
 public class TableHolder {
-    private LeagueService leagueService;
-    private IgnoreDAO ignoreDAO;
+    private final LeagueService leagueService;
+    private final TournamentService tournamentService;
+    private final IgnoreDAO ignoreDAO;
 
-    private Map<String, GameTable> awaitingTables = new LinkedHashMap<>();
-    private Map<String, GameTable> runningTables = new LinkedHashMap<>();
+    private final Map<String, GameTable> awaitingTables = new LinkedHashMap<>();
+    private final Map<String, GameTable> runningTables = new LinkedHashMap<>();
 
     private int _nextTableId = 1;
 
-    public TableHolder(LeagueService leagueService, IgnoreDAO ignoreDAO) {
+    public TableHolder(LeagueService leagueService, TournamentService tournamentService, IgnoreDAO ignoreDAO) {
         this.leagueService = leagueService;
+        this.tournamentService = tournamentService;
         this.ignoreDAO = ignoreDAO;
     }
 
@@ -36,14 +39,14 @@ public class TableHolder {
     public GameTable createTable(Player player, GameSettings gameSettings, LotroDeck lotroDeck) throws HallException {
         String tableId = String.valueOf(_nextTableId++);
 
-        final League league = gameSettings.getLeague();
+        final League league = gameSettings.league();
         if (league != null) {
             verifyNotPlayingLeagueGame(player, league);
 
             if (!leagueService.isPlayerInLeague(league, player))
-                throw new HallException("You're not in that league");
+                throw new HallException("You're not in that league and somehow were able to get this message.  Please report a bug.");
 
-            if (!leagueService.canPlayRankedGame(league, gameSettings.getLeagueSerie(), player.getName()))
+            if (!leagueService.canPlayRankedGame(league, gameSettings.leagueSerie(), player.getName()))
                 throw new HallException("You have already played max games in league");
         }
 
@@ -60,26 +63,20 @@ public class TableHolder {
     }
 
     public GameTable joinTable(String tableId, Player player, LotroDeck lotroDeck) throws HallException {
-        final GameTable awaitingTable = awaitingTables.get(tableId);
+        final GameTable awaitingTable = verifyMayTakeSeat(tableId, player);
 
-        if (awaitingTable == null || awaitingTable.wasGameStarted())
-            throw new HallException("Table is already taken or was removed");
-
-        if (awaitingTable.hasPlayer(player.getName()))
-            throw new HallException("You can't play against yourself");
-
-        final League league = awaitingTable.getGameSettings().getLeague();
+        final League league = awaitingTable.getGameSettings().league();
         if (league != null) {
             verifyNotPlayingLeagueGame(player, league);
 
             if (!leagueService.isPlayerInLeague(league, player))
-                throw new HallException("You're not in that league");
+                throw new HallException("You're not registered for this league; go to the Events tab to sign up.");
 
-            LeagueSerieData leagueSerie = awaitingTable.getGameSettings().getLeagueSerie();
+            LeagueSerieInfo leagueSerie = awaitingTable.getGameSettings().leagueSerie();
             if (!leagueService.canPlayRankedGame(league, leagueSerie, player.getName()))
-                throw new HallException("You have already played max games in league");
-            if (awaitingTable.getPlayerNames().size() != 0 && !leagueService.canPlayRankedGameAgainst(league, leagueSerie, awaitingTable.getPlayerNames().iterator().next(), player.getName()))
-                throw new HallException("You have already played ranked league game against this player in that series");
+                throw new HallException("You have already played max games for this league: " + leagueSerie.getMaxMatches());
+            if (!awaitingTable.getPlayerNames().isEmpty() && !leagueService.canPlayRankedGameAgainst(league, leagueSerie, awaitingTable.getPlayerNames().iterator().next(), player.getName()))
+                throw new HallException("You have already played max matches against this player for this league series");
         }
 
         final boolean tableFull = awaitingTable.addPlayer(new LotroGameParticipant(player.getName(), lotroDeck));
@@ -94,6 +91,24 @@ public class TableHolder {
             return awaitingTable;
         }
         return null;
+    }
+
+    /**
+     * The waiting table {@code player} may take the free seat at: it exists, they are not already seated there, and,
+     * for an invite-only table, they are the invitee (or an administrator).  HallServer asks before it validates the
+     * deck, and {@link #joinTable} asks again.
+     */
+    public GameTable verifyMayTakeSeat(String tableId, Player player) throws HallException {
+        final GameTable awaitingTable = awaitingTables.get(tableId);
+
+        if (awaitingTable == null || awaitingTable.wasGameStarted())
+            throw new HallException("Table is already taken or was removed");
+
+        if (awaitingTable.hasPlayer(player.getName()))
+            throw new HallException("You can't play against yourself");
+
+        verifyMayJoin(awaitingTable.getGameSettings(), player);
+        return awaitingTable;
     }
 
     public GameTable setupTournamentTable(GameSettings gameSettings, LotroGameParticipant[] participants) {
@@ -150,14 +165,14 @@ public class TableHolder {
 
     private void verifyNotPlayingLeagueGame(Player player, League league) throws HallException {
         for (GameTable awaitingTable : awaitingTables.values()) {
-            if (league.equals(awaitingTable.getGameSettings().getLeague())
+            if (league.equals(awaitingTable.getGameSettings().league())
                     && awaitingTable.hasPlayer(player.getName())) {
                 throw new HallException("You can't play in multiple league games at the same time");
             }
         }
 
         for (GameTable runningTable : runningTables.values()) {
-            if (league.equals(runningTable.getGameSettings().getLeague())) {
+            if (league.equals(runningTable.getGameSettings().league())) {
                 LotroGameMediator game = runningTable.getLotroGameMediator();
                 if (game != null && !game.isFinished() && game.getPlayersPlaying().contains(player.getName()))
                     throw new HallException("You can't play in multiple league games at the same time");
@@ -171,13 +186,21 @@ public class TableHolder {
             final GameTable table = tableInformation.getValue();
 
             List<String> players;
-            if (table.getGameSettings().getLeague() != null)
-                players = Collections.<String>emptyList();
-            else
+            if (table.getGameSettings().league() != null) {
+                players = Collections.emptyList();
+            }
+            else {
                 players = table.getPlayerNames();
+            }
 
-            if (isAdmin || isNoIgnores(players, player.getName()))
-                visitor.visitTable(tableInformation.getKey(), null, false, HallInfoVisitor.TableStatus.WAITING, "Waiting", table.getGameSettings().getLotroFormat().getName(), getTournamentName(table), players, table.getPlayerNames().contains(player.getName()), null);
+            if (isAdmin || isNoIgnores(players, player.getName())) {
+                visitor.visitTable(tableInformation.getKey(), null, false, HallInfoVisitor.TableStatus.WAITING,
+                        "Waiting", table.getGameSettings().format().getName(), getTournamentName(table),
+                        table.getGameSettings().userDescription(), players,
+                        table.getPlayerNames().contains(player.getName()), table.getGameSettings().privateGame(),
+                        table.getGameSettings().isInviteOnly(), null,
+                        table.getCreatedAt(), isInvitee(table.getGameSettings(), player.getName()));
+            }
         }
 
         // Then non-finished
@@ -190,9 +213,20 @@ public class TableHolder {
                 if (isAdmin || (lotroGameMediator.isVisibleToUser(player.getName()) &&
                         isNoIgnores(lotroGameMediator.getPlayersPlaying(), player.getName()))) {
                     if (lotroGameMediator.isFinished())
+                    {
                         finishedTables.put(runningGame.getKey(), runningTable);
-                    else
-                        visitor.visitTable(runningGame.getKey(), lotroGameMediator.getGameId(), isAdmin || lotroGameMediator.isAllowSpectators(), HallInfoVisitor.TableStatus.PLAYING, lotroGameMediator.getGameStatus(), runningTable.getGameSettings().getLotroFormat().getName(), getTournamentName(runningTable), lotroGameMediator.getPlayersPlaying(), lotroGameMediator.getPlayersPlaying().contains(player.getName()), lotroGameMediator.getWinner());
+                    }
+                    else {
+                        visitor.visitTable(runningGame.getKey(), lotroGameMediator.getGameId(),
+                                isAdmin || lotroGameMediator.isAllowSpectators(), HallInfoVisitor.TableStatus.PLAYING,
+                                lotroGameMediator.getGameStatus(), runningTable.getGameSettings().format().getName(),
+                                getTournamentName(runningTable), runningTable.getGameSettings().userDescription(),
+                                lotroGameMediator.getPlayersPlaying(),
+                                lotroGameMediator.getPlayersPlaying().contains(player.getName()),
+                                runningTable.getGameSettings().privateGame(),
+                                runningTable.getGameSettings().isInviteOnly(), lotroGameMediator.getWinner(),
+                                runningTable.getCreatedAt(), isInvitee(runningTable.getGameSettings(), player.getName()));
+                    }
 
                     if (!lotroGameMediator.isFinished() && lotroGameMediator.getPlayersPlaying().contains(player.getName()))
                         visitor.runningPlayerGame(lotroGameMediator.getGameId());
@@ -206,7 +240,8 @@ public class TableHolder {
             LotroGameMediator lotroGameMediator = runningTable.getLotroGameMediator();
             if (lotroGameMediator != null) {
                 if (isAdmin || isNoIgnores(lotroGameMediator.getPlayersPlaying(), player.getName()))
-                    visitor.visitTable(nonPlayingGame.getKey(), lotroGameMediator.getGameId(), false, HallInfoVisitor.TableStatus.FINISHED, lotroGameMediator.getGameStatus(), runningTable.getGameSettings().getLotroFormat().getName(), getTournamentName(runningTable), lotroGameMediator.getPlayersPlaying(), lotroGameMediator.getPlayersPlaying().contains(player.getName()), lotroGameMediator.getWinner());
+                    visitor.visitTable(nonPlayingGame.getKey(), lotroGameMediator.getGameId(), false, HallInfoVisitor.TableStatus.FINISHED, lotroGameMediator.getGameStatus(), runningTable.getGameSettings().format().getName(), getTournamentName(runningTable), runningTable.getGameSettings().userDescription(), lotroGameMediator.getPlayersPlaying(), lotroGameMediator.getPlayersPlaying().contains(player.getName()), runningTable.getGameSettings().privateGame(),  runningTable.getGameSettings().isInviteOnly(), lotroGameMediator.getWinner(),
+                            runningTable.getCreatedAt(), isInvitee(runningTable.getGameSettings(), player.getName()));
             }
         }
     }
@@ -217,13 +252,59 @@ public class TableHolder {
         while (iterator.hasNext()) {
             final Map.Entry<String, GameTable> runningTable = iterator.next();
             LotroGameMediator lotroGameMediator = runningTable.getValue().getLotroGameMediator();
-            if (lotroGameMediator.isDestroyed()) {
+            if (lotroGameMediator == null || lotroGameMediator.isDestroyed()) {
                 iterator.remove();
                 changed = true;
-                ;
             }
         }
         return changed;
+    }
+
+    /**
+     * Whether {@code playerName} is the player an invite-only table was opened for.  The invitee lives in the table's
+     * description (deliberately: an invite needs no other description), exactly as the creator typed it; the server
+     * checked it names a real player, and a "(New Player) " prefix is tolerated ({@link #tableDescription} never adds
+     * it to invite-only tables, but older servers and hand-typed descriptions may carry it).  Names are compared
+     * case-insensitively, as the player lookup is.
+     */
+    static boolean isInvitee(GameSettings settings, String playerName) {
+        if (!settings.isInviteOnly() || playerName == null)
+            return false;
+        String desc = settings.userDescription();
+        if (desc == null)
+            return false;
+        desc = desc.trim();
+        if (desc.startsWith(NEW_PLAYER_PREFIX))
+            desc = desc.substring(NEW_PLAYER_PREFIX.length()).trim();
+        return desc.equalsIgnoreCase(playerName);
+    }
+
+    private static final String NEW_PLAYER_PREFIX = "(New Player)";
+
+    /**
+     * The description a new table is listed with.  A player with no decks of their own on their account is flagged
+     * as a new player with a "(New Player) " prefix, so others can go easy on them; a player who has decks is not,
+     * even when they pick a Deck Library deck.  An invite-only table is never prefixed, as its description is the
+     * invitee's name ({@link #isInvitee} strips the prefix anyway).  A description that already carries the prefix
+     * is left alone.
+     */
+    public static String tableDescription(String desc, boolean inviteOnly, boolean hasOwnDecks) {
+        String text = desc == null ? "" : desc;
+        if (inviteOnly || hasOwnDecks || text.trim().startsWith(NEW_PLAYER_PREFIX))
+            return text;
+        return text.isEmpty() ? NEW_PLAYER_PREFIX : NEW_PLAYER_PREFIX + " " + text;
+    }
+
+    /**
+     * An invite-only table seats only its invitee ({@link #isInvitee}); administrators may join any table.  (The
+     * creator is already seated, and cannot join their own table twice.)
+     */
+    static void verifyMayJoin(GameSettings settings, Player player) throws HallException {
+        if (!settings.isInviteOnly())
+            return;
+        if (player != null && (isInvitee(settings, player.getName()) || player.hasType(Player.Type.ADMIN)))
+            return;
+        throw new HallException("This table is invite-only; only the invited player can join it.");
     }
 
     private boolean isNoIgnores(Collection<String> participants, String playerLooking) {
@@ -247,10 +328,28 @@ public class TableHolder {
     }
 
     private String getTournamentName(GameTable table) {
-        final League league = table.getGameSettings().getLeague();
-        if (league != null)
-            return league.getName() + " - " + table.getGameSettings().getLeagueSerie().getName();
-        else
-            return "Casual - " + table.getGameSettings().getTimerName();
+        final League league = table.getGameSettings().league();
+        if (league != null) {
+            return league.getName() + " - " + table.getGameSettings().leagueSerie().getName();
+        } else if (table.getGameSettings().tournamentId() != null) {
+            final String tournamentTableDescription = tournamentService.getActiveTournamentTableDescription(table.getGameSettings().tournamentId());
+            if (tournamentTableDescription != null) {
+                return tournamentTableDescription;
+            }
+        }
+
+        return "Casual - " + table.getGameSettings().timeSettings().name();
+    }
+
+    public List<GameTable> getTournamentTables(String tournamentId) {
+        var tables = new ArrayList<GameTable>();
+        for(var table : runningTables.values()) {
+            String tid = table.getGameSettings().tournamentId();
+            if(tid != null && tid.equals(tournamentId)) {
+                tables.add(table);
+            }
+        }
+
+        return tables;
     }
 }

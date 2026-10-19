@@ -2,17 +2,19 @@ package com.gempukku.lotro.game;
 
 import com.gempukku.lotro.common.*;
 import com.gempukku.lotro.logic.GameUtils;
+import com.google.common.base.Strings;
 
 import java.util.*;
+import java.util.regex.Pattern;
 
 public class ImportCards {
     //For a deck to be legal in a Pre-shadows format, it must contain one of these sites
-    private Set<String> fellowshipSiteCheck = new HashSet<>(Arrays.asList("council courtyard",
-            "ford of bruinen", "frodo's bedroom", "rivendell terrace", "rivendell valley", "rivendell waterfall",
-            "house of elrond"));
-    private Set<String> towersSiteCheck = new HashSet<>(Arrays.asList("derndingle", "eastfold",
-            "fangorn forest", "plains of rohan camp", "rohirrim village", "uruk camp", "wold of rohan"));
-    private Set<String> kingSiteCheck = new HashSet<>(Arrays.asList("king's tent", "rohirrim camp", "west road"));
+    private final Set<String> fellowshipSiteCheck = new HashSet<>(Arrays.asList("councilcourtyard",
+            "fordofbruinen", "frodo'sbedroom", "rivendellterrace", "rivendellvalley", "rivendellwaterfall",
+            "houseofelrond", "rivendellgateway"));
+    private final Set<String> towersSiteCheck = new HashSet<>(Arrays.asList("derndingle", "eastfold",
+            "fangornforest", "plainsofrohancamp", "rohirrimvillage", "urukcamp", "woldofrohan"));
+    private final Set<String> kingSiteCheck = new HashSet<>(Arrays.asList("king'stent", "rohirrimcamp", "westroad"));
 
     public List<CardCollection.Item> process(String rawDecklist, LotroCardBlueprintLibrary cardLibrary) {
         List<CardCount> decklist = getDecklist(rawDecklist);
@@ -22,7 +24,7 @@ public class ImportCards {
         for (CardCount cardCount : decklist) {
             for (Map.Entry<String, LotroCardBlueprint> cardBlueprint : cardLibrary.getBaseCards().entrySet()) {
                 String id = cardBlueprint.getKey();
-                if (isFromOfficialSet(id)) {
+                if (isFromSupportedSet(id)) {
                     LotroCardBlueprint blueprint = cardBlueprint.getValue();
                     if (isNotSiteOrSiteFromBlock(blueprint, sitesBlock)) {
                         if (exactNameMatch(blueprint, cardCount.getName())) {
@@ -57,16 +59,19 @@ public class ImportCards {
 
     private boolean exactNameMatch(LotroCardBlueprint blueprint, String title) {
         return blueprint != null
-                && SortAndFilterCards.replaceSpecialCharacters(GameUtils.getFullName(blueprint).toLowerCase()).equals(title);
+                && Names.SanitizeName(GameUtils.getFullName(blueprint).toLowerCase()).equals(title);
     }
 
-    private boolean isFromOfficialSet(String id) {
+    private boolean isFromSupportedSet(String id) {
         try {
-            return Integer.parseInt(id.split("_")[0]) < 20;
+            int set = Integer.parseInt(id.split("_")[0]);
+            return set < 20 || (set > 99 && set < 149);
         } catch (NumberFormatException exp) {
             return false;
         }
     }
+
+    private Pattern cardLinePattern = Pattern.compile("^(x?\\s*\\d+\\s*x?)?\\s*(.*?)\\s*(x?\\d+x?)?\\s*$");
 
     private List<CardCount> getDecklist(String rawDecklist) {
         int quantity;
@@ -79,27 +84,32 @@ public class ImportCards {
 
             line = line.toLowerCase();
             try {
-                if (Character.isDigit(line.charAt(0))) {
-                    quantity = Character.getNumericValue(line.charAt(0));
-                    cardLine = line.substring(line.indexOf(" "));
-                } else if (Character.isDigit(line.charAt(line.length() - 1))) {
-                    quantity = Character.getNumericValue(line.charAt(line.length() - 1));
-                    cardLine = line.substring(0, line.indexOf(" ", line.length() - 3));
-                } else {
-                    quantity = 1;
-                    cardLine = line;
+                var matches = cardLinePattern.matcher(line);
+
+                if(matches.matches()) {
+                    if(!Strings.isNullOrEmpty(matches.group(1))) {
+                        quantity = Integer.parseInt(matches.group(1).replaceAll("\\D+", ""));
+                    }
+                    else if(!Strings.isNullOrEmpty(matches.group(3))) {
+                        quantity = Integer.parseInt(matches.group(3).replaceAll("\\D+", ""));
+                    }
+                    else {
+                        quantity = 1;
+                    }
+
+                    cardLine = matches.group(2).trim();
+                    result.add(new CardCount(Names.SanitizeName(cardLine).trim(), quantity));
                 }
-                result.add(new CardCount(SortAndFilterCards.replaceSpecialCharacters(cardLine).trim(), quantity));
             } catch (Exception exp) {
-                // Ignore the card
+                System.out.println("blah");
             }
         }
         return result;
     }
 
     private static class CardCount {
-        private String name;
-        private int count;
+        private final String name;
+        private final int count;
 
         public CardCount(String name, int count) {
             this.name = name;

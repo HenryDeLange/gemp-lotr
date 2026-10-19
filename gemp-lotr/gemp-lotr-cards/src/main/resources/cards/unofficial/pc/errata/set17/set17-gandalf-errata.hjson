@@ -1,0 +1,144 @@
+{
+	67_15: {
+		cardInfo: {
+			//id: 7_15.1
+			revision: 1
+			image: errata/LOTR-EN17E015.1.jpg
+			collInfo: 17U15
+			rarity: U
+		}
+		title: A New Light
+		unique: false
+		culture: gandalf
+		twilight: 1
+		type: event
+		timeword: fellowship
+		keyword: [
+			spell
+		]
+		effects: [
+			{
+				type: event
+				requires: {
+					type: canSpot
+					filter: culture(gandalf),wizard
+				}
+				effect: [
+					{
+						type: PutCardsFromDiscardIntoHand
+						player: freeps
+						discard: shadow
+						select: choose(minion)
+						count: 2
+						memorize: chosenMinions
+					}
+					{
+						type: If
+						check: {
+							type: IsGreaterThan
+							firstNumber: {
+								type: ForEachInMemory
+								memory: chosenMinions
+							}
+							secondNumber: 0
+						}
+						true: [
+							{
+								type: revealHand
+								hand: shadowPlayer
+								memorize: revealedCards
+							}
+							{
+								type: discardFromHand
+								hand: shadowPlayer
+								forced: true
+								player: you
+								select: choose(memory(revealedCards),minion)
+							}
+						]
+					}
+				]
+			}
+		]
+		
+		gametext: <b>Spell.</b>\Spot a [gandalf] Wizard to return 2 minions to a Shadow player's hand from their discard pile. Reveal their hand and discard a minion revealed.
+		lore: "'I once knew every spell in all the tongues of Men or Elves or Orcs...'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	67_24: {
+		cardInfo: {
+			//id: 7_24.1
+			revision: 1
+			image: errata/LOTR-EN17E024.1_card.jpg
+			collInfo: 17R24
+			rarity: R
+		}
+		title: Shadowfax
+		subtitle: Greatest of the Mearas
+		unique: true
+		side: Free Peoples
+		culture: Gandalf
+		twilight: 2
+		type: Possession
+		strength: 1
+		vitality: 1
+		resistance: 1
+		itemclass: Mount
+		target: culture(gandalf),wizard
+		effects: [
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: ConstantlyCheck
+				}
+				requires: {
+					type: canSpot
+					filter: another,or(possession,weapon),attachedTo(bearer)
+				}
+				effect: {
+					type: discard
+					select: all(other,or(possession,weapon),attachedTo(bearer))
+				}
+			}
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: Moves
+				}
+				cost: [
+					{
+						type: exert
+						select: bearer
+						times: 1				
+					}
+					{
+						type: AddThreats
+						amount: 1
+					}
+				]
+				effect: {
+					type: RemoveBurdens
+					amount: 1
+				}
+			}
+		]
+		gametext: Bearer must be a [gandalf] Wizard.<br>When you play this, discard all other possessions and weapons on bearer. Bearer may not bear a hand weapon.<br>Each time the fellowship moves, you may exert bearer and add a threat to remove a burden.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

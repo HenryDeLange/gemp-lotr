@@ -8,10 +8,9 @@ import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.game.state.Skirmish;
 import com.gempukku.lotro.logic.GameUtils;
+import com.gempukku.lotro.logic.modifiers.ModifierFlag;
 import com.gempukku.lotro.logic.modifiers.evaluator.Evaluator;
 
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -75,6 +74,20 @@ public class RuleUtils {
         return game.getModifiersQuerying().getMoveLimit(game, 2);
     }
 
+    /**
+     * The site the current player's fellowship has to survive in order to win the game.  Normally the last site of the
+     * adventure path, site 9; MUST_SURVIVE_SITE_10, scoped to that player, pushes it back to site 10.
+     */
+    public static int getFellowshipWinSiteNumber(LotroGame game) {
+        return getFellowshipWinSiteNumber(game, game.getGameState().getCurrentPlayerId());
+    }
+
+    public static int getFellowshipWinSiteNumber(LotroGame game, String playerId) {
+        if (game.getModifiersQuerying().hasFlagActive(game, ModifierFlag.MUST_SURVIVE_SITE_10, playerId))
+            return 10;
+        return 9;
+    }
+
     public static int getFellowshipSkirmishStrength(LotroGame game) {
         final Skirmish skirmish = game.getGameState().getSkirmish();
         if (skirmish == null)
@@ -84,7 +97,7 @@ public class RuleUtils {
         if (fpChar == null)
             return 0;
 
-        final Evaluator fpStrengthOverrideEvaluator = game.getModifiersQuerying().getFpStrengthOverrideEvaluator(game, fpChar);
+        final Evaluator fpStrengthOverrideEvaluator = game.getModifiersQuerying().getFPStrengthOverrideEvaluator(game, fpChar);
         if (fpStrengthOverrideEvaluator != null)
             return fpStrengthOverrideEvaluator.evaluateExpression(game, fpChar);
 
@@ -100,19 +113,22 @@ public class RuleUtils {
         if (skirmish == null)
             return 0;
 
+        int total = 0;
         final Evaluator overrideEvaluator = skirmish.getShadowStrengthOverrideEvaluator();
-        if (overrideEvaluator != null) {
-            int total = 0;
-            for (PhysicalCard physicalCard : skirmish.getShadowCharacters())
-                total += overrideEvaluator.evaluateExpression(game, physicalCard);
-            return total;
+        for (PhysicalCard minion : skirmish.getShadowCharacters()) {
+            final Evaluator modifierOverrideEvaluator = game.getModifiersQuerying().getShadowStrengthOverrideEvaluator(game, minion);
+            if(modifierOverrideEvaluator != null) {
+                total += modifierOverrideEvaluator.evaluateExpression(game, minion);
+            }
+            else if(overrideEvaluator != null) {
+                total += overrideEvaluator.evaluateExpression(game, minion);
+            }
+            else {
+                total += game.getModifiersQuerying().getStrength(game, minion);
+            }
         }
 
-        int totalStrength = 0;
-        for (PhysicalCard physicalCard : skirmish.getShadowCharacters())
-            totalStrength += game.getModifiersQuerying().getStrength(game, physicalCard);
-
-        return totalStrength;
+        return total;
     }
 
     public static int getFellowshipSkirmishDamageBonus(LotroGame game) {
@@ -140,15 +156,28 @@ public class RuleUtils {
 
     public static Filter getFullValidTargetFilter(String playerId, final LotroGame game, final PhysicalCard self) {
         final LotroCardBlueprint blueprint = self.getBlueprint();
-        return Filters.and(blueprint.getValidTargetFilter(playerId, game, self),
+        final Filterable validTargetFilter = blueprint.getValidTargetFilter(playerId, game, self);
+        // A card with no bearer definition (e.g. a support-area condition that only ever attaches itself through its
+        // own conditional transfer, like Lost in the Woods or Black Breath) has no "eligible bearer" for other effects
+        // to transfer it to. Previously the null filter crashed the game (#1025).
+        if (validTargetFilter == null)
+            return Filters.none;
+        return Filters.and(validTargetFilter,
                 new Filter() {
                     @Override
                     public boolean accepts(LotroGame game, PhysicalCard physicalCard) {
                         final CardType thisType = blueprint.getCardType();
+                        if(game.getGameState().isHindered(physicalCard))
+                            return false;
+
                         if (thisType == CardType.POSSESSION || thisType == CardType.ARTIFACT) {
-                            final CardType targetType = physicalCard.getBlueprint().getCardType();
-                            return targetType == CardType.COMPANION || targetType == CardType.ALLY
-                                    || targetType == CardType.MINION;
+                            var types = game.getModifiersQuerying().getCardTypes(game, physicalCard);
+
+                            for(var type : types) {
+                                if(type == CardType.COMPANION || type == CardType.ALLY || type == CardType.MINION)
+                                    return true;
+                            }
+                            return false;
                         }
                         return true;
                     }
@@ -158,17 +187,24 @@ public class RuleUtils {
                     public boolean accepts(LotroGame game, PhysicalCard attachedTo) {
                         Set<PossessionClass> possessionClasses = blueprint.getPossessionClasses();
                         if (possessionClasses != null) {
-                            for (PossessionClass possessionClass : possessionClasses) {
+                            for (PossessionClass itemClass : possessionClasses) {
                                 List<PhysicalCard> attachedCards = game.getGameState().getAttachedCards(attachedTo);
 
-                                Collection<PhysicalCard> matchingClassPossessions = Filters.filter(attachedCards, game, Filters.or(CardType.POSSESSION, CardType.ARTIFACT), possessionClass);
-                                if (matchingClassPossessions.size() > 1)
+                                int allowedItemsOfClass = game.getModifiersQuerying().bearableItemsOfClass(game, attachedTo, itemClass);
+
+                                var matchingClassItems = Filters.filter(game, attachedCards, Filters.item, itemClass);
+                                if (matchingClassItems.size() > allowedItemsOfClass)
                                     return false;
 
                                 boolean extraPossessionClass = self.getBlueprint().isExtraPossessionClass(game, self, attachedTo);
-                                if (!extraPossessionClass && matchingClassPossessions.size() == 1) {
-                                    final PhysicalCard attachedPossession = matchingClassPossessions.iterator().next();
-                                    if (!attachedPossession.getBlueprint().isExtraPossessionClass(game, attachedPossession, attachedTo))
+                                if (!extraPossessionClass && matchingClassItems.size() == allowedItemsOfClass) {
+                                    boolean anyExtraClasses = false;
+                                    for(var item : matchingClassItems) {
+                                        if(item.getBlueprint().isExtraPossessionClass(game, item, attachedTo)) {
+                                            anyExtraClasses = true;
+                                        }
+                                    }
+                                    if(!anyExtraClasses)
                                         return false;
                                 }
                             }
@@ -179,27 +215,21 @@ public class RuleUtils {
     }
 
     public static boolean isAllyAtHome(PhysicalCard ally, int siteNumber, SitesBlock siteBlock) {
-        final SitesBlock allySiteBlock = ally.getBlueprint().getAllyHomeSiteBlock();
-        final int[] allyHomeSites = ally.getBlueprint().getAllyHomeSiteNumbers();
-        if (allySiteBlock != siteBlock)
-            return false;
-        for (int number : allyHomeSites)
-            if (number == siteNumber)
+        for(var home : ally.getBlueprint().getAllyHomes()) {
+            if(home.block() == siteBlock && home.siteNum() == siteNumber)
                 return true;
+        }
+
         return false;
     }
 
     public static boolean isAllyInRegion(PhysicalCard ally, int regionNumber, SitesBlock siteBlock) {
-        final SitesBlock allySiteBlock = ally.getBlueprint().getAllyHomeSiteBlock();
-        final int[] allyHomeSites = ally.getBlueprint().getAllyHomeSiteNumbers();
-        if (allySiteBlock != siteBlock)
-            return false;
-//        for (int number : allyHomeSites)
-//            if (regionNumber == GameUtils.getRegion(number))
-//                return true;
-//        return false;
+        for(var home : ally.getBlueprint().getAllyHomes()) {
+            if(home.block() == siteBlock && GameUtils.getRegion(home.siteNum()) == regionNumber)
+                return true;
+        }
 
-        return Arrays.stream(ally.getBlueprint().getAllyHomeSiteNumbers()).anyMatch(x -> regionNumber == GameUtils.getRegion(x));
+        return false;
     }
 
 }

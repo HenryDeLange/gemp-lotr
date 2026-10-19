@@ -2,9 +2,15 @@
         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<title>Game of Gemp-LotR</title>
+<title>GEMP: LotR-TCG - Game Table</title>
+
+    <link rel="apple-touch-icon" sizes="180x180" href="images/icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="images/icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="images/icons/favicon-16x16.png">
+    <link rel="manifest" href="images/icons/site.webmanifest">
 
     <link rel="stylesheet" type="text/css" href="css/gemp-001/game.css">
+    <link rel="stylesheet" type="text/css" href="css/gemp-001/autozoom.css">
 
     <link rel="stylesheet" type="text/css" href="css/dark-hive/jquery-ui-1.8.16.custom.css">
     <link rel="stylesheet" type="text/css" href="css/jquery.contextMenu.css">
@@ -22,14 +28,17 @@
     <script type="text/javascript" src="js/gemp-022/logging.js"></script>
     <script type="text/javascript" src="js/gemp-022/chat.js"></script>
     <script type="text/javascript" src="js/gemp-022/communication.js"></script>
-    <script type="text/javascript" src="js/gemp-022/deliveryService.js"></script>
     <script type="text/javascript" src="js/gemp-022/commonUi.js"></script>
-    <script type="text/javascript" src="js/gemp-022/cardFilter.js"></script>
+    <script type="text/javascript" src="js/gemp-022/cards/CardFilter.js"></script>
 
-    <script type="text/javascript" src="js/gemp-022/jCardGroup.js"></script>
+  <script type="text/javascript" src="js/gemp-022/cards/CardGroup.js"></script>
+    <script type="text/javascript" src="js/gemp-022/cards/Card.js"></script>
+    <script type="text/javascript" src="js/gemp-022/cards/CardDisplay.js"></script>
+    <script type="text/javascript" src="js/gemp-022/cards/CardInfoDialog.js"></script>
+    <script type="text/javascript" src="js/gemp-022/cards/CardImages.js"></script>
+    <script type="text/javascript" src="js/gemp-022/cards/PackImages.js"></script>
     <script type="text/javascript" src="js/gemp-022/hobbit.js"></script>
     <script type="text/javascript" src="js/gemp-022/set40.js"></script>
-    <script type="text/javascript" src="js/gemp-022/jCards.js"></script>
     <script type="text/javascript" src="js/gemp-022/PC_Cards.js"></script>
 
     <script type="text/javascript" src="js/gemp-022/hallUi.js"></script>
@@ -39,41 +48,96 @@
     <script type="text/javascript" src="js/gemp-022/playerStatsUi.js"></script>
     <script type="text/javascript" src="js/gemp-022/gameHistoryUi.js"></script>
     <script type="text/javascript" src="js/gemp-022/deckBuildingUi.js"></script>
+    <script type="text/javascript" src="js/gemp-022/autoZoomHandler.js"></script>
     <script type="text/javascript" src="js/gemp-022/gameUi.js"></script>
     <script type="text/javascript" src="js/gemp-022/gameAnimations.js"></script>
     <script type="text/javascript" src="js/gemp-022/merchantUi.js"></script>
     
     <!-- Audio file downloaded from https://material.io/design/sound/sound-resources.html -->
-    <audio id="awaitAction" src="/gemp-lotr/awaiting_decision.mp3" type="audio/mpeg" preload="metadata"></audio>
+    <audio id="awaitAction" src="/gemp-lotr/src/assets/awaiting_decision.mp3" type="audio/mpeg" preload="metadata"></audio>
+    <audio id="timerAlert" src="/gemp-lotr/src/assets/timer_alert.mp3" type="audio/mpeg" preload="auto"></audio>
 
-
-<script type="text/javascript">
-    var ui;
-    var communication;
-
-    $(document).ready(
-            function () {
-                var replay = getUrlParam("replayId");
-
-                ui = new GempLotrGameUI("/gemp-lotr-server", replay != null);
-
-                $(window).resize(function () {
-                    ui.windowResized();
-                });
-
-                ui.layoutUI(true);
-
-                if (replay == null)
-                    ui.startGameSession();
-                else
-                    ui.startReplaySession(replay);
-            });
-</script>
-
+    <link rel="stylesheet" type="text/css" href="src/Game/index.css">
+    <script type="text/javascript" src="src/Game/game.js"></script>
 </head>
 <body>
-<div id="main"
-     style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; background-color: #000000; overflow: hidden">
-</div>
+    <div id="main">
+        
+        <div id="pregame-info">
+            <div id="pregame-general" class="ui-widget-content"> </div>
+            <div class="ui-widget-content" style="display:flex;">
+                <div id="left-pregame-info" class="ui-widget-content">
+                    <div id="left-pregame-header">You</div>
+                    <div id="left-pregame-content"></div>
+                </div>
+                <div id="vs-overlay">
+                    VS
+                </div>
+                <div id="right-pregame-info" class="ui-widget-content">
+                    <div id="right-pregame-header">Them</div>
+                    <div id="right-pregame-content"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom-left tab box: chat, settings, options and player list.  gameUi.js (addBottomLeftTabPane) only
+             removes the tabs that do not apply (spectators, replays), positions it and wires the controls; the
+             timer controls are shown once the timer is known to apply (initializeTimerUI). -->
+        <div id="bottomLeftTabs">
+            <ul>
+                <li id="chatTab"><a href="#chatBox" class="slimTab">Chat</a></li>
+                <li id="settingsTab"><a href="#settingsBox" class="slimTab">Settings</a></li>
+                <li id="gameOptionsTab"><a href="#gameOptionsBox" class="slimTab">Options</a></li>
+                <li id="playersInRoomTab"><a href="#playersInRoomBox" class="slimTab">Players</a></li>
+                <li id="tab-extras">
+                    <div id="auto-zoom-control"><span>Auto-zoom: </span></div>
+                    <div id="timer-mute-control" class="timer-control"><span>Timer: </span><button id="timer-mute-toggle" title="Mute timer sounds">Mute timer sounds</button></div>
+                </li>
+            </ul>
+            <div id="chatBox" class="slimPanel"></div>
+            <div id="settingsBox" class="slimPanel">
+                <div class="setting-row">
+                    <label for="foilPresentation">Foil presentation:</label>
+                    <select id="foilPresentation">
+                        <option value="static">Static layer</option>
+                        <option value="animated">Animated layer</option>
+                        <option value="none">None</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <label for="animation-slider">Animation speed</label>
+                    <div id="animation-slider"></div>
+                </div>
+                <div class="setting-row"><input id="autoAccept" type="checkbox" value="selected" /><label for="autoAccept">Auto-accept after selecting action or card</label></div>
+                <div class="setting-row"><input id="autoDismissDeckReveal" type="checkbox" value="selected" /><label for="autoDismissDeckReveal" title="When you search your own draw deck, skip the popup that shows its full contents and go straight to the choice">Auto-dismiss deck reveal when searching your own deck</label></div>
+                <div class="setting-row"><input id="use-old-stack-checkbox" type="checkbox" value="" /><label for="use-old-stack-checkbox">Use old visuals for stacked cards</label></div>
+                <div class="setting-row"><input id="alwaysDropDown" type="checkbox" value="selected" /><label for="alwaysDropDown">Always display drop-down in answer selection</label></div>
+                <div class="setting-row setting-group">
+                    <div class="setting-title">Phases when game auto-passes for you, if you have no phase actions to play</div>
+                    <div class="setting-choices">
+                        <span><input id="autoPassFELLOWSHIP" type="checkbox" value="selected" /><label for="autoPassFELLOWSHIP">Fellowship</label></span>
+                        <span><input id="autoPassSHADOW" type="checkbox" value="selected" /><label for="autoPassSHADOW">Shadow</label></span>
+                        <span><input id="autoPassMANEUVER" type="checkbox" value="selected" /><label for="autoPassMANEUVER">Maneuver</label></span>
+                        <span><input id="autoPassARCHERY" type="checkbox" value="selected" /><label for="autoPassARCHERY">Archery</label></span>
+                        <span><input id="autoPassASSIGNMENT" type="checkbox" value="selected" /><label for="autoPassASSIGNMENT">Assignment</label></span>
+                        <span><input id="autoPassSKIRMISH" type="checkbox" value="selected" /><label for="autoPassSKIRMISH">Skirmish</label></span>
+                        <span><input id="autoPassREGROUP" type="checkbox" value="selected" /><label for="autoPassREGROUP">Regroup</label></span>
+                    </div>
+                </div>
+                <div id="timerAlertSettings" class="setting-row setting-group timer-control">
+                    <div class="setting-title">Timer alert sound intervals</div>
+                    <div class="timerAlertRule">Below <input class="timerAlertBelow" type="number" min="0" max="999" /> min, every <input class="timerAlertEvery" type="number" min="0" max="600" /> s</div>
+                    <div class="timerAlertRule">Below <input class="timerAlertBelow" type="number" min="0" max="999" /> min, every <input class="timerAlertEvery" type="number" min="0" max="600" /> s</div>
+                    <div class="timerAlertRule">Below <input class="timerAlertBelow" type="number" min="0" max="999" /> min, every <input class="timerAlertEvery" type="number" min="0" max="600" /> s</div>
+                    <div class="timerAlertHint">(0 seconds disables a row)</div>
+                </div>
+            </div>
+            <div id="gameOptionsBox" class="slimPanel">
+                <div class="setting-row"><button id="concedeGame">Concede game</button></div>
+                <div class="setting-row"><button id="cancelGame">Request game cancel</button></div>
+            </div>
+            <div id="playersInRoomBox" class="slimPanel"></div>
+        </div>
+    </div>
 </body>
 </html>

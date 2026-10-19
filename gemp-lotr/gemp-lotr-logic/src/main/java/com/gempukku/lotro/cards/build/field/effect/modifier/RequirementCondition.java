@@ -6,10 +6,18 @@ import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.modifiers.Condition;
 
 public class RequirementCondition implements Condition {
-    private Requirement[] requirements;
-    private ActionContext actionContext;
+    private final Requirement[] requirements;
+    private final ActionContext actionContext;
 
-    public RequirementCondition(Requirement[] requirements, ActionContext actionContext) {
+    public static Condition createCondition(Requirement[] requirements, ActionContext actionContext) {
+        if (requirements == null || requirements.length == 0) {
+            return null;
+        } else {
+            return new RequirementCondition(requirements, actionContext);
+        }
+    }
+
+    private RequirementCondition(Requirement[] requirements, ActionContext actionContext) {
         this.requirements = requirements;
         this.actionContext = actionContext;
     }

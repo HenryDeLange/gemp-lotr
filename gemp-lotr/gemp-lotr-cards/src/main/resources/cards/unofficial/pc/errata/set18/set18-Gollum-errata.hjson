@@ -1,0 +1,44 @@
+{
+
+	68_29: {
+		cardInfo: {
+			//id: 8_29.1
+			revision: 1
+			image: errata/68_29.jpg
+			collInfo: 18R29
+			rarity: R
+		}
+		title: Deceit
+		unique: true
+		culture: Gollum
+		side: Shadow
+		twilight: 1
+		type: Condition
+		keyword: Support Area
+		effects: {
+			type: Response
+			trigger: {
+				type: abouttodiscard
+				source: side(free people)
+				filter: your,culture(gollum),another,condition
+			}
+			cost: {
+				type: removeTwilight
+				amount: 2
+			}
+			effect: {
+				type: preventdiscard
+				select: choose(your,culture(gollum),another,condition)
+			}
+		}
+		gametext: <b>Response:</b> If the Free Peoples player is about to discard your other [gollum] condition, remove (2) to prevent that.
+		lore: Presently they were under the shadow, and there in the midst of it they saw the opening of a cave. 'This is the way in,' said Gollum softly.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

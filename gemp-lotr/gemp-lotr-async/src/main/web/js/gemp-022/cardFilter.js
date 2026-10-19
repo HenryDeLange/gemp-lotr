@@ -1,4 +1,4 @@
-var CardFilter = Class.extend({
+var LegacyCardFilter = Class.extend({
     clearCollectionFunc: null,
     addCardFunc: null,
     finishCollectionFunc: null,
@@ -11,8 +11,12 @@ var CardFilter = Class.extend({
     count: 18,
 
     pageDiv: null,
+    navigationDiv: null,
+    advancedFilterDiv: null,
+    filtersDiv: null,
     fullFilterDiv: null,
     filterDiv: null,
+    collectionDiv: null,
 
     previousPageBut: null,
     nextPageBut: null,
@@ -23,7 +27,7 @@ var CardFilter = Class.extend({
     sortSelect: null,
     raritySelect: null,
 
-    init: function (elem, pageElem, getCollectionFunc, clearCollectionFunc, addCardFunc, finishCollectionFunc) {
+    init: function (pageElem, getCollectionFunc, clearCollectionFunc, addCardFunc, finishCollectionFunc) {
         this.getCollectionFunc = getCollectionFunc;
         this.clearCollectionFunc = clearCollectionFunc;
         this.addCardFunc = addCardFunc;
@@ -31,12 +35,11 @@ var CardFilter = Class.extend({
 
         this.filter = "";
 
-        this.buildUi(elem, pageElem);
+        this.buildUi(pageElem);
     },
 
     enableDetailFilters: function (enable) {
-        $("#culture1").buttonset("option", "disabled", !enable);
-        $("#culture2").buttonset("option", "disabled", !enable);
+        $("#culture-buttons").buttonset("option", "disabled", !enable);
         $("#cardType").prop("disabled", !enable);
         $("#keyword").prop("disabled", !enable);
         $("#race").prop("disabled", !enable);
@@ -55,12 +58,17 @@ var CardFilter = Class.extend({
         $("#type").val(typeValue);
     },
 
-    buildUi: function (elem, pageElem) {
+    buildUi: function (pageElem) {
         var that = this;
 
-        this.pageDiv = $("<div></div>");
+        this.pageDiv = $("<div id='filter-main' style='display:flex;flex-direction:column;align-items:stretch;'></div>");
+        this.navigationDiv = $("<div id='card-navigation' style='display: flex; flex-direction: row; gap: 2px; align-items: center;'></div>");
+        this.advancedFilterDiv = $("<div id='advanced-filter' style='display: flex; flex-direction: row; gap: 2px; align-items: center; '><a target='_blank' style='color: #BF6B04; margin:auto; width:60%; text-align:center;' href='https://wiki.lotrtcgpc.net/wiki/Special:RunQuery/CardSearch'>Looking for more?<br>Try the Wiki's Advanced Card Search.</a></div>");
+        this.pageDiv.append(this.navigationDiv);
+        this.pageDiv.append(this.advancedFilterDiv);
+        pageElem.append(this.pageDiv);
 
-        this.previousPageBut = $("<button id='previousPage' style='float: left;'>Previous page</button>").button({
+        this.previousPageBut = $("<button id='previousPage' class='navigation-butt'></button>").button({
             text: false,
             icons: {
                 primary: "ui-icon-circle-triangle-w"
@@ -73,7 +81,7 @@ var CardFilter = Class.extend({
                 that.getCollection();
             });
 
-        this.nextPageBut = $("<button id='nextPage' style='float: right;'>Next page</button>").button({
+        this.nextPageBut = $("<button id='nextPage' class='navigation-butt'></button>").button({
             text: false,
             icons: {
                 primary: "ui-icon-circle-triangle-e"
@@ -86,7 +94,7 @@ var CardFilter = Class.extend({
                 that.getCollection();
             });
 
-        this.countSlider = $("<div id='countSlider' style='left: 50px; top: 10px; width: 200px;'></div>").slider({
+        this.countSlider = $("<div id='countSlider' style='flex-grow:1;'></div>").slider({
             value: 18,
             min: 4,
             max: 40,
@@ -99,20 +107,18 @@ var CardFilter = Class.extend({
             }
         });
 
-        this.pageDiv.append(this.previousPageBut);
-        this.pageDiv.append(this.nextPageBut);
-        this.pageDiv.append(this.countSlider);
-
-        pageElem.append(this.pageDiv);
-
-        this.fullFilterDiv = $("<div></div>");
-        this.setSelect = $("<select style='width: 130px; font-size: 80%;'>"
-            + "<option value='0-33'>All Sets</option>"
-            + "<option value='0-19'>Official Sets</option>"
+        this.navigationDiv.append(this.previousPageBut);
+        this.navigationDiv.append(this.countSlider);
+        this.navigationDiv.append(this.nextPageBut);
+        
+        this.fullFilterDiv = $("<div id='filter-inputs' style='display:flex;flex-wrap:wrap;'></div>");
+        this.setSelect = $("<select id='setSelect' style='width: 130px; font-size: 80%;'>"
+            + "<option value='0-34,50-200,404'>All Sets</option>"
+            + "<option value='0-19'>Official Decipher Sets</option>"
             + "<option value='30-33'>The Hobbit Sets</option>"
-            + "<option value='50-89'>Player's Council Errata</option>"
-            + "<option value='101-200'>Player's Council VSets</option>"
-            + "<option value='50-89,101-200'>All Player's Council Cards</option>"
+            + "<option value='50-69,100'>Player's Council Errata</option>"
+            + "<option value='100-149'>Player's Council VSets</option>"
+            + "<option value='50-69,100-149'>All Player's Council Cards</option>"
             + "<option disabled>----------</option>"
             + "<option value='fotr_block'>Fellowship Block</option>"
             + "<option value='pc_fotr_block'>Fellowship Block (PC)</option>"
@@ -130,9 +136,8 @@ var CardFilter = Class.extend({
             + "<option value='expanded'>Expanded</option>"
             + "<option value='pc_expanded'>Expanded (PC)</option>"
             + "<option value='french'>French Format</option>"
-            + "<option value='hobbit_tsr'> The Hobbit: The Short Rest</option>"
-            + "<option value='hobbit_tcb'> The Hobbit: The Clouds Burst</option>"
             + "<option disabled>----------</option>"
+            + "<option value='404'>404 - Future Prizes</option>"
             + "<option value='0'>00 - Promo</option>"
             + "<option value='1'>01 - The Fellowship of the Ring</option>"
             + "<option value='51'>01E - The Fellowship of the Ring (PC Errata)</option>"
@@ -164,14 +169,17 @@ var CardFilter = Class.extend({
             + "<option value='17'>17 - Rise of Saruman</option>"
             + "<option value='18'>18 - Treachery & Deceit</option>"
             + "<option value='19'>19 - Ages End</option>"
-            + "<option value='101,151'>V1 - Shadow of the Past (PC)</option>"
+            + "<option value='69'>19E - Ages End (PC Errata)</option>"
+            + "<option value='101'>V1 - Shadow of the Past (PC)</option>"
+            + "<option value='102'>V2 - King of the Golden Hall (PC)</option>"
+            + "<option value='103'>V3 - The Pelennor Fields (PC)</option>"
             + "<option value='30'>30 - The Hobbit: Main Deck</option>"
             + "<option value='31'>31 - The Hobbit: Expansion 1</option>"
             + "<option value='32'>32 - The Hobbit: Expansion 2</option>"
             + "<option value='33'>33 - The Hobbit: Expansion 3</option>"
             + "<option disabled>----------</option>"
-            + "<option value='70-89,151-200'>All Player's Council Playtest Cards</option>"
-            + "<option value='151'>PLAYTEST - Shadow of the Past (PC)</option>"
+            + "<option value='70-89,150-200'>All Player's Council Playtest Cards</option>"
+            //+ "<option value='151'>PLAYTEST - Shadow of the Past (PC)</option>"
             + "<option value='test_pc_fotr_block'>PLAYTEST - Fellowship Block (PC)</option>"
             + "<option value='test_pc_movie'>PLAYTEST - Movie Block (PC)</option>"
             + "<option value='test_pc_expanded'>PLAYTEST - Expanded (PC)</option>"
@@ -205,10 +213,12 @@ var CardFilter = Class.extend({
         this.fullFilterDiv.append(this.nameInput);
         this.fullFilterDiv.append(this.sortSelect);
         this.fullFilterDiv.append(this.raritySelect);
+        
+        this.fullFilterDiv.append();
 
-        elem.append(this.fullFilterDiv);
+        this.pageDiv.append(this.fullFilterDiv);
 
-        this.filterDiv = $("<div></div>");
+        this.filterDiv = $("<div id='culture-buttons' style='display:flex;flex-wrap:wrap;'></div>");
 
         this.filterDiv.append("<div id='culture1'>"
             + "<input type='checkbox' id='DWARVEN'/><label for='DWARVEN' id='labelDWARVEN'><img src='images/cultures/dwarven.png'/></label>"
@@ -218,8 +228,6 @@ var CardFilter = Class.extend({
             + "<input type='checkbox' id='ROHAN'/><label for='ROHAN' id='labelROHAN'><img src='images/cultures/rohan.png'/></label>"
             + "<input type='checkbox' id='SHIRE'/><label for='SHIRE' id='labelSHIRE'><img src='images/cultures/shire.png'/></label>"
             + "<input type='checkbox' id='GOLLUM'/><label for='GOLLUM' id='labelGOLLUM'><img src='images/cultures/gollum.png'/></label>"
-            + "</div>");
-        this.filterDiv.append("<div id='culture2'>"
             + "<input type='checkbox' id='DUNLAND'/><label for='DUNLAND' id='labelDUNLAND'><img src='images/cultures/dunland.png'/></label>"
             + "<input type='checkbox' id='ISENGARD'/><label for='ISENGARD' id='labelISENGARD'><img src='images/cultures/isengard.png'/></label>"
             + "<input type='checkbox' id='MEN'/><label for='MEN' id='labelMEN'><img src='images/cultures/men.png'/></label>"
@@ -229,14 +237,17 @@ var CardFilter = Class.extend({
             + "<input type='checkbox' id='SAURON'/><label for='SAURON' id='labelSAURON'><img src='images/cultures/sauron.png'/></label>"
             + "<input type='checkbox' id='URUK_HAI'/><label for='URUK_HAI' id='labelURUK_HAI'><img src='images/cultures/uruk_hai.png'/></label>"
             + "<input type='checkbox' id='WRAITH'/><label for='WRAITH' id='labelWRAITH'><img src='images/cultures/wraith.png'/></label>"
-            //Additional Hobbit Draft cultures
+        );
+        //Additional Hobbit Draft cultures
+        //var hobbitFilterDiv = $("<div id='culture2' style='display:flex;flex-wrap:wrap;'></div>");
+        this.filterDiv.append("<div id='culture2'>"
             + "<input type='checkbox' id='ESGAROTH'/><label for='ESGAROTH' id='labelESGAROTH'><img src='images/cultures/esgaroth.png'/></label>"
             + "<input type='checkbox' id='GUNDABAD'/><label for='GUNDABAD' id='labelGUNDABAD'><img src='images/cultures/gundabad.png'/></label>"
-            //+ "<input type='checkbox' id='MIRKWOOD'/><label for='MIRKWOOD' id='labelMIRKWOOD'><img src='images/cultures/mirkwood.png'/></label>"
-            //+ "<input type='checkbox' id='SMAUG'/><label for='SMAUG' id='labelSMAUG'><img src='images/cultures/smaug.png'/></label>"
-            //+ "<input type='checkbox' id='SPIDER'/><label for='SPIDER' id='labelSPIDER'><img src='images/cultures/spider.png'/></label>"
-            //+ "<input type='checkbox' id='TROLL'/><label for='TROLL' id='labelTROLL'><img src='images/cultures/troll.png'/></label>"
-            + "</div>");
+            + "<input type='checkbox' id='MIRKWOOD'/><label for='MIRKWOOD' id='labelMIRKWOOD'><img src='images/cultures/mirkwood.png'/></label>"
+            + "<input type='checkbox' id='SMAUG'/><label for='SMAUG' id='labelSMAUG'><img src='images/cultures/smaug.png'/></label>"
+            + "<input type='checkbox' id='SPIDER'/><label for='SPIDER' id='labelSPIDER'><img src='images/cultures/spider.png'/></label>"
+            + "<input type='checkbox' id='TROLL'/><label for='TROLL' id='labelTROLL'><img src='images/cultures/troll.png'/></label>"
+        );
 
         var combos = $("<div></div>");
 
@@ -258,6 +269,7 @@ var CardFilter = Class.extend({
             + "<option value=''>No keyword filtering</option>"
             + "<option value='ARCHER'>Archer</option>"
             + "<option value='BATTLEGROUND'>Battleground</option>"
+            + "<option value='BEACON'>Beacon</option>"
             + "<option value='BESIEGER'>Besieger</option>"
             + "<option value='CORSAIR'>Corsair</option>"
             + "<option value='DWELLING'>Dwelling</option>"
@@ -328,6 +340,7 @@ var CardFilter = Class.extend({
             + "<option value='EAGLE'>Eagle</option>"
             + "<option value='GIANT'>Giant</option>"
             + "<option value='WARG'>Warg</option>"
+            + "<option value='CROW'>Warg</option>"
             + "</select>");
         combos.append(" <select id ='itemClass' style='font-size: 80%'>"
             + "<option value=''>All classes</option>"
@@ -363,10 +376,30 @@ var CardFilter = Class.extend({
             + "</select>");
         this.filterDiv.append(combos);
 
-        elem.append(this.filterDiv);
+        this.pageDiv.append(this.filterDiv);
+        
 
-        $("#culture1").buttonset();
-        $("#culture2").buttonset();
+        $("#culture-buttons").buttonset();
+        
+        var setFilterChanged = function () {
+            var setSelected = $("#setSelect option:selected").prop("value");
+            if (setSelected.includes("30-33") || setSelected.includes("30") || setSelected.includes("31")
+                    || setSelected.includes("32") || setSelected.includes("33")) {
+                $("#culture2").show();
+            } else {
+                $("#labelESGAROTH").removeClass("ui-state-active");
+                $("#labelGUNDABAD").removeClass("ui-state-active");
+                $("#labelMIRKWOOD").removeClass("ui-state-active");
+                $("#labelSMAUG").removeClass("ui-state-active");
+                $("#labelSPIDER").removeClass("ui-state-active");
+                $("#labelTROLL").removeClass("ui-state-active");
+                $("#culture2").hide();
+            }
+            that.filter = that.calculateNormalFilter();
+            that.start = 0
+            that.getCollection();
+            return true;
+        };
 
         var fullFilterChanged = function () {
             that.start = 0;
@@ -374,7 +407,10 @@ var CardFilter = Class.extend({
             return true;
         };
 
-        this.setSelect.change(fullFilterChanged);
+        //Hide Hobbit cultures by default
+        $("#culture2").hide();
+
+        this.setSelect.change(setFilterChanged);
         this.nameInput.change(fullFilterChanged);
         this.sortSelect.change(fullFilterChanged);
         this.raritySelect.change(fullFilterChanged);
@@ -433,20 +469,25 @@ var CardFilter = Class.extend({
         $("#itemClass").change(filterOut);
         $("#phase").change(filterOut);
 
+        $("#labelDWARVEN,#labelELVEN,#labelGANDALF,#labelGONDOR,#labelROHAN,#labelSHIRE,#labelGOLLUM,#labelDUNLAND,#labelISENGARD,#labelMEN,#labelMORIA,#labelORC,#labelRAIDER,#labelSAURON,#labelURUK_HAI,#labelWRAITH").click(filterOut);
         //Additional Hobbit Draft labels
-        $("#labelDWARVEN,#labelELVEN,#labelGANDALF,#labelGONDOR,#labelROHAN,#labelSHIRE,#labelGOLLUM,#labelDUNLAND,#labelISENGARD,#labelMEN,#labelMORIA,#labelORC,#labelRAIDER,#labelSAURON,#labelURUK_HAI,#labelWRAITH,#labelESGAROTH,#labelGUNDABAD").click(filterOut);
+        $("#labelESGAROTH,#labelGUNDABAD,#labelMIRKWOOD,#labelSMAUG,#labelSPIDER,#labelTROLL").click(filterOut);
+        
+        this.collectionDiv = $("<div id='collection-display' style='display:flex;flex-direction:column;position:relative;'></div>");
+        //collection-display
+        pageElem.append(this.collectionDiv);
     },
 
     layoutUi: function (x, y, width, height) {
-        this.pageDiv.css({position: "absolute", left: x, top: y, width: width, height: 34});
-        this.countSlider.css({width: width - 100});
-        this.fullFilterDiv.css({position: "absolute", left: x, top: y + 34, width: width, height: 34});
-        this.filterDiv.css({position: "absolute", left: x, top: y + 68, width: width, height: 80});
+        //this.pageDiv.css({position: "absolute", left: x, top: y, width: width, height: 34});
+        //this.countSlider.css({width: width - 100});
+        //this.fullFilterDiv.css({position: "absolute", left: x, top: y + 34, width: width, height: 34});
+        //this.filterDiv.css({position: "absolute", left: x, top: y + 68, width: width, height: 80});
     },
 
     layoutPageUi: function (x, y, width) {
-        this.pageDiv.css({left: x, top: y, width: width, height: 36});
-        this.countSlider.css({width: width - 100});
+        //this.pageDiv.css({left: x, top: y, width: width, height: 36});
+        //this.countSlider.css({width: width - 100});
     },
 
     disableNavigation: function () {
@@ -457,12 +498,7 @@ var CardFilter = Class.extend({
 
     calculateNormalFilter: function () {
         var cultures = new Array();
-        $("label", $("#culture1")).each(
-            function () {
-                if ($(this).hasClass("ui-state-active"))
-                    cultures.push($(this).prop("id").substring(5));
-            });
-        $("label", $("#culture2")).each(
+        $("label", $("#culture-buttons")).each(
             function () {
                 if ($(this).hasClass("ui-state-active"))
                     cultures.push($(this).prop("id").substring(5));
@@ -480,7 +516,7 @@ var CardFilter = Class.extend({
 
         var type = $("#type option:selected").prop("value");
         if (type != "")
-            type = " type:" + type;
+            type = " product:" + type;
 
         var race = $("#race option:selected").prop("value");
         if (race != "")
@@ -510,10 +546,12 @@ var CardFilter = Class.extend({
             sort = " sort:" + sort;
 
         var cardName = this.nameInput.val();
-        var cardNameElems = cardName.split(" ");
-        cardName = "";
-        for (var i = 0; i < cardNameElems.length; i++)
-            cardName += " name:" + cardNameElems[i];
+        if(cardName) {
+            var cardNameElems = cardName.split(" ");
+            cardName = "";
+            for (var i = 0; i < cardNameElems.length; i++)
+                cardName += " name:" + cardNameElems[i];
+        }
 
         var rarity = $("option:selected", this.raritySelect).prop("value");
         if (rarity != "")

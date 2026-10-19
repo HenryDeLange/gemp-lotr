@@ -11,14 +11,16 @@ import com.gempukku.lotro.logic.timing.results.PlayCardResult;
 import java.util.Collections;
 
 public class PlayCardEffect extends AbstractEffect {
-    private Zone _playedFrom;
-    private PhysicalCard _cardPlayed;
+    private final String performingPlayerId;
+    private final Zone _playedFrom;
+    private final PhysicalCard _cardPlayed;
     private PhysicalCard _attachedToCard;
-    private Zone _zone;
-    private PhysicalCard _attachedOrStackedPlayedFrom;
-    private boolean _paidToil;
+    private final Zone _zone;
+    private final PhysicalCard _attachedOrStackedPlayedFrom;
+    private final boolean _paidToil;
 
-    public PlayCardEffect(Zone playedFrom, PhysicalCard cardPlayed, Zone playedTo, PhysicalCard attachedOrStackedPlayedFrom, boolean paidToil) {
+    public PlayCardEffect(String performingPlayerId, Zone playedFrom, PhysicalCard cardPlayed, Zone playedTo, PhysicalCard attachedOrStackedPlayedFrom, boolean paidToil) {
+        this.performingPlayerId = performingPlayerId;
         _playedFrom = playedFrom;
         _cardPlayed = cardPlayed;
         _zone = playedTo;
@@ -26,7 +28,8 @@ public class PlayCardEffect extends AbstractEffect {
         _paidToil = paidToil;
     }
 
-    public PlayCardEffect(Zone playedFrom, PhysicalCard cardPlayed, PhysicalCard attachedToCard, PhysicalCard attachedOrStackedPlayedFrom, boolean paidToil) {
+    public PlayCardEffect(String performingPlayerId, Zone playedFrom, PhysicalCard cardPlayed, PhysicalCard attachedToCard, PhysicalCard attachedOrStackedPlayedFrom, boolean paidToil) {
+        this.performingPlayerId = performingPlayerId;
         _playedFrom = playedFrom;
         _cardPlayed = cardPlayed;
         _attachedToCard = attachedToCard;
@@ -67,7 +70,7 @@ public class PlayCardEffect extends AbstractEffect {
             game.getGameState().addCardToZone(game, _cardPlayed, _zone);
         }
 
-        game.getActionsEnvironment().emitEffectResult(new PlayCardResult(_playedFrom, _cardPlayed, _attachedToCard, _attachedOrStackedPlayedFrom, _paidToil));
+        game.getActionsEnvironment().emitEffectResult(new PlayCardResult(performingPlayerId, _playedFrom, _cardPlayed, _attachedToCard, _attachedOrStackedPlayedFrom, _paidToil));
 
         return new FullEffectResult(true);
     }

@@ -2,8 +2,8 @@ var deliveryDialogs = {};
 var deliveryGroups = {};
 
 function deliveryService(xml) {
-    log("Delivered a package:");
-    log(xml);
+    console.log("Delivered a package:");
+    console.log(xml);
 
     var root = xml.documentElement;
     if (root.tagName == "delivery") {
@@ -24,10 +24,11 @@ function deliveryService(xml) {
                 deliveryDialogs[collectionName] = $("<div></div>").dialog({
                     title:"New items - " + collectionName,
                     autoOpen:false,
-                    closeOnEscape:false,
+                    closeOnEscape:true,
                     resizable:true,
                     width:400,
-                    height:200
+                    height:200,
+                    closeText: ''
                 });
 
                 deliveryGroups[collectionName] = new NormalCardGroup(deliveryDialogs[collectionName], function (card) {
@@ -48,7 +49,7 @@ function deliveryService(xml) {
                 var count = packElem.getAttribute("count");
                 var card = new Card(blueprintId, "delivery", "deliveryPack" + i, "player");
                 card.tokens = {"count":count};
-                var cardDiv = createCardDiv(card.imageUrl, null, card.isFoil(), true, true, false);
+                var cardDiv = Card.CreateCardDiv(card.imageUrl, null, null, card.isFoil(), true, false, false, false);
                 cardDiv.data("card", card);
                 deliveryDialogs[collectionName].append(cardDiv);
             }
@@ -60,7 +61,7 @@ function deliveryService(xml) {
                 var count = cardElem.getAttribute("count");
                 var card = new Card(blueprintId, "delivery", "deliveryCard" + i, "player");
                 card.tokens = {"count":count};
-                var cardDiv = createCardDiv(card.imageUrl, null, card.isFoil(), true, false, card.hasErrata());
+                var cardDiv = Card.CreateCardDiv(card.imageUrl, null, null, card.isFoil(), true, false, card.hasErrata(), false);
                 cardDiv.data("card", card);
                 deliveryDialogs[collectionName].append(cardDiv);
             }

@@ -1,5 +1,6 @@
 package com.gempukku.lotro.packs;
 
+import com.gempukku.lotro.common.AppConfig;
 import com.gempukku.lotro.game.CardCollection;
 
 import java.io.BufferedReader;
@@ -11,32 +12,48 @@ import java.util.List;
 import java.util.Map;
 
 public class FixedPackBox implements PackBox {
-    private Map<String, Integer> _contents = new LinkedHashMap<String, Integer>();
+    private final Map<String, Integer> _contents = new LinkedHashMap<>();
+    private final boolean _recursive;
 
-    public FixedPackBox(String packName) throws IOException {
-        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(FixedPackBox.class.getResourceAsStream("/" + packName + ".pack")));
-        try {
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                line = line.trim();
-                if (!line.startsWith("#") && line.length() > 0) {
-                    String[] result = line.split("x", 2);
-                    _contents.put(result[1], Integer.parseInt(result[0]));
-                }
+    private FixedPackBox(boolean recursive) {
+        _recursive = recursive;
+    }
+
+    public static FixedPackBox LoadFromFile(String packName) throws IOException {
+        var lines = new BufferedReader(new InputStreamReader(AppConfig.getResourceStream("product/old/" + packName + ".pack")))
+                .lines().toList();
+        return LoadFromArray(lines, false);
+    }
+
+    public static FixedPackBox LoadFromArray(Iterable<String>  items, boolean recursive) throws IOException {
+        FixedPackBox box = new FixedPackBox(recursive);
+        for (String item : items) {
+            item = item.trim();
+            if (!item.startsWith("#") && item.length() > 0) {
+                String[] result = item.split("x", 2);
+                box._contents.put(result[1], Integer.parseInt(result[0]));
             }
-        } finally {
-            bufferedReader.close();
         }
 
+        return box;
     }
 
     @Override
     public List<CardCollection.Item> openPack() {
-        List<CardCollection.Item> result = new LinkedList<CardCollection.Item>();
+        List<CardCollection.Item> result = new LinkedList<>();
         for (Map.Entry<String, Integer> contentsEntry : _contents.entrySet()) {
             String blueprintId = contentsEntry.getKey();
-            result.add(CardCollection.Item.createItem(blueprintId, contentsEntry.getValue()));
+            result.add(CardCollection.Item.createItem(blueprintId, contentsEntry.getValue(), _recursive));
         }
         return result;
+    }
+
+    //Not used in non-random packs
+    @Override
+    public List<CardCollection.Item> openPack(int selection) { return openPack(); }
+
+    @Override
+    public List<String> GetAllOptions() {
+        return _contents.keySet().stream().toList();
     }
 }

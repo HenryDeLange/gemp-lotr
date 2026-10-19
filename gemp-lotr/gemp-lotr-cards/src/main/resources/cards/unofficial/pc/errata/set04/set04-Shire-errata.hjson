@@ -1,0 +1,64 @@
+{
+
+	54_304: {
+		cardInfo: {
+			//id: 4_304.1
+			parent: 4_304
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/54_304.jpg
+			collInfo: 4R304
+			rarity: R
+		}
+		title: Get On and Get Away
+		culture: shire
+		twilight: 0
+		type: event
+		timeword: fellowship
+		effects: {
+			type: event
+			requires: {
+				type: or
+				requires: [
+					{
+						type: canSpot
+						filter: name(smeagol)
+					}
+					{
+						type: canSpot
+						filter: ring bound,hobbit
+						count: 2
+					}
+				]
+			}
+			cost: {
+				type: addBurdens
+				amount: 2
+			}
+			effect: [
+				{
+					type: playSite
+					number: {
+						type: nextSiteNumber
+					}
+				}
+				{
+					type: playSite
+					number: {
+						type: siteNumberAfterNext
+					}
+				}
+			]
+		}
+		gametext: Fellowship: Spot 2 Ring-bound Hobbits (or Smeagol) and add 2 burdens to play the fellowship's next 2 sites (replacing opponent's sites if necessary).
+		lore: "'The Dead can't be really there! Is it some devilry hatched in the Dark Land?'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

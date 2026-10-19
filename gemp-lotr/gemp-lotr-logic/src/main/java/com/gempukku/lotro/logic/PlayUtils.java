@@ -1,9 +1,6 @@
 package com.gempukku.lotro.logic;
 
-import com.gempukku.lotro.common.CardType;
-import com.gempukku.lotro.common.Filterable;
-import com.gempukku.lotro.common.Side;
-import com.gempukku.lotro.common.Zone;
+import com.gempukku.lotro.common.*;
 import com.gempukku.lotro.filters.Filter;
 import com.gempukku.lotro.filters.Filters;
 import com.gempukku.lotro.game.LotroCardBlueprint;
@@ -13,22 +10,31 @@ import com.gempukku.lotro.logic.actions.AttachPermanentAction;
 import com.gempukku.lotro.logic.actions.CostToEffectAction;
 import com.gempukku.lotro.logic.actions.PlayEventAction;
 import com.gempukku.lotro.logic.actions.PlayPermanentAction;
-import com.gempukku.lotro.logic.timing.PlayConditions;
 import com.gempukku.lotro.logic.timing.RuleUtils;
+import com.google.common.collect.ImmutableMap;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class PlayUtils {
     private static Zone getPlayToZone(PhysicalCard card) {
         final CardType cardType = card.getBlueprint().getCardType();
-        switch (cardType) {
-            case COMPANION:
-                return Zone.FREE_CHARACTERS;
-            case MINION:
-                return Zone.SHADOW_CHARACTERS;
-            default:
-                return Zone.SUPPORT;
-        }
+        return switch (cardType) {
+            case COMPANION -> Zone.FREE_CHARACTERS;
+            case MINION -> Zone.SHADOW_CHARACTERS;
+            default -> Zone.SUPPORT;
+        };
     }
 
+    public static Map<Phase, Timeword> PhaseKeywordMap = ImmutableMap.copyOf(new HashMap<>() {{
+        put(Phase.FELLOWSHIP, Timeword.FELLOWSHIP);
+        put(Phase.SHADOW, Timeword.SHADOW);
+        put(Phase.MANEUVER, Timeword.MANEUVER);
+        put(Phase.ARCHERY, Timeword.ARCHERY);
+        put(Phase.ASSIGNMENT, Timeword.ASSIGNMENT);
+        put(Phase.SKIRMISH, Timeword.SKIRMISH);
+        put(Phase.REGROUP, Timeword.REGROUP);
+    }});
 
     private static Filter getFullAttachValidTargetFilter(final LotroGame game, final PhysicalCard card, int twilightModifier, int withTwilightRemoved) {
         return Filters.and(RuleUtils.getFullValidTargetFilter(card.getOwner(), game, card),
@@ -42,7 +48,7 @@ public class PlayUtils {
                     @Override
                     public boolean accepts(LotroGame game, PhysicalCard physicalCard) {
                         if (card.getBlueprint().getSide() == Side.SHADOW) {
-                            final int twilightCostOnTarget = game.getModifiersQuerying().getTwilightCost(game, card, physicalCard, twilightModifier, false);
+                            final int twilightCostOnTarget = game.getModifiersQuerying().getTwilightCostToPlay(game, card, physicalCard, twilightModifier, false);
                             int potentialDiscount = game.getModifiersQuerying().getPotentialDiscount(game, card);
                             return twilightCostOnTarget - potentialDiscount <= game.getGameState().getTwilightPool() - withTwilightRemoved;
                         } else {
@@ -83,11 +89,11 @@ public class PlayUtils {
         }
     }
 
-    public static boolean checkPlayRequirements(LotroGame game, PhysicalCard card, Filterable additionalAttachmentFilter, int withTwilightRemoved, int twilightModifier, boolean ignoreRoamingPenalty, boolean ignoreCheckingDeadPile) {
+    public static boolean checkPlayRequirements(LotroGame game, PhysicalCard card, Filterable additionalAttachmentFilter, int withTwilightRemoved, int twilightModifier, boolean ignoreRoamingPenalty, boolean ignoreCheckingDeadPile, boolean ignoreResponseEvents) {
         final LotroCardBlueprint blueprint = card.getBlueprint();
 
         // Check if card's own play requirements are met
-        if (!card.getBlueprint().checkPlayRequirements(game, card))
+        if (!blueprint.checkPlayRequirements(game, card))
             return false;
 
         twilightModifier -= game.getModifiersQuerying().getPotentialDiscount(game, card);
@@ -109,13 +115,131 @@ public class PlayUtils {
             return false;
 
         // Check uniqueness
-        if (!blueprint.skipUniquenessCheck() && !PlayConditions.checkUniqueness(game, card, ignoreCheckingDeadPile))
+        if (!blueprint.skipUniquenessCheck() && !checkUniqueness(game, card, ignoreCheckingDeadPile))
             return false;
 
         if (blueprint.getCardType() == CardType.COMPANION
-                && !(PlayConditions.checkRuleOfNine(game, card) && PlayConditions.checkPlayRingBearer(game, card)))
+                && !(checkRuleOfNine(game, card) && checkPlayRingBearer(game, card)))
             return false;
 
-        return (blueprint.getSide() != Side.SHADOW || PlayConditions.canPayForShadowCard(game, card, finalTargetFilter, withTwilightRemoved, twilightModifier, ignoreRoamingPenalty));
+        final Timeword timeword = PhaseKeywordMap.get(game.getGameState().getCurrentPhase());
+
+        if (blueprint.getCardType() == CardType.EVENT) {
+            //Some events are dual-timeword, such as Eye of Barad-dur, and so should not be automatically disqualified
+            if (ignoreResponseEvents && blueprint.hasTimeword(Timeword.RESPONSE) && !blueprint.hasTimeword(timeword)) {
+                return false;
+            }
+
+            if (!blueprint.hasTimeword(Timeword.RESPONSE) && timeword != null && !card.getBlueprint().hasTimeword(timeword))
+                return false;
+        }
+
+        return (blueprint.getSide() != Side.SHADOW || canPayForShadowCard(game, card, finalTargetFilter, withTwilightRemoved, twilightModifier, ignoreRoamingPenalty));
+    }
+
+    /**
+     * Checks if a card can be played ignoring all costs (twilight, ToPlay requirements, ExtraCosts,
+     * roaming penalty) but still respecting uniqueness, Rule of Nine, and CantPlayCards modifiers.
+     */
+    public static boolean checkPlayRequirementsIgnoringCosts(LotroGame game, PhysicalCard card) {
+        final LotroCardBlueprint blueprint = card.getBlueprint();
+
+        // Still enforce CantPlayCards modifiers
+        if (!game.getModifiersQuerying().canPlayCard(game, card.getOwner(), card))
+            return false;
+
+        // Still enforce uniqueness
+        if (!blueprint.skipUniquenessCheck() && !checkUniqueness(game, card, false))
+            return false;
+
+        // Still enforce Rule of Nine and Ring-bearer restrictions for companions
+        if (blueprint.getCardType() == CardType.COMPANION
+                && !(checkRuleOfNine(game, card) && checkPlayRingBearer(game, card)))
+            return false;
+
+        // Skip: ToPlay requirements, ExtraCosts, twilight cost, roaming penalty, event timeword check
+        return true;
+    }
+
+    /**
+     * Creates a play action for a card ignoring all costs — no twilight payment, no extra costs,
+     * no roaming penalty. Used for "play ignoring all costs" effects.
+     */
+    public static CostToEffectAction getPlayCardActionIgnoringCosts(LotroGame game, PhysicalCard card) {
+        final LotroCardBlueprint blueprint = card.getBlueprint();
+
+        if (blueprint.getCardType() != CardType.EVENT) {
+            final Filterable validTargetFilter = blueprint.getValidTargetFilter(card.getOwner(), game, card);
+            if (validTargetFilter == null) {
+                // Massive negative modifier makes twilight cost 0; ignoreRoamingPenalty=true
+                PlayPermanentAction action = new PlayPermanentAction(card, getPlayToZone(card), -10000, true);
+                // Deliberately skip appendExtraCosts and appendPotentialDiscounts
+                return action;
+            } else {
+                // Attachable card — still needs a valid target, but ignore cost filters on target
+                final AttachPermanentAction action = new AttachPermanentAction(game, card,
+                        RuleUtils.getFullValidTargetFilter(card.getOwner(), game, card), -10000);
+                // Skip extra costs
+                return action;
+            }
+        } else {
+            final PlayEventAction action = blueprint.getPlayEventCardAction(card.getOwner(), game, card);
+            // Skip extra costs and discounts
+            return action;
+        }
+    }
+
+    private static boolean canPayForShadowCard(LotroGame game, PhysicalCard self, Filterable validTargetFilter, int withTwilightRemoved, int twilightModifier, boolean ignoreRoamingPenalty) {
+        int minimumCost;
+        if (validTargetFilter == null)
+            minimumCost = game.getModifiersQuerying().getTwilightCostToPlay(game, self, null, twilightModifier, ignoreRoamingPenalty);
+        else {
+            minimumCost = 0;
+            for (PhysicalCard potentialTarget : Filters.filterActive(game, validTargetFilter)) {
+                minimumCost = Math.min(minimumCost, game.getModifiersQuerying().getTwilightCostToPlay(game, self, potentialTarget, twilightModifier, ignoreRoamingPenalty));
+            }
+        }
+
+        return minimumCost <= game.getGameState().getTwilightPool() - withTwilightRemoved;
+    }
+
+    private static boolean checkUniqueness(LotroGame game, PhysicalCard self, boolean ignoreCheckingDeadPile) {
+        LotroCardBlueprint blueprint = self.getBlueprint();
+        final int restrictions = game.getModifiersQuerying().getUniqueness(game, self);
+        if (restrictions >= 4)
+            return true;
+
+        final int activeCount = Filters.countActive(game, SpotOverride.INCLUDE_HINDERED, Filters.name(blueprint.getSanitizedTitle()));
+        int deadCount = 0;
+        if(!ignoreCheckingDeadPile) {
+            deadCount = Filters.filter(game, game.getGameState().getDeadPile(self.getOwner()), Filters.name(blueprint.getSanitizedTitle())).size();
+        }
+
+        return activeCount + deadCount < restrictions;
+    }
+
+    private static boolean checkRuleOfNine(LotroGame game, PhysicalCard self) {
+        if (self.getZone() == Zone.DEAD)
+            return (getTotalCompanions(self.getOwner(), game) <= 9);
+        else
+            return (getTotalCompanions(self.getOwner(), game) < 9);
+    }
+
+    private static int getTotalCompanions(String playerId, LotroGame game) {
+        return Filters.countActive(game, SpotOverride.INCLUDE_HINDERED, CardType.COMPANION)
+                + Filters.filter(game, game.getGameState().getDeadPile(playerId), CardType.COMPANION).size();
+    }
+
+    private static boolean checkPlayRingBearer(LotroGame game, PhysicalCard self) {
+        // If a character other than Frodo is your Ringbearer,
+        // you cannot play any version of Frodo
+        // with the Ring-bearer keyword during the game
+        PhysicalCard ringBearer = game.getGameState().getRingBearer(game.getGameState().getCurrentPlayerId());
+        boolean ringBearerIsNotFrodo = ringBearer != null && !ringBearer.getBlueprint().getTitle().equals("Frodo");
+        if (ringBearerIsNotFrodo) {
+            boolean isRingBearerFrodo = self.getBlueprint().getTitle().equals("Frodo") && self.getBlueprint().canStartWithRing();
+            return !isRingBearerFrodo;
+        }
+        return true;
     }
 }

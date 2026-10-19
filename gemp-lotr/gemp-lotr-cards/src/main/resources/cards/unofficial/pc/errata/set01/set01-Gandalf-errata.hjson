@@ -1,0 +1,192 @@
+{
+	
+		51_70: {
+		cardInfo: {
+			//id: 1_70.4
+			parent: 1_70
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 4
+			image: errata/LOTR-EN01E070.1_card.jpg
+			collInfo: 1U70
+			rarity: U
+		}
+		title: Barliman Butterbur
+		subtitle: Prancing Pony Proprietor
+		unique: true
+		side: Free Peoples
+		culture: Gandalf
+		twilight: 1
+		type: Ally
+		allyHome: 1F
+		race: Man
+		strength: 1
+		vitality: 2
+		effects: {
+			type: activated
+			phase: fellowship
+			cost: {
+				type: exert
+				select: self
+			}
+			effect: {
+				type: putCardsFromDiscardIntoHand
+				select: choose(spell)
+			}
+		}
+		gametext: <b>Fellowship:</b> Exert Barliman Butterbur to take a spell into hand from your discard pile.
+		lore: "'You don't know much even about them, if you think old Barliman is stupid,' said Gandalf. 'He is wise enough on his own ground.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	51_80: {
+		cardInfo: {
+			//id: 1_80.1
+			parent: 1_80
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/51_80.jpg
+			collInfo: 1R80
+			rarity: R
+		}
+		title: Ottar
+		subtitle: Man of Laketown
+		unique: true
+		side: Free Peoples
+		culture: Gandalf
+		twilight: 1
+		type: Ally
+		allyHome: 3F
+		race: Man
+		strength: 2
+		vitality: 4
+		effects: [
+			{
+				type: toPlay
+				requires: {
+					type: canSpot
+					filter: name(Gandalf)
+				}
+			}
+			{
+				type: activated
+				phase: fellowship
+				cost: [
+					{
+						type: exert
+						select: self
+					}
+					{
+						type: discardFromHand
+						forced: false
+					}
+				]
+				effect: {
+					type: drawCards
+				}
+			}
+		]
+		gametext: To play, spot Gandalf.<br><b>Fellowship:</b> Exert Ottar and discard a card from hand to draw a card.
+		lore: The Men of Laketown come from the North, where they trade with the Dwarves of the Lonely Mountain.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_84: {
+		cardInfo: {
+			//id: 51_84.1
+			parent: 1_84
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN01E084.1_card.jpg
+			collInfo: 1C84
+			rarity: C
+		}
+		title: Sleep, Caradhras
+		unique: false
+		side: Free Peoples
+		culture: Gandalf
+		twilight: 3
+		type: Event
+		timewords: Fellowship
+		keywords: Spell
+		effects: {
+			type: event
+			cost: {
+				type: Exert
+				select: choose(name(Gandalf))
+			}
+			effect: [
+				{
+					type: Discard
+					count: 1
+					select: choose(side(Shadow), condition)
+				}
+				{
+					type: Hinder
+					select: all(condition)
+				}
+			]
+		}
+		gametext: <b>Spell</b>.<br>Exert Gandalf to discard a Shadow condition and then hinder all condition.
+		lore: "'Losto Caradhras, sedho, hodo, nuitho i ruith.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_87: {
+		cardInfo: {
+			//id: 1_87.1
+			parent: 1_87
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN01E087.1_card.jpg
+			collInfo: 1R87
+			rarity: R
+		}
+		title: A Wizard Is Never Late
+		unique: false
+		side: Free Peoples
+		culture: Gandalf
+		twilight: 1
+		type: Event
+		timeword: fellowship
+		effects: {
+			type: event
+			effect: {
+				type: playCardFromDrawDeck
+				select: choose(or(wizard,and(culture(gandalf),ally)))
+				showAll: true
+				shuffle: true
+			}
+		}
+		gametext: Play a Wizard or [gandalf] ally from your draw deck.
+		lore: "'A wizard is never late, Frodo Baggins, nor is he early. He arrives precisely when he means to.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

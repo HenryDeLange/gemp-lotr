@@ -1,0 +1,221 @@
+package com.gempukku.lotro.packs;
+
+import com.gempukku.lotro.common.AppConfig;
+import com.gempukku.lotro.common.JSONDefs;
+import com.gempukku.lotro.game.LotroCardBlueprintLibrary;
+import com.gempukku.util.JsonUtils;
+import org.json.simple.parser.JSONParser;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Semaphore;
+
+public class ProductLibrary {
+    public static class OuterPackDef {
+
+    }
+    private final Map<String, PackBox> _products = new HashMap<>();
+    //Products which are opened immediately when awarded to a player, rather than being deposited as a pack.
+    private final Set<String> _openOnDelivery = new HashSet<>();
+    private final LotroCardBlueprintLibrary _cardLibrary;
+    private final File _packDirectory;
+
+    private final Semaphore collectionReady = new Semaphore(1);
+
+    public ProductLibrary(LotroCardBlueprintLibrary cardLibrary) {
+        this(cardLibrary, AppConfig.getProductPath());
+    }
+    public ProductLibrary(LotroCardBlueprintLibrary cardLibrary, File packDefinitionDirectory) {
+        _cardLibrary = cardLibrary;
+        _packDirectory = packDefinitionDirectory;
+
+        collectionReady.acquireUninterruptibly();
+        loadPacks(_packDirectory);
+        collectionReady.release();
+    }
+
+    public void ReloadPacks() {
+        try {
+            collectionReady.acquire();
+            loadPacks(_packDirectory);
+            collectionReady.release();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void loadPacks(File path) {
+        if (path.isFile()) {
+            loadPackFromFile(path);
+        }
+        else if (path.isDirectory()) {
+            for (File file : path.listFiles()) {
+                loadPacks(file);
+            }
+        }
+    }
+
+    private void loadPackFromFile(File file) {
+        if (!JsonUtils.IsValidHjsonFile(file))
+            return;
+        JSONParser parser = new JSONParser();
+        try (Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
+            var defs = JsonUtils.ConvertArray(reader, JSONDefs.Pack.class);
+
+            if(defs == null)
+            {
+                var def= JsonUtils.Convert(reader, JSONDefs.Pack.class);
+                if(def != null)
+                {
+                    defs = new ArrayList<>();
+                    defs.add(def);
+                }
+                else {
+                    System.out.println(file.toString() + " is not a PackDefinition nor an array of PackDefinitions.  Could not load from file.");
+                    return;
+                }
+            }
+
+            for (var def : defs) {
+                if(def == null)
+                    continue;
+
+                PackBox result = null;
+                String[] rarities;
+                String[] sets;
+                switch (def.type)
+                {
+                    case RANDOM:
+                        if(def.items == null || def.items.isEmpty())
+                            continue;
+                        if(def.items.stream().anyMatch(x -> x.contains("%"))) {
+                            result = WeightedRandomPack.LoadFromArray(def.items);
+                        }
+                        else {
+                            result = UnweightedRandomPack.LoadFromArray(def.items);
+                        }
+
+                        break;
+                    case RANDOM_FOIL:
+                        if(def.data == null || !def.data.containsKey("rarities") || !def.data.containsKey("sets")) {
+                            System.out.println(def.name + " RANDOM_FOIL pack type must contain a definition for 'rarities' and 'sets' within data.");
+                            continue;
+                        }
+                        rarities = def.data.get("rarities").toUpperCase().split("\\s*,\\s*");
+                        sets = def.data.get("sets").split("\\s*,\\s*");
+                        result = new RandomFoilPack(rarities, sets, _cardLibrary);
+                        break;
+                    case TENGWAR:
+                        if(def.data == null || !def.data.containsKey("sets")) {
+                            System.out.println(def.name + " TENGWAR pack type must contain a definition for 'sets' within data.");
+                            continue;
+                        }
+                        sets = def.data.get("sets").split("\\s*,\\s*");
+                        result = new TengwarPackBox(sets, _cardLibrary);
+                        break;
+                    case BOOSTER:
+                        if(def.data == null || !def.data.containsKey("set")) {
+                            System.out.println(def.name + " BOOSTER pack type must contain a definition for 'set' within data.");
+                            continue;
+                        }
+                        if(def.data.get("set").contains(",")) {
+                            System.out.println(def.name + " BOOSTER pack type must define exactly one set.");
+                            continue;
+                        }
+                        String set = def.data.get("set").trim();
+                        if(set.equals("9")) {
+                            result = new ReflectionsPackBox(_cardLibrary);
+                        }
+                        else {
+                            result = new RarityPackBox(_cardLibrary.getSetDefinitions().get(set));
+                        }
+                        break;
+                    case PACK:
+                    case SELECTION:
+                        if(def.items == null || def.items.isEmpty())
+                            continue;
+                        result = FixedPackBox.LoadFromArray(def.items, def.recursive);
+                        break;
+                }
+                if(result == null)
+                {
+                    System.out.println("Unrecognized pack type: " + def.type);
+                    continue;
+                }
+
+                if(_products.containsKey(def.name)) {
+                    System.out.println("Overwriting existing pack '" + def.name + "'!");
+                }
+                _products.put(def.name, result);
+
+                //openOnDelivery is resolved per award, not here: rolling the randomness at load time would
+                //hand every player the identical card.  See ProductOpener.
+                if(def.openOnDelivery && def.type == JSONDefs.Pack.PackType.SELECTION) {
+                    System.out.println(def.name + " SELECTION pack type cannot use 'openOnDelivery', as opening it requires the player to pick an item.  Ignoring the flag.");
+                }
+
+                if(def.openOnDelivery && def.type != JSONDefs.Pack.PackType.SELECTION) {
+                    _openOnDelivery.add(def.name);
+                }
+                else {
+                    //A redefinition of the same name must be able to clear the flag as well as set it.
+                    _openOnDelivery.remove(def.name);
+                }
+            }
+
+
+        } catch (Exception e) {
+            throw new RuntimeException("Pack parsing error in file " + file + ".\n" + e.getMessage());
+        }
+    }
+
+    public Map<String, PackBox> GetAllProducts() {
+        try {
+            collectionReady.acquire();
+            var data = Collections.unmodifiableMap(_products);
+            collectionReady.release();
+            return data;
+        }
+        catch (InterruptedException exp) {
+            throw new RuntimeException("ProductLibrary.GetAllProducts() interrupted: ", exp);
+        }
+    }
+
+    public PackBox GetProduct(String name) {
+        try {
+            collectionReady.acquire();
+            var data = _products.get(name);
+            collectionReady.release();
+            return data;
+        }
+        catch (InterruptedException exp) {
+            throw new RuntimeException("ProductLibrary.GetProduct() interrupted: ", exp);
+        }
+    }
+
+    /**
+     * True if this product is tagged <code>openOnDelivery</code>: awarding it to a player deposits its
+     * opened contents instead of the product itself.  Never true for SELECTION products.
+     */
+    public boolean opensOnDelivery(String name) {
+        if(name == null)
+            return false;
+
+        try {
+            collectionReady.acquire();
+            var data = _openOnDelivery.contains(name);
+            collectionReady.release();
+            return data;
+        }
+        catch (InterruptedException exp) {
+            throw new RuntimeException("ProductLibrary.opensOnDelivery() interrupted: ", exp);
+        }
+    }
+}
+

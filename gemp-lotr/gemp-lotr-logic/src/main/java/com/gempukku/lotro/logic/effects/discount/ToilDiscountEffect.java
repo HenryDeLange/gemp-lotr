@@ -11,11 +11,11 @@ import com.gempukku.lotro.logic.effects.choose.ChooseAndExertCharactersEffect;
 import com.gempukku.lotro.logic.timing.AbstractSubActionEffect;
 
 public class ToilDiscountEffect extends AbstractSubActionEffect implements DiscountEffect {
-    private CostToEffectAction _action;
-    private PhysicalCard _payingFor;
-    private String _ownerId;
-    private Culture _culture;
-    private int _toilCount;
+    private final CostToEffectAction _action;
+    private final PhysicalCard _payingFor;
+    private final String _ownerId;
+    private final Culture _culture;
+    private final int _toilCount;
     private int _minimalDiscount;
 
     private int _exertedCount;
@@ -69,7 +69,7 @@ public class ToilDiscountEffect extends AbstractSubActionEffect implements Disco
             if (_minimalDiscount == 0) {
                 minimalExerts = 0;
             } else {
-                minimalExerts = _minimalDiscount / _toilCount + ((_minimalDiscount % _toilCount > 0) ? 1 : 0);
+                minimalExerts = (_minimalDiscount - _paidToil * _toilCount) / _toilCount + (((_minimalDiscount - _paidToil * _toilCount) % _toilCount > 0) ? 1 : 0);
             }
 
             SubAction subAction = new SubAction(_action);

@@ -14,12 +14,12 @@ import org.json.simple.JSONObject;
 
 public class DrawCards implements EffectAppenderProducer {
     @Override
-    public EffectAppender createEffectAppender(JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
+    public EffectAppender createEffectAppender(boolean cost, JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
         FieldUtils.validateAllowedFields(effectObject, "count", "player");
 
         final String player = FieldUtils.getString(effectObject.get("player"), "player", "you");
 
-        final PlayerSource playerSource = PlayerResolver.resolvePlayer(player, environment);
+        final PlayerSource playerSource = PlayerResolver.resolvePlayer(player);
         final ValueSource count = ValueResolver.resolveEvaluator(effectObject.get("count"), 1, environment);
 
         return new DelayedAppender() {

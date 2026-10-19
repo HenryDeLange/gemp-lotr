@@ -16,16 +16,16 @@ public class Reconciles implements TriggerCheckerProducer {
 
         final String player = FieldUtils.getString(value.get("player"), "player");
 
-        PlayerSource playerSource = (player != null) ? PlayerResolver.resolvePlayer(player, environment) : null;
+        PlayerSource playerSource = (player != null) ? PlayerResolver.resolvePlayer(player) : null;
 
         return new TriggerChecker() {
             @Override
             public boolean accepts(ActionContext actionContext) {
-                if (playerSource != null)
-                    return TriggerConditions.reconciles(actionContext.getGame(), actionContext.getEffectResult(),
-                            playerSource.getPlayer(actionContext));
-                else
-                    return TriggerConditions.reconciles(actionContext.getGame(), actionContext.getEffectResult(), null);
+                if (playerSource != null) {
+                    return TriggerConditions.playerReconciles(actionContext.getGame(), actionContext.getEffectResult(), playerSource.getPlayer(actionContext));
+                } else {
+                    return TriggerConditions.reconciles(actionContext.getGame(), actionContext.getEffectResult());
+                }
             }
 
             @Override

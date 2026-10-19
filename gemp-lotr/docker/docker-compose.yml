@@ -1,5 +1,3 @@
-version: "3.4"
-
 services:
 
   build:
@@ -26,27 +24,28 @@ services:
        - type: bind
          source: ../gemp-lotr-async/src/main/web
          target: /etc/gemp-lotr/web
+         consistency: consistent
        - type: bind
          source: ../../gemp-lotr
          target: /etc/gemp-lotr
-       - type: bind
-         source: ../gemp-lotr-async/src/main/web
-         target: /var/www/localhost/htdocs/gemp-lotr #/etc/apache2/htdocs/gemp-lotr
+         consistency: consistent
        - type: bind
          source: ../../logs
          target: /logs
+         consistency: consistent
        - type: bind
          source: ../../replay
-         target: /replay
          target: /etc/gemp-lotr/replay
+         consistency: consistent
        - type: bind
-         source: ../..
-         target: /gemp-src
+         source: ../../logs/nohup.out
+         target: /etc/gemp-lotr/nohup.out
+         consistency: consistent
     networks:
       gemp_net_1:
         ipv4_address: ${APP_IP}
     tty: true
-    #command: nohup java -jar /etc/gemp-lotr/gemp-lotr-async/target/web.jar &
+    command: nohup java -jar -Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector /etc/gemp-lotr/gemp-lotr-async/target/web.jar &> /logs/nohup.out &
 
 
   db:
@@ -77,4 +76,5 @@ networks:
     ipam:
       driver: default
       config:
-        - subnet: 172.28.1.0/24
+        - subnet: 172.28.${SERVID}.0/24
+    attachable: true

@@ -3,7 +3,7 @@ package com.gempukku.lotro.league;
 import com.gempukku.lotro.cache.Cached;
 import com.gempukku.lotro.db.LeagueParticipationDAO;
 import com.gempukku.lotro.game.Player;
-import org.apache.commons.collections.map.LRUMap;
+import org.apache.commons.collections4.map.LRUMap;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -14,10 +14,10 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class CachedLeagueParticipationDAO implements LeagueParticipationDAO, Cached {
-    private LeagueParticipationDAO _leagueParticipationDAO;
-    private ReadWriteLock _readWriteLock = new ReentrantReadWriteLock();
+    private final LeagueParticipationDAO _leagueParticipationDAO;
+    private final ReadWriteLock _readWriteLock = new ReentrantReadWriteLock();
 
-    private Map<String, Set<String>> _cachedParticipants = Collections.synchronizedMap(new LRUMap(5));
+    private final Map<String, Set<String>> _cachedParticipants = Collections.synchronizedMap(new LRUMap(5));
 
     public CachedLeagueParticipationDAO(LeagueParticipationDAO leagueParticipationDAO) {
         _leagueParticipationDAO = leagueParticipationDAO;
@@ -59,7 +59,7 @@ public class CachedLeagueParticipationDAO implements LeagueParticipationDAO, Cac
         Set<String> leagueParticipants;
         leagueParticipants = _cachedParticipants.get(leagueId);
         if (leagueParticipants == null) {
-            leagueParticipants = new CopyOnWriteArraySet<String>(_leagueParticipationDAO.getUsersParticipating(leagueId));
+            leagueParticipants = new CopyOnWriteArraySet<>(_leagueParticipationDAO.getUsersParticipating(leagueId));
             _cachedParticipants.put(leagueId, leagueParticipants);
         }
         return leagueParticipants;

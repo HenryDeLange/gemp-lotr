@@ -10,12 +10,13 @@ import com.gempukku.lotro.logic.GameUtils;
 import com.gempukku.lotro.logic.actions.RequiredTriggerAction;
 import com.gempukku.lotro.logic.modifiers.ModifierFlag;
 import com.gempukku.lotro.logic.timing.EffectResult;
+import com.gempukku.lotro.logic.timing.RuleUtils;
 import com.gempukku.lotro.logic.timing.results.ReconcileResult;
 
 import java.util.List;
 
 public class WinConditionRule {
-    private DefaultActionsEnvironment _actionsEnvironment;
+    private final DefaultActionsEnvironment _actionsEnvironment;
 
     public WinConditionRule(DefaultActionsEnvironment actionsEnvironment) {
         _actionsEnvironment = actionsEnvironment;
@@ -27,19 +28,19 @@ public class WinConditionRule {
                     @Override
                     public List<? extends RequiredTriggerAction> getRequiredAfterTriggers(LotroGame game, EffectResult effectResults) {
                         if (game.getGameState().getCurrentPhase() == Phase.REGROUP
-                                && game.getGameState().getCurrentSiteNumber() == 9) {
+                                && game.getGameState().getCurrentSiteNumber() == RuleUtils.getFellowshipWinSiteNumber(game)) {
                             if (isWinAtReconcile(game)) {
                                 if (effectResults.getType() == EffectResult.Type.RECONCILE
                                         && !((ReconcileResult) effectResults).getPlayerId().equals(game.getGameState().getCurrentPlayerId())) {
-                                    game.playerWon(game.getGameState().getCurrentPlayerId(), "Surviving till Shadow player reconciles on site 9");
+                                    game.playerWon(game.getGameState().getCurrentPlayerId(), "Surviving to end of Regroup phase on site " + game.getGameState().getCurrentSiteNumber());
                                 }
                             } else if (effectResults.getType() == EffectResult.Type.START_OF_PHASE) {
-                                game.playerWon(game.getGameState().getCurrentPlayerId(), "Surviving to Regroup phase on site 9");
+                                game.playerWon(game.getGameState().getCurrentPlayerId(), "Surviving to Regroup phase on site " + game.getGameState().getCurrentSiteNumber());
                             }
                         } else if (game.getFormat().winOnControlling5Sites()
-                                && effectResults.getType() == EffectResult.Type.TAKE_CONTROL_OF_SITE) {
+                                && effectResults.getType() == EffectResult.Type.CONTROL_SITE) {
                             for (String opponent : GameUtils.getShadowPlayers(game)) {
-                                if (Filters.countActive(game, CardType.SITE, Filters.siteControlled(opponent)) >= 5)
+                                if (Filters.countActive(game, CardType.SITE, Filters.siteControlledByPlayer(opponent)) >= 5)
                                     game.playerWon(opponent, "Controls 5 sites");
                             }
                         }

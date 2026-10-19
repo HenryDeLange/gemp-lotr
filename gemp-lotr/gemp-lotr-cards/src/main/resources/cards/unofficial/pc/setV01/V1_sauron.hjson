@@ -1,0 +1,418 @@
+{
+
+	101_44: {
+		cardInfo: {
+			//id: 101_44
+			image: sets/vset1/LOTR-ENV1S044.0_card.jpg
+			collInfo: V1C44
+			rarity: C
+		}
+		title: Fell to Its Power
+		unique: false
+		side: Shadow
+		culture: Sauron
+		twilight: 1
+		type: Event
+		timewords: Regroup
+		effects: {
+			type: event
+			cost: {
+				type: discard
+				select: choose(culture(sauron),orc)
+			}
+			effect: [
+				{
+					type: preventable
+					text: Would you like to discard a Free Peoples condition to prevent adding a burden?
+					player: fp
+ 					cost: {
+						type: discard
+						select: choose(side(free people),condition)
+					}
+					effect: {
+						type: addBurdens
+						amount: 1
+					}
+				}
+			]
+		}
+		gametext: Discard a [Sauron] Orc to add a burden. The Free Peoples player may discard a Free Peoples condition to prevent this.
+		lore: "'If the Dark Lord knows so much as you say, Mithrandir, will he not rather smile than fear, and with his little finger crush us like a fly that tries to sting him?'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	101_45: {
+		cardInfo: {
+			//id: 101_45
+			image: sets/vset1/LOTR-ENV1S045.0_card.jpg
+			collInfo: V1U45
+			rarity: U
+		}
+		title: Gaze of the Eye
+		unique: true
+		side: Shadow
+		culture: Sauron
+		twilight: 1
+		type: Condition
+		keywords: Support Area
+		effects: [
+			{
+			type: Response
+				trigger: {
+					type: abouttodiscard
+					filter: culture(sauron),condition
+				}
+				cost: {
+					type: removeburdens
+					amount: 1
+				}
+				effect: {
+					type: preventdiscard
+					select: choose(culture(sauron),condition)
+				}
+			}
+		]
+		gametext: Response: If your [Sauron] condition is about to be discarded, remove a burden to prevent this.
+		lore: "Then the Eye began to rove, searching this way and that; and Frodo knew with certainty and horror that among the many things that it sought he himself was one."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	101_46: {
+		cardInfo: {
+			//id: 101_46
+			image: sets/vset1/LOTR-ENV1S046.0_card.jpg
+			collInfo: V1C46
+			rarity: C
+		}
+		title: I See You
+		unique: false
+		side: Shadow
+		culture: Sauron
+		twilight: 0
+		type: Condition
+		keywords: Support Area
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: modifysitenumber
+					filter: culture(sauron),minion
+					amount: {
+						type: forEachBurden
+						multiplier: -1
+					}
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: modifystrength
+					filter: culture(sauron),minion,siteNumber(0-1)
+					amount: 1
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: takesoffring
+ 			}
+				effect: {
+				type: discard
+				select: self
+				}
+			}
+		]
+		gametext: The site number of each [Sauron] minion is <br>-1 for each burden you can spot.<br>Each [sauron] minion with site number of <br>1 or less is strength +1.<br> When the Ring-bearer takes off The One Ring, discard this condition.
+		lore: "...to pin you under its deadly gaze, naked, immovable."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	101_47: {
+		cardInfo: {
+			//id: 101_47
+			image: sets/vset1/LOTR-ENV1S047.0_card.jpg
+			collInfo: V1C47
+			rarity: C
+		}
+		title: It Betrayed Isildur
+		unique: false
+		side: Shadow
+		culture: Sauron
+		twilight: 1
+		type: Event
+		timewords: Regroup
+		effects: [
+			{
+				type: toPlay
+				requires: {
+					type: canSpotburdens
+					amount: 5
+				}
+			}
+			{
+				type: extraCost
+				cost: {
+					type: discard
+					select: choose(culture(sauron),orc)
+				}
+			}
+			{
+				type: event
+				effect: {
+					type: choice
+					player: shadowPlayer
+					texts: [
+						Make the move limit -1
+						Make the free peoples player choose to move again
+					]
+					effects: [
+						{
+							type: addModifier
+							modifier: {
+								type: modifyMoveLimit
+								amount: -1
+							}
+							until: endOfTurn
+						}
+						{
+							type: addModifier
+							modifier: {
+								type: hasToMoveIfAble
+							}
+						}
+					]
+				}
+			}
+		]
+		gametext: Spot 5 burdens and discard a [Sauron] Orc to choose one: make the move limit for this turn -1; or make the Free Peoples player choose to move again (if the move limit allows).
+		lore: "'He leaped into the waters, but the Ring slipped from his finger as he swam, and then the Orcs saw him and killed him with arrows.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	101_48: {
+		cardInfo: {
+			//id: 101_48
+			image: sets/vset1/LOTR-ENV1S048.0_card.jpg
+			collInfo: V1R48
+			rarity: R
+		}
+		title: Orc Ambush Troop
+		unique: false
+		side: Shadow
+		culture: Sauron
+		twilight: 3
+		type: Minion
+		race: Orc
+		strength: 8
+		vitality: 2
+		site: 6
+		keywords: Tracker
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: addKeyword
+					filter: self
+					keyword: archer
+					requires: {
+						type: canSpot
+						filter: companion,exhausted
+					}
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: modifystrength
+					filter: self
+					amount: 3
+					requires: {
+						type: canSpot
+						filter: companion,exhausted
+						count: 3
+					}
+				}
+			}
+		]
+		gametext: Tracker.<br>While you can spot an exhausted companion, this minion is an <b>archer</b>.<br>While you can spot 3 exhausted companions, this minion is strength +3.
+		lore: "'...he was waylaid by the Orcs of the Mountains, and almost all his folk were slain.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	# 101_49: {
+	# 	cardInfo: {
+	# 		//id: 101_49
+	# 		image: sets/vset1/LOTR-ENV1S049.0_card.jpg
+	# 		collInfo: V1R49
+	# 		rarity: R
+	# 	}
+	# 	title: A Shadow of the Past
+	# 	unique: true
+	# 	side: Shadow
+	# 	culture: Sauron
+	# 	twilight: 1
+	# 	type: Condition
+	# 	keywords: Support Area
+	# 	effects: [
+	# 		{
+	# 			type: modifier
+	# 			modifier: {
+	# 				type: addKeyword
+	# 				filter: culture(sauron),orc
+	# 				keyword: fierce
+	# 				requires: {
+	# 					type: canSpotburdens
+	# 					amount: 4
+	# 				}
+	# 			}
+	# 		}
+	# 		{
+	# 			type: modifier
+	# 			modifier: {
+	# 				type: addKeyword
+	# 				filter: culture(sauron),orc
+	# 				keyword: damage+1
+	# 				requires: {
+	# 					type: canSpotburdens
+	# 					amount: 6
+	# 				}
+	# 			}
+	# 		}
+	# 		{
+	# 			type: Trigger
+	# 			optional: false
+	# 			trigger: {
+	# 				type: startOfPhase
+	# 				phase: regroup
+	# 			}
+	# 			effect: {
+	# 				type: discard
+	# 				select: self
+	# 			}
+	# 		}
+	# 	]
+	# 	gametext: While you can spot 4 burdens, each [sauron] Orc is <b>fierce</b>.<br>While you can spot 6 burdens, each [Sauron] Orc is damage +1.<br>Discard this condition at the start of the regroup phase.
+	# 	lore: "'He has indeed arisen again... and returned to his ancient fastness in the Dark Tower of Mordor.'"
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	101_49: {
+		cardInfo: {
+			//id: 101_49.1
+			parent: 101_49
+			variant: ORIGINAL
+			variantPath: promos/pc
+			revision: 1
+			image: sets/vset1/LOTR-ENV1S049.1_card.jpg
+			collInfo: V3_49
+			rarity: R
+		}
+		title: A Shadow of the Past
+		unique: true
+		side: Shadow
+		culture: Sauron
+		twilight: 1
+		type: Condition
+		keywords: Support Area
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: addKeyword
+					filter: culture(sauron),orc
+					keyword: fierce
+					requires: {
+						type: canSpotburdens
+						amount: 6
+					}
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: addKeyword
+					filter: culture(sauron),orc
+					keyword: damage+1
+					requires: {
+						type: canSpotburdens
+						amount: 4
+					}
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: EndOfPhase
+					phase: Shadow
+				}
+				effect: {
+					type: Choice
+					texts: [
+						Exert 2 {Sauron} Orcs
+						Hinder {self}
+					]
+					effects: [
+						{
+							type: Exert
+							select: choose(Sauron, Orc)
+							count: 2
+							times: 1
+						}
+						{
+							type: Hinder
+							select: self
+						}
+					]
+				}
+			}
+		]
+		gametext: While you can spot 4 burdens, each [sauron] Orc is <b>damage +1</b>.\While you can spot 6 burdens, each [Sauron] Orc is <b>fierce</b>.\At the end of each Shadow phase, exert 2 [sauron] Orcs or hinder this condition.
+		lore: "'He has indeed arisen again... and returned to his ancient fastness in the Dark Tower of Mordor.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+}

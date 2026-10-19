@@ -1,107 +1,234 @@
 package com.gempukku.lotro.cards.unofficial.pc.errata.set01;
 
-import com.gempukku.lotro.cards.GenericCardTestHelper;
-import com.gempukku.lotro.common.Phase;
-import com.gempukku.lotro.common.Signet;
+import com.gempukku.lotro.framework.VirtualTableScenario;
+import com.gempukku.lotro.common.*;
 import com.gempukku.lotro.game.CardNotFoundException;
-import com.gempukku.lotro.game.PhysicalCardImpl;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
-
-import static junit.framework.Assert.assertEquals;
-import static org.junit.Assert.*;
 import org.junit.Test;
 
 import java.util.HashMap;
 
+import static org.junit.Assert.*;
+
 public class Card_01_311_ErrataTests
 {
-    protected GenericCardTestHelper GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
-        return new GenericCardTestHelper(
-                new HashMap<String, String>()
-                {{
-                    put("sam", "51_311");
 
-                    put("orc", "1_272");
-                }}
-        );
-    }
+	protected VirtualTableScenario GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
+		return new VirtualTableScenario(
+				new HashMap<>() {{
+					put("sam", "51_311");
+					put("rosie", "1_309");
+					put("proudfoot", "1_301");
+					put("gaffer", "1_291");
+					put("stealth", "1_298");
 
-    @Test
-    public void SamStatsAndKeywordsAreCorrect() throws DecisionResultInvalidException, CardNotFoundException {
+					put("twk", "1_237");
+				}},
+				VirtualTableScenario.FellowshipSites,
+				VirtualTableScenario.FOTRFrodo,
+				VirtualTableScenario.RulingRing
+		);
+	}
 
-        /**
-         * Set: 1E
-         * Title: *Sam
-         * Subtitle: Son of Hamfast
-         * Side: Free Peoples
-         * Culture: Shire
-         * Twilight Cost: 2
-         * Type: Companion
-         * Subtype: Hobbit
-         * Strength: 3
-         * Vitality: 4
-         * Signet: Aragorn
-         * Errata Game Text: Fellowship: Exert Sam and another companion to remove a burden.
-         * Response: If Frodo dies, make Sam the Ring-bearer (resistance 5).
-         */
+	@Test
+	public void SamStatsAndKeywordsAreCorrect() throws DecisionResultInvalidException, CardNotFoundException {
 
-        //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+		/**
+		* Set: 1
+		* Title: Sam, Son of Hamfast
+		* Unique: True
+		* Side: FREE_PEOPLE
+		* Culture: Shire
+		* Twilight Cost: 2
+		* Type: companion
+		* Subtype: Hobbit
+		* Strength: 3
+		* Vitality: 4
+		* Signet: Aragorn
+		* Game Text: <b>Fellowship:</b> Exert Sam and another companion to remove a burden. Then, exert Sam again unless you can spot 2 [shire] allies (or Rosie Cotton).
+		* 	<b>Response:</b> If Frodo dies, make Sam the <b>Ring-bearer (resistance 5).</b>
+		*/
 
-        PhysicalCardImpl sam = scn.GetFreepsCard("sam");
+		//Pre-game setup
+		var scn = GetScenario();
 
-        assertTrue(sam.getBlueprint().isUnique());
-        assertEquals(2, sam.getBlueprint().getTwilightCost());
+		var sam = scn.GetFreepsCard("sam");
 
-        assertEquals(3, sam.getBlueprint().getStrength());
-        assertEquals(4, sam.getBlueprint().getVitality());
-        assertEquals(Signet.ARAGORN, sam.getBlueprint().getSignet());
+		assertTrue(sam.getBlueprint().isUnique());
+		assertEquals(Side.FREE_PEOPLE, sam.getBlueprint().getSide());
+		assertEquals(Culture.SHIRE, sam.getBlueprint().getCulture());
+		assertEquals(CardType.COMPANION, sam.getBlueprint().getCardType());
+		assertEquals(Race.HOBBIT, sam.getBlueprint().getRace());
+		assertEquals(2, sam.getBlueprint().getTwilightCost());
+		assertEquals(3, sam.getBlueprint().getStrength());
+		assertEquals(4, sam.getBlueprint().getVitality());
+		assertEquals(5, sam.getBlueprint().getResistance());
+		assertEquals(Signet.ARAGORN, sam.getBlueprint().getSignet());
+	}
 
-    }
+	@Test
+	public void FellowshipActionExertsTwicePlusOneToRemoveABurden() throws DecisionResultInvalidException, CardNotFoundException {
+		//Pre-game setup
+		var scn = GetScenario();
 
-    @Test
-    public void FellowshipActionExertsTwiceToRemoveABurden() throws DecisionResultInvalidException, CardNotFoundException {
-        //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+		var frodo = scn.GetRingBearer();
+		var sam = scn.GetFreepsCard("sam");
+		scn.MoveCompanionsToTable(sam);
 
-        PhysicalCardImpl frodo = scn.GetRingBearer();
-        PhysicalCardImpl sam = scn.GetFreepsCard("sam");
-        scn.FreepsMoveCharToTable(sam);
+		scn.StartGame();
+		scn.AddBurdens(1);
 
-        scn.StartGame();
+		assertEquals(Phase.FELLOWSHIP, scn.GetCurrentPhase());
+		assertTrue(scn.FreepsActionAvailable(sam));
 
-        assertEquals(Phase.FELLOWSHIP, scn.GetCurrentPhase());
-        assertTrue(scn.FreepsCardActionAvailable(sam));
+		assertEquals(0, scn.GetWoundsOn(sam));
+		assertEquals(0, scn.GetWoundsOn(frodo));
+		assertEquals(1, scn.GetBurdens());
 
-        assertEquals(0, scn.GetWoundsOn(sam));
-        assertEquals(0, scn.GetWoundsOn(frodo));
-        assertEquals(1, scn.GetBurdens());
+		scn.FreepsUseCardAction(sam);
 
-        scn.FreepsUseCardAction(sam);
+		assertEquals(2, scn.GetWoundsOn(sam));
+		assertEquals(1, scn.GetWoundsOn(frodo));
+		assertEquals(0, scn.GetBurdens());
+	}
 
-        assertEquals(1, scn.GetWoundsOn(sam));
-        assertEquals(1, scn.GetWoundsOn(frodo));
-        assertEquals(0, scn.GetBurdens());
-    }
+	@Test
+	public void FellowshipActionExertsTwiceToRemoveABurdenIf2ShireAllies() throws DecisionResultInvalidException, CardNotFoundException {
+		//Pre-game setup
+		var scn = GetScenario();
+
+		var frodo = scn.GetRingBearer();
+		var sam = scn.GetFreepsCard("sam");
+		var proudfoot = scn.GetFreepsCard("proudfoot");
+		var gaffer = scn.GetFreepsCard("gaffer");
+		scn.MoveCompanionsToTable(sam);
+		scn.MoveCardsToSupportArea(proudfoot, gaffer);
+
+		scn.StartGame();
+		scn.AddBurdens(1);
+
+		assertEquals(Phase.FELLOWSHIP, scn.GetCurrentPhase());
+		assertTrue(scn.FreepsActionAvailable(sam));
+
+		assertEquals(0, scn.GetWoundsOn(sam));
+		assertEquals(0, scn.GetWoundsOn(frodo));
+		assertEquals(1, scn.GetBurdens());
+
+		scn.FreepsUseCardAction(sam);
+
+		assertEquals(1, scn.GetWoundsOn(sam));
+		assertEquals(1, scn.GetWoundsOn(frodo));
+		assertEquals(0, scn.GetBurdens());
+	}
+
+	@Test
+	public void FellowshipActionExertsTwiceToRemoveABurdenIfRosie() throws DecisionResultInvalidException, CardNotFoundException {
+		//Pre-game setup
+		var scn = GetScenario();
+
+		var frodo = scn.GetRingBearer();
+		var sam = scn.GetFreepsCard("sam");
+		var rosie = scn.GetFreepsCard("rosie");
+		scn.MoveCompanionsToTable(sam);
+		scn.MoveCardsToSupportArea(rosie);
+
+		scn.StartGame();
+		scn.AddBurdens(1);
+
+		assertEquals(Phase.FELLOWSHIP, scn.GetCurrentPhase());
+		assertTrue(scn.FreepsActionAvailable(sam));
+
+		assertEquals(0, scn.GetWoundsOn(sam));
+		assertEquals(0, scn.GetWoundsOn(frodo));
+		assertEquals(1, scn.GetBurdens());
+
+		scn.FreepsUseCardAction(sam);
+
+		assertEquals(1, scn.GetWoundsOn(sam));
+		assertEquals(1, scn.GetWoundsOn(frodo));
+		assertEquals(0, scn.GetBurdens());
+	}
 
 
-    @Test
-    public void RBDeathMakesSamTheRB() throws DecisionResultInvalidException, CardNotFoundException {
-        //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+	@Test
+	public void RBDeathMakesSamTheRB() throws DecisionResultInvalidException, CardNotFoundException {
+		//Pre-game setup
+		var scn = GetScenario();
 
-        PhysicalCardImpl frodo = scn.GetRingBearer();
-        PhysicalCardImpl sam = scn.GetFreepsCard("sam");
-        PhysicalCardImpl orc = scn.GetShadowCard("orc");
-        scn.FreepsMoveCharToTable(sam);
+		var frodo = scn.GetRingBearer();
+		var sam = scn.GetFreepsCard("sam");
+		scn.MoveCompanionsToTable(sam);
 
-        scn.StartGame();
+		scn.StartGame();
 
-        assertNotSame(scn.GetRingBearer(), sam);
-        scn.AddWoundsToChar(frodo, 4);
+		assertNotSame(scn.GetRingBearer(), sam);
+		scn.AddWoundsToChar(frodo, 4);
 
-        scn.PassCurrentPhaseActions();
+		scn.PassCurrentPhaseActions();
 
-        assertTrue(scn.FreepsActionAvailable("Optional Trigger"));
-    }
+		assertTrue(scn.FreepsHasOptionalTriggerAvailable());
+		scn.FreepsAcceptOptionalTrigger();
+		assertSame(scn.GetRingBearer(), sam);
+		assertFalse(scn.GameIsFinished());
+	}
+
+	@Test
+	public void RBOverwhelmMakesSamTheRB() throws DecisionResultInvalidException, CardNotFoundException {
+		//Pre-game setup
+		var scn = GetScenario();
+
+		var frodo = scn.GetRingBearer();
+		var sam = scn.GetFreepsCard("sam");
+		scn.MoveCompanionsToTable(sam);
+
+		var twk = scn.GetShadowCard("twk");
+		scn.MoveMinionsToTable(twk);
+
+		scn.StartGame();
+
+		scn.SkipToAssignments();
+		scn.FreepsAssignToMinions(frodo, twk);
+		scn.FreepsResolveSkirmish(frodo);
+		scn.PassCurrentPhaseActions();
+
+		assertNotSame(scn.GetRingBearer(), sam);
+		assertTrue(scn.FreepsHasOptionalTriggerAvailable());
+		scn.FreepsAcceptOptionalTrigger();
+		assertSame(scn.GetRingBearer(), sam);
+		assertFalse(scn.GameIsFinished());
+	}
+
+	@Test
+	public void RBFierceOverwhelmMakesSamTheRB() throws DecisionResultInvalidException, CardNotFoundException {
+		//Pre-game setup
+		var scn = GetScenario();
+
+		var frodo = scn.GetRingBearer();
+		var sam = scn.GetFreepsCard("sam");
+		var stealth = scn.GetFreepsCard("stealth");
+		scn.MoveCompanionsToTable(sam);
+		scn.MoveCardsToHand(stealth);
+
+		var twk = scn.GetShadowCard("twk");
+		scn.MoveMinionsToTable(twk);
+
+		scn.StartGame();
+
+		scn.SkipToAssignments();
+		scn.FreepsAssignToMinions(sam, twk);
+		scn.FreepsResolveSkirmish(sam);
+		scn.FreepsPlayCard(stealth);
+
+		//Fierce
+		scn.PassCurrentPhaseActions();
+		scn.FreepsAssignToMinions(frodo, twk);
+		scn.FreepsResolveSkirmish(frodo);
+		scn.PassCurrentPhaseActions();
+
+		assertNotSame(scn.GetRingBearer(), sam);
+		assertTrue(scn.FreepsHasOptionalTriggerAvailable());
+		scn.FreepsAcceptOptionalTrigger();
+		assertSame(scn.GetRingBearer(), sam);
+		assertFalse(scn.GameIsFinished());
+	}
 }

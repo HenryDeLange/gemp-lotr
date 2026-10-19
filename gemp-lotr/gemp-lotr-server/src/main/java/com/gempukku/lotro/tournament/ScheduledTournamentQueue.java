@@ -1,75 +1,114 @@
 package com.gempukku.lotro.tournament;
 
-import com.gempukku.lotro.DateUtils;
+import com.gempukku.lotro.common.DateUtils;
 import com.gempukku.lotro.collection.CollectionsManager;
-import com.gempukku.lotro.db.vo.CollectionType;
 
-import java.util.Date;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 
 public class ScheduledTournamentQueue extends AbstractTournamentQueue implements TournamentQueue {
-    private static final long _signupTimeBeforeStart = 1000 * 60 * 60; // 60 minutes before start
-    private long _startTime;
-    private int _minimumPlayers;
-    private String _startCondition;
-    private TournamentService _tournamentService;
-    private String _tournamentName;
-    private CollectionType _collectionType;
-    private Tournament.Stage _stage;
-    private String _scheduledTournamentId;
+    private static final Duration _signupTimeBeforeStart = Duration.ofMinutes(60);
+    private static final Duration _wcSignupTimeBeforeStart = Duration.ofHours(30);
+    private final ZonedDateTime _startTime;
+    private final int maximumPlayers;
+    /** Set once an admin edit has replaced this queue: it takes no more players and never starts. */
+    private boolean _retired = false;
 
-    public ScheduledTournamentQueue(String scheduledTournamentId, int cost, boolean requiresDeck, TournamentService tournamentService, long startTime,
-                                    String tournamentName, String format, CollectionType collectionType, Tournament.Stage stage,
-                                    PairingMechanism pairingMechanism, TournamentPrizes tournamentPrizes, int minimumPlayers) {
-        super(cost, requiresDeck, collectionType, tournamentPrizes, pairingMechanism, format);
-        _scheduledTournamentId = scheduledTournamentId;
-        _tournamentService = tournamentService;
-        _startTime = startTime;
-        _minimumPlayers = minimumPlayers;
-        _startCondition = DateUtils.formatDateWithHour(new Date(_startTime));
-        _tournamentName = tournamentName;
-        _collectionType = collectionType;
-        _stage = stage;
+    public ScheduledTournamentQueue(TournamentService tournamentService, String queueId, String queueName, TournamentInfo info,
+                                    TournamentQueueCallback tournamentQueueCallback, CollectionsManager collectionsManager) {
+        super(tournamentService, queueId, queueName, info, tournamentQueueCallback, collectionsManager, true);
+        _startTime = DateUtils.ParseDate(info.Parameters().startTime);
+        maximumPlayers = info.Parameters().maximumPlayers;
     }
 
     @Override
     public String getTournamentQueueName() {
-        return _tournamentName;
+        return _tournamentInfo.Parameters().name;
     }
 
     @Override
     public String getPairingDescription() {
-        return _pairingMechanism.getPlayOffSystem() + ", minimum players: " + _minimumPlayers;
+        return _tournamentInfo.PairingMechanism.getPlayOffSystem() + ", minimum players: " + _tournamentInfo.Parameters().minimumPlayers;
     }
 
     @Override
     public String getStartCondition() {
-        return _startCondition;
+        return  "at " + DateUtils.FormatDateTime(_startTime);
+    }
+
+    /**
+     * Retires this queue so an edited copy of the tournament can replace it, but only while nobody is signed up
+     * (signing up takes the entry cost).  Synchronized with {@link #joinPlayer}, so a join either lands before this
+     * (and the queue is kept) or finds the queue closed and takes nothing.
+     * @return true when the queue was empty and is now retired
+     */
+    public synchronized boolean retireIfEmpty() {
+        if (!_players.isEmpty())
+            return false;
+        _retired = true;
+        return true;
+    }
+
+    public synchronized boolean isRetired() {
+        return _retired;
     }
 
     @Override
-    public synchronized boolean process(TournamentQueueCallback tournamentQueueCallback, CollectionsManager collectionsManager) {
-        long now = System.currentTimeMillis();
-        if (now > _startTime) {
-            if (_players.size() >= _minimumPlayers) {
-
-                for (String player : _players)
-                    _tournamentService.addPlayer(_scheduledTournamentId, player, _playerDecks.get(player));
-
-                Tournament tournament = _tournamentService.addTournament(_scheduledTournamentId, null, _tournamentName, _format, _collectionType, _stage,
-                        _pairingMechanism.getRegistryRepresentation(), _tournamentPrizes.getRegistryRepresentation(), new Date());
-                tournamentQueueCallback.createTournament(tournament);
-            } else {
-                _tournamentService.updateScheduledTournamentStarted(_scheduledTournamentId);
-                leaveAllPlayers(collectionsManager);
-            }
-
-            return true;
+    public synchronized boolean process() throws SQLException, IOException  {
+        if (_retired) {
+            // Replaced by an edited queue under the same id: never start, and never report "finished", since the
+            // caller removes finished queues by id and would drop the replacement.
+            return false;
         }
-        return false;
+        if (shouldDestroy) {
+            return true; // Tournament started by Ready Check already, destroy the queue
+        }
+
+        var now = ZonedDateTime.now();
+        if (now.isAfter(_startTime)) {
+            if (_players.size() >= _tournamentInfo.Parameters().minimumPlayers) {
+                startTournament();
+                _tournamentService.recordScheduledTournamentStarted(_tournamentInfo.Parameters().tournamentId);
+            } else {
+                leaveAllPlayers();
+            }
+            return true; //destroy the queue now that the tournament has started
+        }
+        return false; //keep the queue as it hasn't started yet
     }
 
     @Override
     public boolean isJoinable() {
-        return System.currentTimeMillis() >= _startTime - _signupTimeBeforeStart;
+        if (isRetired())
+            return false;
+        var window = _signupTimeBeforeStart;
+        if (isWC()) {
+            window = _wcSignupTimeBeforeStart;
+        }
+        return DateUtils.Now().isAfter(_startTime.minus(window)) && (maximumPlayers < 0 || _players.size() < maximumPlayers);
+    }
+
+    @Override
+    protected String getJoinRefusal() {
+        if (isRetired())
+            return "This tournament was changed by an administrator; refresh the hall and join the updated one.";
+        var window = isWC() ? _wcSignupTimeBeforeStart : _signupTimeBeforeStart;
+        var opens = _startTime.minus(window);
+        if (!DateUtils.Now().isAfter(opens))
+            return "Sign-up for " + getTournamentQueueName() + " opens at " + DateUtils.FormatDateTime(opens) + ".";
+        if (maximumPlayers >= 0 && _players.size() >= maximumPlayers)
+            return describeFull(maximumPlayers);
+        return super.getJoinRefusal();
+    }
+
+    @Override
+    public boolean shouldBeDisplayedAsWaiting() {
+        var window = _signupTimeBeforeStart;
+        if (isWC()) {
+            window = _wcSignupTimeBeforeStart;
+        }
+        return DateUtils.Now().isAfter(_startTime.minus(window));
     }
 }

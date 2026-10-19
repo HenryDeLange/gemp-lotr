@@ -1,0 +1,65 @@
+{
+
+	68_96: {
+		cardInfo: {
+			//id: 8_96.1
+			revision: 1
+			image: errata/68_96.jpg
+			collInfo: 18R96
+			rarity: R
+		}
+		title: Erkenbrand's Horn
+		unique: true
+		culture: Rohan
+		twilight: 1
+		type: Possession
+		target: culture(rohan),man
+		effects:[
+			{
+				type: activated
+				phase: fellowship
+				cost: {
+					type: exert
+					select: bearer
+					times: 1
+				}
+				effect: {
+					type: playcardfromdrawdeck
+					select: choose(follower,culture(rohan))
+					showAll: true
+					shuffle: true
+				}
+			}
+			{
+				type: activated
+				phase: skirmish
+				cost: {
+					type: discard
+					select: choose(your,follower)
+				}
+				effect: {
+					type: modifyStrength
+					select: bearer
+					amount: {
+						type: Conditional
+						requires: {
+							type: canSpot
+							filter: bearer,title(Erkenbrand)
+						}
+						true: 5
+						false: 4
+					}
+				}
+			}
+		]
+		gametext: Bearer must be a [rohan] Man.<br><b>Fellowship:</b> Exert bearer to play a [rohan] follower from your draw deck. <br><b>Skirmish:</b> Discard your follower to make bearer strength +4 (or +5 if bearer is Erkenbrand).
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

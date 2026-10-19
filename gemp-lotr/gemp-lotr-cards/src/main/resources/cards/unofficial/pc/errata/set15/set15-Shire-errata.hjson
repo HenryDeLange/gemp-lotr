@@ -1,0 +1,58 @@
+{
+	65_148: {
+		cardInfo: {
+			//id: 5_148.1
+			revision: 1
+			image: errata/LOTR-EN15E148.1.jpg
+			collInfo: 15R148
+			rarity: R
+		}
+		title: Little Golden Flower
+		unique: true
+		culture: shire
+		twilight: 3
+		type: condition
+		keyword: [
+			Support Area
+		]
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: cantTakeMoreWoundsThan
+					filter: hobbit,hasAttached(hand weapon)
+					phase: skirmish
+					amount: 1
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: modifyResistance
+					filter: hobbit,hasAttached(follower)
+					amount: 1
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: modifyStrength
+					filter: hobbit,not(wounded)
+					amount: 1
+				}
+			}
+		]
+		
+		gametext: Each Hobbit bearing a hand weapon takes no more than 1 wound per skirmish.\Each Hobbit bearing a follower is resistance +1.\Each unwounded Hobbit is strength +1.
+		lore: "'...she is very beautiful, and is going to be beautifuller still.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	
+}

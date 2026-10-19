@@ -1,0 +1,350 @@
+{
+
+	52_75: {
+		cardInfo: {
+			//id: 2_75.1
+			parent: 2_75
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/52_75.jpg
+			collInfo: 2R75
+			rarity: R
+		}
+		title: Bill Ferny
+		subtitle: Swarthy Sneering Fellow
+		unique: true
+		culture: wraith
+		twilight: 2
+		type: minion
+		race: man
+		strength: 4
+		vitality: 1
+		site: 2
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: removeKeyword
+					filter: nazgul
+					keyword: roaming
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: cantBeAssignedToSkirmishAgainst
+					requires: {
+						type: canSpot
+						filter: hobbit
+					}
+					minion: self
+					fpCharacter: any
+					side: free people
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: ConstantlyCheck
+					requires: {
+						type: location
+						filter: underground
+					}
+				}
+				effect: {
+					type: discard
+					select: self
+				}
+			}
+		]
+		gametext: Nazgul are not roaming.<br>While you can spot a Hobbit, the Free Peoples player may not assign a character to skirmish Bill Ferny. Discard Bill Ferny if underground.
+		lore: "'...as for Ferny, he would sell anything to anybody; or make mischief for amusement.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	# 52_76: {
+	# 	cardInfo: {
+	# 		imagePath: errata/LOTR-EN02E076.1_card.jpg
+	# 		javaClass: false
+	# 		parent: 2_76
+	# 		parentPath: errata/pc
+	# 		revision: 1
+	# 		collInfo: 2U76
+	# 		rarity: U
+	# 		setNum: "2"
+	# 		cardNum: 76
+	# 		// Standard, Masterwork, Tengwar, FullArt, etc.  Top-level cards are always Standard.
+	# 		style: Standard
+	# 	}
+	# 	title: Helpless
+	# 	unique: false
+	# 	side: Shadow
+	# 	culture: Wraith
+	# 	twilight: 1
+	# 	type: Condition
+	# 	keyword: support area
+	# 	effects: [
+	# 		{
+	# 			type: modifier
+	# 			modifier: {
+	# 				type: cantUseSpecialAbilities
+	# 				filter: bearer
+	# 			}
+	# 		}
+	# 		{
+	# 			type: activated
+	# 			phase: maneuver
+	# 			cost: {
+	# 				type: exert
+	# 				select: choose(Nazgul,not(enduring))
+	# 			}
+	# 			effect: {
+	# 				type: Transfer
+	# 				select: self
+	# 				where: choose(companion,ring-bound)
+	# 			}
+	# 		}
+	# 		{
+	# 			type: Response
+	# 			trigger: {
+	# 				type: RemovesBurden
+	# 			}
+	# 			requires: {
+	# 				type: Or
+	# 				requires: [
+	# 					{ 
+	# 						type: CanSpot
+	# 						filter: Nazgul
+	# 					}
+	# 					{
+	# 						type: HasCardInHand
+	# 						filter: Nazgul
+	# 					}
+	# 				]
+	# 			}
+	# 			effect: [
+	# 				{
+	# 					# Since we are checking for both in-play and in-hand
+	# 					# Nazgul, we will only prompt to reveal if there are
+	# 					# no Nazgul on the table.
+	# 					# Doing this as an effect and not a cost as I'm not
+	# 					# sure whether violating the condition would count
+	# 					# as "not paying" the cost.
+	# 					type: If
+	# 					check: {
+	# 						type: CantSpot
+	# 						filter: Nazgul
+	# 					}
+	# 					true: {
+	# 						type: RevealCardsFromHand
+	# 						select: choose(Nazgul)
+	# 					}
+	# 				}
+	# 				{
+	# 					type: Transfer
+	# 					select: self
+	# 					where: choose(companion,ring-bound)
+	# 				}
+	# 			]
+	# 		}
+	# 	]
+	# 	gametext: Bearer's game text does not apply (except keywords).<br>Maneuver: Exert a non-enduring Nazgul to transfer this to a Ring-bound companion.<br>Response: If a burden is removed, spot or reveal a Nazgul from hand to transfer this to a Ring-bound companion.
+	# 	lore: "He heard Frodo's voice...crying out strange words."
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	# 52_76: {
+	# 	cardInfo: {
+	# 		imagePath: errata/LOTR-EN02E076.2_card.jpg
+	# 		javaClass: false
+	# 		parent: 2_76
+	# 		parentPath: errata/pc
+	# 		revision: 2
+	# 		collInfo: 2U76
+	# 		rarity: U
+	# 		setNum: "2"
+	# 		cardNum: 76
+	# 		// Standard, Masterwork, Tengwar, FullArt, etc.  Top-level cards are always Standard.
+	# 		style: Standard
+	# 	}
+	# 	title: Helpless
+	# 	unique: false
+	# 	side: Shadow
+	# 	culture: Wraith
+	# 	twilight: 0
+	# 	type: Condition
+	# 	target: name(Sam)
+	# 	effects: [
+	# 		{
+	# 			type: toPlay
+	# 			requires: [
+	# 				{
+	# 					type: canSpot
+	# 					filter: nazgul
+	# 				}
+	# 			]
+	# 		}
+	# 		{
+	# 			type: modifier
+	# 			modifier: {
+	# 				type: cantUseSpecialAbilities
+	# 				filter: bearer
+	# 			}
+	# 		}
+	# 	]
+	# 	gametext: Bearer's game text does not apply (except keywords).<br>Maneuver: Exert a non-enduring Nazgul to transfer this to a Ring-bound companion.<br>Response: If a burden is removed, spot or reveal a Nazgul from hand to transfer this to a Ring-bound companion.
+	# 	lore: "He heard Frodo's voice...crying out strange words."
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	52_76: {
+		cardInfo: {
+			//id: 2_76.3
+			parent: 2_76
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 3
+			image: errata/LOTR-EN02E076.3_card.jpg
+			collInfo: 2U76
+			rarity: U
+		}
+		title: Helpless
+		unique: false
+		side: Shadow
+		culture: Wraith
+		twilight: 1
+		type: Condition
+		keywords: Support Area
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: cantUseSpecialAbilities
+					filter: bearer
+				}
+			}
+			{
+				type: activated
+				phase: maneuver
+				requires: {
+					type: CanSpot
+					filter: self,Zone(SUPPORT)
+				}
+				cost: {
+					type: exert
+					select: choose(Nazgul)
+				}
+				effect: {
+					type: Transfer
+					select: self
+					fromSupport: true
+					where: choose(companion,ring-bound)
+				}
+			}
+		]
+		gametext: Bearer's special abilities cannot be used.<br>Maneuver: Exert a Nazgul to transfer this from your support area to a Ring-bound companion.
+		lore: "He heard Frodo's voice, but it seemed to come from a great distance...crying out strange words."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	52_85: {
+		cardInfo: {
+			//id: 2_85.1
+			parent: 2_85
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN02E085.1_card.jpg
+			collInfo: 2R85
+			rarity: R
+		}
+		title: The Witch-king
+		subtitle: Lord of the Nazgul
+		unique: true
+		side: Shadow
+		culture: Wraith
+		twilight: 8
+		type: Minion
+		race: Nazgul
+		strength: 14
+		vitality: 4
+		site: 3
+		keywords: Twilight
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: cantPlayCards
+					filter: name(Return to Its Master)
+				}
+			}
+			
+			{
+				type: modifier
+				modifier: {
+					type: cantcancelskirmish
+					requires: [
+						{
+							type: canSpot
+							filter: self,inSkirmish
+						}
+					]
+				}
+			}
+			
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: winsSkirmish
+					filter: self
+				}
+				cost: {
+					type: exert
+					select: self
+				}
+				effect: {
+					type: wound
+					select: choose(ringBearer)
+					times: 2
+				}
+			}
+	  ]
+		gametext: <b>Twilight</b>.<br>Return to Its Master cannot be played. Skirmishes involving The Witch-king cannot be canceled.<br>Each time The Witch-king wins a skirmish, you may exert him to wound the Ring-bearer twice.
+		lore: A great king and sorcerer was he of old, and now he wields a deadly fear.'
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+}

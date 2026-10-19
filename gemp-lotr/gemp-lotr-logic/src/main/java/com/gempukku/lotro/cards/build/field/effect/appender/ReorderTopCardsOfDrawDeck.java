@@ -14,14 +14,14 @@ import org.json.simple.JSONObject;
 
 public class ReorderTopCardsOfDrawDeck implements EffectAppenderProducer {
     @Override
-    public EffectAppender createEffectAppender(JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
+    public EffectAppender createEffectAppender(boolean cost, JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
         FieldUtils.validateAllowedFields(effectObject, "count", "player", "deck");
         final ValueSource valueSource = ValueResolver.resolveEvaluator(effectObject.get("count"), 1, environment);
         final String player = FieldUtils.getString(effectObject.get("player"), "player", "you");
         final String deck = FieldUtils.getString(effectObject.get("deck"), "deck", "you");
 
-        final PlayerSource playerSource = PlayerResolver.resolvePlayer(player, environment);
-        final PlayerSource deckSource = PlayerResolver.resolvePlayer(deck, environment);
+        final PlayerSource playerSource = PlayerResolver.resolvePlayer(player);
+        final PlayerSource deckSource = PlayerResolver.resolvePlayer(deck);
 
         return new DelayedAppender() {
             @Override

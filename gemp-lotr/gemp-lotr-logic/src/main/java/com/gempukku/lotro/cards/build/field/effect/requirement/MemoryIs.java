@@ -1,16 +1,10 @@
 package com.gempukku.lotro.cards.build.field.effect.requirement;
 
 import com.gempukku.lotro.cards.build.CardGenerationEnvironment;
-import com.gempukku.lotro.cards.build.FilterableSource;
 import com.gempukku.lotro.cards.build.InvalidCardDefinitionException;
 import com.gempukku.lotro.cards.build.Requirement;
 import com.gempukku.lotro.cards.build.field.FieldUtils;
-import com.gempukku.lotro.common.Filterable;
-import com.gempukku.lotro.filters.Filters;
-import com.gempukku.lotro.game.PhysicalCard;
 import org.json.simple.JSONObject;
-
-import java.util.Collection;
 
 public class MemoryIs implements RequirementProducer {
     @Override
@@ -21,8 +15,8 @@ public class MemoryIs implements RequirementProducer {
         final String value = FieldUtils.getString(object.get("value"), "value");
 
         return (actionContext) -> {
-            String valueFromMemory = actionContext.getValueFromMemory(memory);
-            return valueFromMemory != null && valueFromMemory.equals(value);
+            String valueFromMemory = actionContext.getValueFromMemory(memory, null);
+            return valueFromMemory != null && valueFromMemory.equalsIgnoreCase(value);
         };
     }
 }

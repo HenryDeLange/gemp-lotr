@@ -1,12 +1,11 @@
 package com.gempukku.lotro.logic;
 
-import com.gempukku.lotro.common.Culture;
-import com.gempukku.lotro.common.Filterable;
-import com.gempukku.lotro.common.Side;
-import com.gempukku.lotro.common.Token;
+import com.gempukku.lotro.cards.build.ActionContext;
+import com.gempukku.lotro.common.*;
 import com.gempukku.lotro.filters.Filters;
 import com.gempukku.lotro.game.LotroCardBlueprint;
 import com.gempukku.lotro.game.PhysicalCard;
+import com.gempukku.lotro.game.PhysicalCardImpl;
 import com.gempukku.lotro.game.state.GameState;
 import com.gempukku.lotro.game.state.LotroGame;
 
@@ -19,6 +18,10 @@ public class GameUtils {
     }
 
     public static boolean isSide(LotroGame game, Side side, String playerId) {
+        if(game.getGameState().getCurrentPhase() == Phase.PUT_RING_BEARER
+            || game.getGameState().getCurrentPhase() == Phase.PLAY_STARTING_FELLOWSHIP )
+            return false;
+
         if (side == Side.FREE_PEOPLE)
             return game.getGameState().getCurrentPlayerId().equals(playerId);
         else
@@ -34,15 +37,32 @@ public class GameUtils {
     }
 
     public static String getFullName(PhysicalCard card) {
-        LotroCardBlueprint blueprint = card.getBlueprint();
-        return getFullName(blueprint);
+        if (card instanceof PhysicalCardImpl impl && impl.getDisplayName() != null) {
+            return impl.getDisplayName();
+        }
+        return getFullName(card.getBlueprint());
     }
 
     public static String getFullName(LotroCardBlueprint blueprint) {
-        if (blueprint.getSubtitle() != null)
-            return blueprint.getTitle() + ", " + blueprint.getSubtitle();
-        return blueprint.getTitle();
+        return blueprint.getFullName();
     }
+
+    public static String getFullSanitizedName(LotroCardBlueprint blueprint) {
+        return blueprint.getSanitizedFullName();
+    }
+
+    public static String getFullText(PhysicalCard card) {
+        return getFullName(card.getBlueprint());
+    }
+
+    public static String getFullText(LotroCardBlueprint bp) {
+        return bp.getGameText();
+    }
+
+    public static String getFullFormattedText(LotroCardBlueprint bp) {
+        return bp.getFormattedGameText();
+    }
+
 
     public static String getFirstShadowPlayer(LotroGame game) {
         if (game.isSolo())
@@ -58,7 +78,7 @@ public class GameUtils {
         if (game.isSolo())
             throw new InvalidSoloAdventureException("Shadow player requested");
         final String fpPlayer = game.getGameState().getCurrentPlayerId();
-        List<String> shadowPlayers = new LinkedList<String>(game.getGameState().getPlayerOrder().getAllPlayers());
+        List<String> shadowPlayers = new LinkedList<>(game.getGameState().getPlayerOrder().getAllPlayers());
         shadowPlayers.remove(fpPlayer);
         return shadowPlayers.toArray(new String[shadowPlayers.size()]);
     }
@@ -70,9 +90,13 @@ public class GameUtils {
     public static String[] getOpponents(LotroGame game, String playerId) {
         if (game.isSolo())
             throw new InvalidSoloAdventureException("Opponent requested");
-        List<String> shadowPlayers = new LinkedList<String>(game.getGameState().getPlayerOrder().getAllPlayers());
+        List<String> shadowPlayers = new LinkedList<>(game.getGameState().getPlayerOrder().getAllPlayers());
         shadowPlayers.remove(playerId);
         return shadowPlayers.toArray(new String[shadowPlayers.size()]);
+    }
+
+    public static String getFirstOpponent(LotroGame game, String playerId) {
+        return Arrays.stream(getOpponents(game, playerId)).findFirst().orElse(null);
     }
 
     public static String[] getAllPlayers(LotroGame game) {
@@ -90,11 +114,11 @@ public class GameUtils {
         return result;
     }
 
-    public static List<PhysicalCard> getRandomCards(List<? extends PhysicalCard> cards, int count) {
-        List<PhysicalCard> randomizedCards = new ArrayList<PhysicalCard>(cards);
+    public static List<PhysicalCard> getRandomCards(Collection<? extends PhysicalCard> cards, int count) {
+        List<PhysicalCard> randomizedCards = new ArrayList<>(cards);
         Collections.shuffle(randomizedCards, ThreadLocalRandom.current());
 
-        return new LinkedList<PhysicalCard>(randomizedCards.subList(0, Math.min(count, randomizedCards.size())));
+        return new LinkedList<>(randomizedCards.subList(0, Math.min(count, randomizedCards.size())));
     }
 
     public static String s(Collection<PhysicalCard> cards) {
@@ -110,12 +134,69 @@ public class GameUtils {
     }
 
     public static String getCardLink(PhysicalCard card) {
+        // Use display name override if set (e.g., meta-site modifiers show visual card name)
+        if (card instanceof PhysicalCardImpl impl && impl.getDisplayName() != null) {
+            return "<div class='cardHint' value='" + card.getBlueprintId() + "'>"
+                    + impl.getDisplayName() + "</div>";
+        }
         LotroCardBlueprint blueprint = card.getBlueprint();
         return getCardLink(card.getBlueprintId(), blueprint);
     }
 
     public static String getCardLink(String blueprintId, LotroCardBlueprint blueprint) {
-        return "<div class='cardHint' value='" + blueprintId + "'>" + (blueprint.isUnique() ? "·" : "") + GameUtils.getFullName(blueprint) + "</div>";
+        return "<div class='cardHint' value='" + blueprintId + "'>" + getUniqueDots(blueprint.getUniqueRestriction())
+                + GameUtils.getFullName(blueprint) + "</div>";
+    }
+
+    public static String getUniqueDots(int dotCount) {
+		return switch (dotCount) {
+			case 1 -> "·";
+			case 2 -> ":";
+			case 3 -> "∴";
+			default -> "";
+		};
+    }
+
+    public static String getProductLink(String blueprintId) {
+        return "<div class='cardHint' value='" + blueprintId + "'>" + blueprintId + "</div>";
+    }
+
+    public static String getDeluxeCardLink(String blueprintId, LotroCardBlueprint blueprint) {
+        var culture = blueprint.getCulture();
+        var cultureString = "";
+        if(culture == null) {
+            if (blueprint.getTitle().equals("The One Ring")) {
+                cultureString = getCultureImage(culture, "one_ring");
+            }
+            else {
+                cultureString = getCultureImage(culture, "site");
+            }
+        }
+        else {
+            cultureString = getCultureImage(culture, null);
+        }
+        return "<div class='cardHint' value='" + blueprintId + "'>" + cultureString
+                + getUniqueDots(blueprint.getUniqueRestriction()) + " " + GameUtils.getFullName(blueprint) + "</div>";
+    }
+
+    public static String getCultureImage(String cultureName) {
+        Culture culture = Culture.findCulture(cultureName);
+        if(culture == null)
+            return null;
+
+        return getCultureImage(culture);
+    }
+
+    public static String getCultureImage(Culture culture, String override) {
+        if(override == null || override.isEmpty()) {
+            override = culture.toString().toLowerCase();
+        }
+        return "<span class='cultureHint' ><img src='images/cultures/" + override + ".png'/></span>";
+    }
+
+    public static String getCultureImage(Culture culture) {
+        return "<span class='cultureHint' value='" + culture.toString() + "'><img src='images/cultures/" + culture.toString().toLowerCase() + ".png'/> "
+                + culture.getHumanReadable() + "</span>";
     }
 
     public static String getAppendedTextNames(Collection<? extends PhysicalCard> cards) {
@@ -123,40 +204,138 @@ public class GameUtils {
         for (PhysicalCard card : cards)
             sb.append(GameUtils.getFullName(card) + ", ");
 
-        if (sb.length() == 0)
+        if (sb.isEmpty())
             return "none";
         else
             return sb.substring(0, sb.length() - 2);
     }
 
     public static String getAppendedNames(Collection<? extends PhysicalCard> cards) {
-        StringBuilder sb = new StringBuilder();
-        for (PhysicalCard card : cards)
-            sb.append(GameUtils.getCardLink(card) + ", ");
+        ArrayList<String> cardStrings = new ArrayList<>();
+        for (PhysicalCard card : cards) {
+            cardStrings.add(GameUtils.getCardLink(card));
+        }
 
-        if (sb.length() == 0)
+        if (cardStrings.size() == 0)
             return "none";
-        else
-            return sb.substring(0, sb.length() - 2);
+
+        return String.join(", ", cardStrings);
     }
 
-    public static int getSpottableTokensTotal(LotroGame game, Token token) {
+    public static String substituteText(String text, ActionContext context)
+    {
+        String result = text;
+        while (result.contains("{")) {
+            int startIndex = result.indexOf("{");
+            int endIndex = result.indexOf("}");
+            String memoryName = result.substring(startIndex + 1, endIndex);
+            String memory = memoryName.toLowerCase();
+            String found = null;
+            String culture = getCultureImage(memory);
+            if(culture != null) {
+                found = culture;
+            }
+            else if(context != null){
+                if(memory.equals("you")) {
+                    found = context.getPerformingPlayer();
+                    if(found == null) {
+                        found = "nobody";
+                    }
+                }
+                else if(memory.equals("owner")) {
+                    var source = context.getSource();
+                    if(source != null) {
+                        found = source.getOwner();
+                    }
+                    if(found == null) {
+                        found = "nobody";
+                    }
+                }
+                else if(memory.equals("opponent")) {
+                    found = getFirstOpponent(context.getGame(), context.getSource().getOwner());
+                    if(found == null) {
+                        found = "nobody";
+                    }
+                }
+                else if(memory.equals("freeps") || memory.equals("free peoples")) {
+                    found = getFreePeoplePlayer(context.getGame());
+                    if(found == null) {
+                        found = "nobody";
+                    }
+                }
+                else if(memory.equals("shadow")) {
+                    found = getFirstShadowPlayer(context.getGame());
+                }
+                else if (memory.equals("self")) {
+                    found = GameUtils.getAppendedNames(Collections.singleton(context.getSource()));
+                }
+                else if (memory.equals("bearer")) {
+                    found = GameUtils.getAppendedNames(Collections.singleton(context.getSource().getAttachedTo()));
+                }
+                else {
+                    found = GameUtils.getAppendedNames(context.getCardsFromMemory(memory));
+                    if(found.equalsIgnoreCase("none")) {
+                        try {
+                            found = context.getValueFromMemory(memory);
+                        }
+                        catch(IllegalArgumentException ex) {
+                            found = "NONE";
+                        }
+                    }
+                }
+            }
+            if(found == null) {
+                found = "NOTHING";
+            }
+            result = result.replace("{" + memoryName + "}", found);
+        }
+
+        return result;
+    }
+    // "If you can spot X [elven] tokens on conditions..."
+    public static int getSpottableCultureTokensOfType(LotroGame game, Token token, Filterable... filters) {
         int tokensTotal = 0;
 
-        for (PhysicalCard physicalCard : Filters.filterActive(game, Filters.hasToken(token)))
+        final var cards = Filters.filterActive(game, Filters.and(filters, Filters.hasToken(token)));
+
+        for (PhysicalCard physicalCard : cards)
             tokensTotal += game.getGameState().getTokenCount(physicalCard, token);
 
         return tokensTotal;
     }
 
+    // "If you can spot X culture tokens on conditions..."
+    public static int getAllSpottableCultureTokens(LotroGame game, Filterable... filters) {
+        int tokensTotal = 0;
+
+        final var cards = Filters.filterActive(game, Filters.and(filters, Filters.hasAnyCultureTokens()));
+
+        for (PhysicalCard physicalCard : cards) {
+            var tokens = game.getGameState().getTokens(physicalCard);
+            for(var token : tokens.entrySet()) {
+                if(token.getKey().getCulture() != null) {
+                    tokensTotal += token.getValue();
+                }
+            }
+        }
+
+        return tokensTotal;
+    }
+
     public static int getSpottableCulturesCount(LotroGame game, Filterable... filters) {
-        Set<Culture> cultures = new HashSet<Culture>();
-        for (PhysicalCard physicalCard : Filters.filterActive(game, filters)) {
-            final Culture culture = physicalCard.getBlueprint().getCulture();
-            if (culture != null)
-                cultures.add(culture);
+        Set<Culture> cultures = new HashSet<>();
+        for (PhysicalCard card : Filters.filterActive(game, filters)) {
+            cultures.addAll(game.getModifiersQuerying().getCultures(game, card));
         }
         return cultures.size();
+    }
+
+    public static int getSpottableRacesCount(LotroGame game, Filterable... filters) {
+        Set<Race> races = new HashSet<>();
+        for (PhysicalCard physicalCard : Filters.filterActive(game, filters)) {
+            races.addAll(game.getModifiersQuerying().getRaces(game, physicalCard));
+        }
+        return races.size();
     }
 
     public static String formatNumber(int effective, int requested) {
@@ -180,5 +359,33 @@ public class GameUtils {
 
     public static int getSpottableShadowCulturesCount(LotroGame game, String playerId) {
         return game.getModifiersQuerying().getNumberOfSpottableShadowCultures(game, playerId);
+    }
+
+    public static int getControlledSitesCountByPlayer(LotroGame game, String playerId) {
+        return game.getModifiersQuerying().getNumberOfSpottableControlledSites(game, playerId);
+    }
+
+    public static int getControlledSitesCountOfOpponents(LotroGame game, String playerId) {
+        int total = 0;
+
+        for(var opponent : getOpponents(game, playerId)) {
+            total += getControlledSitesCountByPlayer(game, opponent);
+        }
+        return total;
+    }
+
+    public static boolean anySiteAvailableToControl(LotroGame game) {
+        int maxUnoccupiedSite = Integer.MAX_VALUE;
+        for (String playerId : game.getGameState().getPlayerOrder().getAllPlayers()) {
+            maxUnoccupiedSite = Math.min(maxUnoccupiedSite, game.getGameState().getPlayerPosition(playerId) - 1);
+        }
+
+        for (int i = 1; i <= maxUnoccupiedSite; i++) {
+            final PhysicalCard site = game.getGameState().getSite(i);
+            if (site.getCardController() == null)
+                return true;
+        }
+
+        return false;
     }
 }

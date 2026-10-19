@@ -16,14 +16,17 @@ import java.util.List;
 
 public class RevealTopCardsOfDrawDeck implements EffectAppenderProducer {
     @Override
-    public EffectAppender createEffectAppender(JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
+    public EffectAppender createEffectAppender(boolean cost, JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
         FieldUtils.validateAllowedFields(effectObject, "deck", "count", "memorize");
 
         final String deck = FieldUtils.getString(effectObject.get("deck"), "deck", "you");
         final ValueSource valueSource = ValueResolver.resolveEvaluator(effectObject.get("count"), 1, environment);
         final String memorize = FieldUtils.getString(effectObject.get("memorize"), "memorize");
 
-        final PlayerSource playerSource = PlayerResolver.resolvePlayer(deck, environment);
+        if (memorize == null)
+            throw new InvalidCardDefinitionException("You need to define what memory to use to store revealed cards");
+
+        final PlayerSource playerSource = PlayerResolver.resolvePlayer(deck);
 
         return new DelayedAppender() {
             @Override
@@ -42,8 +45,7 @@ public class RevealTopCardsOfDrawDeck implements EffectAppenderProducer {
                 return new RevealTopCardsOfDrawDeckEffect(actionContext.getSource(), deckId, count) {
                     @Override
                     protected void cardsRevealed(List<PhysicalCard> revealedCards) {
-                        if (memorize != null)
-                            actionContext.setCardMemory(memorize, revealedCards);
+						actionContext.setCardMemory(memorize, revealedCards);
                     }
                 };
             }

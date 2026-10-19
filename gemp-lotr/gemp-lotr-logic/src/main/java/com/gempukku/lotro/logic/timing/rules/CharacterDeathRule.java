@@ -5,7 +5,6 @@ import com.gempukku.lotro.common.Phase;
 import com.gempukku.lotro.filters.Filters;
 import com.gempukku.lotro.game.AbstractActionProxy;
 import com.gempukku.lotro.game.PhysicalCard;
-import com.gempukku.lotro.game.state.GameState;
 import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.game.state.actions.DefaultActionsEnvironment;
 import com.gempukku.lotro.logic.actions.RequiredTriggerAction;
@@ -17,8 +16,8 @@ import com.gempukku.lotro.logic.timing.results.ZeroVitalityResult;
 import java.util.*;
 
 public class CharacterDeathRule {
-    private Set<PhysicalCard> _charactersAlreadyOnWayToDeath = new HashSet<PhysicalCard>();
-    private DefaultActionsEnvironment _actionsEnvironment;
+    private final Set<PhysicalCard> _charactersAlreadyOnWayToDeath = new HashSet<>();
+    private final DefaultActionsEnvironment _actionsEnvironment;
 
     public CharacterDeathRule(DefaultActionsEnvironment actionsEnvironment) {
         _actionsEnvironment = actionsEnvironment;
@@ -35,7 +34,7 @@ public class CharacterDeathRule {
                             RequiredTriggerAction action = new RequiredTriggerAction(null);
                             action.setText("Character death");
                             action.appendEffect(
-                                    new KillEffect(characters, KillEffect.Cause.WOUNDS));
+                                    new KillEffect(characters, (PhysicalCard) null, KillEffect.Cause.WOUNDS));
                             action.appendEffect(
                                     new UnrespondableEffect() {
                                         @Override
@@ -53,17 +52,15 @@ public class CharacterDeathRule {
 
     public void checkCharactersZeroVitality(LotroGame game) {
         if (game.getGameState().getCurrentPhase() != Phase.PUT_RING_BEARER && game.getGameState().getCurrentPhase() != Phase.BETWEEN_TURNS) {
-            GameState gameState = game.getGameState();
-
             Collection<PhysicalCard> characters = Filters.filterActive(game,
                     Filters.or(CardType.ALLY, CardType.COMPANION, CardType.MINION));
 
-            Set<PhysicalCard> deadChars = new HashSet<PhysicalCard>();
+            Set<PhysicalCard> deadChars = new HashSet<>();
             for (PhysicalCard character : characters)
                 if (!_charactersAlreadyOnWayToDeath.contains(character) && game.getModifiersQuerying().getVitality(game, character) <= 0)
                     deadChars.add(character);
 
-            if (deadChars.size() > 0) {
+            if (!deadChars.isEmpty()) {
                 _charactersAlreadyOnWayToDeath.addAll(deadChars);
                 game.getActionsEnvironment().emitEffectResult(new ZeroVitalityResult(deadChars));
             }

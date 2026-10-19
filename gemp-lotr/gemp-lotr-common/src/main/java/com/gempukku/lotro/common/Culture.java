@@ -9,9 +9,9 @@ public enum Culture implements Filterable {
 	//Additional Hobbit Draft cultures
 	ESGAROTH("Esgaroth", true), GUNDABAD("Gundabad", false), MIRKWOOD("Mirkwood", false), SMAUG("Smaug", false), SPIDER("Spider", false), TROLL("Troll", false);
 
-    private String _humanReadable;
-    private boolean _fp;
-    private boolean _official;
+    private final String _humanReadable;
+    private final boolean _fp;
+    private final boolean _official;
 
     private Culture(String humanReadable, boolean fp) {
         this(humanReadable, fp, true);
@@ -38,6 +38,19 @@ public enum Culture implements Filterable {
     public static Culture findCultureByHumanReadable(String humanReadable) {
         for (Culture culture : values()) {
             if (culture.getHumanReadable().equals(humanReadable))
+                return culture;
+        }
+        return null;
+    }
+
+    public static Culture findCulture(String name) {
+        String nameCaps = name.toUpperCase().replace(' ', '_').replace('-', '_');
+        String nameLower = name.toLowerCase();
+        if(nameLower.equals("ringwraith"))
+            return WRAITH;
+
+        for (Culture culture : values()) {
+            if (culture.getHumanReadable().toLowerCase().equals(nameLower) || culture.toString().equals(nameCaps))
                 return culture;
         }
         return null;

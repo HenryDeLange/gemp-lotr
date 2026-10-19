@@ -9,8 +9,8 @@ import com.gempukku.lotro.logic.timing.processes.GameProcess;
 import java.util.List;
 
 public class PlayerPlaysPhaseActionsUntilPassesGameProcess implements GameProcess {
-    private String _playerId;
-    private GameProcess _followingGameProcess;
+    private final String _playerId;
+    private final GameProcess _followingGameProcess;
 
     private GameProcess _nextProcess;
 
@@ -23,7 +23,7 @@ public class PlayerPlaysPhaseActionsUntilPassesGameProcess implements GameProces
     public void process(final LotroGame game) {
         final List<Action> playableActions = game.getActionsEnvironment().getPhaseActions(_playerId);
 
-        if (playableActions.size() == 0 && game.shouldAutoPass(_playerId, game.getGameState().getCurrentPhase())) {
+        if (playableActions.isEmpty() && game.shouldAutoPass(_playerId, game.getGameState().getCurrentPhase())) {
             playerPassed();
         } else {
             game.getUserFeedback().sendAwaitingDecision(_playerId,

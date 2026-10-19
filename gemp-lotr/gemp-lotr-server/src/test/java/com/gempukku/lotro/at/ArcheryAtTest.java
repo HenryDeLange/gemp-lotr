@@ -13,16 +13,16 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import static junit.framework.Assert.assertEquals;
+import static org.junit.Assert.assertEquals;
 
 public class ArcheryAtTest extends AbstractAtTest {
     @Test
     public void archeryWorksBothWays() throws DecisionResultInvalidException, CardNotFoundException {
-        Map<String, Collection<String>> extraCards = new HashMap<String, Collection<String>>();
+        Map<String, Collection<String>> extraCards = new HashMap<>();
         initializeSimplestGame(extraCards);
 
-        PhysicalCardImpl legolas = new PhysicalCardImpl(100, "1_51", P1, _library.getLotroCardBlueprint("1_51"));
-        PhysicalCardImpl archerMinion = new PhysicalCardImpl(101, "4_138", P2, _library.getLotroCardBlueprint("4_138"));
+        PhysicalCardImpl legolas = new PhysicalCardImpl(100, "1_51", P1, _cardLibrary.getLotroCardBlueprint("1_51"));
+        PhysicalCardImpl archerMinion = new PhysicalCardImpl(101, "4_138", P2, _cardLibrary.getLotroCardBlueprint("4_138"));
 
         skipMulligans();
 
@@ -59,12 +59,12 @@ public class ArcheryAtTest extends AbstractAtTest {
 
     @Test
     public void archeryBonusesDontLeakToOtherSide() throws DecisionResultInvalidException, CardNotFoundException {
-        Map<String, Collection<String>> extraCards = new HashMap<String, Collection<String>>();
+        Map<String, Collection<String>> extraCards = new HashMap<>();
         initializeSimplestGame(extraCards);
 
-        PhysicalCardImpl legolas = new PhysicalCardImpl(100, "1_51", P1, _library.getLotroCardBlueprint("1_51"));
-        PhysicalCardImpl archerMinion = new PhysicalCardImpl(101, "4_138", P2, _library.getLotroCardBlueprint("4_138"));
-        PhysicalCardImpl doubleShot = new PhysicalCardImpl(102, "1_38", P1, _library.getLotroCardBlueprint("1_38"));
+        PhysicalCardImpl legolas = new PhysicalCardImpl(100, "1_51", P1, _cardLibrary.getLotroCardBlueprint("1_51"));
+        PhysicalCardImpl archerMinion = new PhysicalCardImpl(101, "4_138", P2, _cardLibrary.getLotroCardBlueprint("4_138"));
+        PhysicalCardImpl doubleShot = new PhysicalCardImpl(102, "1_38", P1, _cardLibrary.getLotroCardBlueprint("1_38"));
 
         skipMulligans();
 

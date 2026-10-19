@@ -3,7 +3,6 @@ package com.gempukku.lotro.logic.effects;
 import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.decisions.ArbitraryCardsSelectionDecision;
-import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
 import com.gempukku.lotro.logic.timing.AbstractEffect;
 import com.gempukku.lotro.logic.timing.Effect;
 
@@ -11,9 +10,9 @@ import java.util.Collections;
 import java.util.List;
 
 public class LookAtTopCardOfADeckEffect extends AbstractEffect {
-    private String _playerId;
-    private int _count;
-    private String _playerDeckId;
+    private final String _playerId;
+    private final int _count;
+    private final String _playerDeckId;
 
     public LookAtTopCardOfADeckEffect(String playerId, int count, String playerDeckId) {
         _playerId = playerId;
@@ -23,7 +22,10 @@ public class LookAtTopCardOfADeckEffect extends AbstractEffect {
 
     @Override
     public String getText(LotroGame game) {
-        return null;
+        if(_count == game.getGameState().getDeck(_playerDeckId).size())
+            return _playerId + " looks at " + _playerDeckId + "'s draw deck.";
+
+        return _playerId + " looks at the top " + _count + " cards of " + _playerDeckId + "'s draw deck.";
     }
 
     @Override
@@ -41,10 +43,14 @@ public class LookAtTopCardOfADeckEffect extends AbstractEffect {
         List<? extends PhysicalCard> deck = game.getGameState().getDeck(_playerDeckId);
         List<? extends PhysicalCard> cards = game.getGameState().getDeck(_playerDeckId).subList(0, Math.min(deck.size(), _count));
 
+        String message = "Cards on top of deck (left is top)";
+        if(_count == deck.size())
+            message = "Cards in deck";
+
         game.getUserFeedback().sendAwaitingDecision(_playerId,
-                new ArbitraryCardsSelectionDecision(1, "Cards on top of deck (left is top)", cards, Collections.<PhysicalCard>emptyList(), 0, 0) {
+                new ArbitraryCardsSelectionDecision(1, message, cards, Collections.emptyList(), 0, 0) {
                     @Override
-                    public void decisionMade(String result) throws DecisionResultInvalidException {
+                    public void decisionMade(String result) {
                     }
                 });
         cardsLookedAt(cards);

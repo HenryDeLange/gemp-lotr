@@ -1,24 +1,23 @@
 package com.gempukku.lotro.cards.unofficial.pc.errata.set01;
 
-import com.gempukku.lotro.cards.GenericCardTestHelper;
-import com.gempukku.lotro.common.*;
+import com.gempukku.lotro.framework.VirtualTableScenario;
+import com.gempukku.lotro.common.CardType;
+import com.gempukku.lotro.common.Culture;
+import com.gempukku.lotro.common.Side;
 import com.gempukku.lotro.game.CardNotFoundException;
-import com.gempukku.lotro.game.PhysicalCardImpl;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
 import org.junit.Test;
 
 import java.util.HashMap;
 
-import static junit.framework.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class Card_01_248_ErrataTests
 {
-    protected GenericCardTestHelper GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
-        return new GenericCardTestHelper(
-                new HashMap<String, String>()
-                {{
+    protected VirtualTableScenario GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
+        return new VirtualTableScenario(
+                new HashMap<>() {{
                     put("forces1", "51_248");
                     put("forces2", "51_248");
                     put("troll", "6_103");
@@ -45,11 +44,12 @@ public class Card_01_248_ErrataTests
          */
 
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
-        PhysicalCardImpl forces = scn.GetFreepsCard("forces1");
+        var forces = scn.GetFreepsCard("forces1");
 
         assertEquals(0, forces.getBlueprint().getTwilightCost());
+        assertEquals(Side.SHADOW, forces.getBlueprint().getSide());
         assertEquals(CardType.EVENT, forces.getBlueprint().getCardType());
         assertEquals(Culture.SAURON, forces.getBlueprint().getCulture());
     }
@@ -57,18 +57,18 @@ public class Card_01_248_ErrataTests
     @Test
     public void ExertsMinionWhenPlayed() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
-        PhysicalCardImpl forces1 = scn.GetShadowCard("forces1");
-        PhysicalCardImpl forces2 = scn.GetShadowCard("forces2");
-        PhysicalCardImpl troll = scn.GetShadowCard("troll");
-        PhysicalCardImpl orc1 = scn.GetShadowCard("orc1");
-        PhysicalCardImpl orc2 = scn.GetShadowCard("orc2");
-        PhysicalCardImpl orc3 = scn.GetShadowCard("orc3");
-        PhysicalCardImpl orc4 = scn.GetShadowCard("orc4");
+        var forces1 = scn.GetShadowCard("forces1");
+        var forces2 = scn.GetShadowCard("forces2");
+        var troll = scn.GetShadowCard("troll");
+        var orc1 = scn.GetShadowCard("orc1");
+        var orc2 = scn.GetShadowCard("orc2");
+        var orc3 = scn.GetShadowCard("orc3");
+        var orc4 = scn.GetShadowCard("orc4");
 
-        scn.ShadowMoveCardToHand(forces1,forces2);
-        scn.ShadowMoveCharToTable(troll, orc1, orc2);
+        scn.MoveCardsToHand(forces1,forces2);
+        scn.MoveMinionsToTable(troll, orc1, orc2);
 
         scn.StartGame();
 
@@ -79,13 +79,13 @@ public class Card_01_248_ErrataTests
         scn.ShadowPlayCard(forces1);
 
         assertTrue(scn.ShadowDecisionAvailable("Exert"));
-        assertEquals(3, scn.GetShadowCardChoiceCount());
+        assertEquals(3, scn.ShadowGetCardChoiceCount());
         scn.ShadowChoose(scn.ShadowGetCardChoices().get(1));
 
         //There are 3 minions, but only 2 orcs
         assertEquals(4, scn.GetTwilight());
 
-        scn.ShadowMoveCharToTable(orc3, orc4);
+        scn.MoveMinionsToTable(orc3, orc4);
         scn.ShadowPlayCard(forces2);
         scn.ShadowChoose(scn.ShadowGetCardChoices().get(1));
 

@@ -1,26 +1,17 @@
 package com.gempukku.lotro.async;
 
+import com.alibaba.fastjson2.JSONObject;
 import com.gempukku.lotro.async.handler.UriRequestHandler;
 import com.gempukku.lotro.db.IpBanDAO;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.DefaultHttpHeaders;
-import io.netty.handler.codec.http.EmptyHttpHeaders;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaderValues;
-import io.netty.handler.codec.http.HttpHeaders;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpUtil;
+import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
 import org.apache.commons.io.IOUtils;
-import org.apache.log4j.Logger;
-import org.w3c.dom.Document;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;import org.w3c.dom.Document;
 
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
@@ -35,21 +26,19 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.netty.handler.codec.http.HttpHeaderNames.CONNECTION;
-import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH;
-import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE;
+import static io.netty.handler.codec.http.HttpHeaderNames.*;
 import static io.netty.handler.codec.http.HttpResponseStatus.CONTINUE;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 public class GempukkuHttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     private final static long SIX_MONTHS = 1000L * 60L * 60L * 24L * 30L * 6L;
-    private static Logger _log = Logger.getLogger(GempukkuHttpRequestHandler.class);
-    private static Logger _accesslog = Logger.getLogger("access");
-    private Map<String, byte[]> _fileCache = Collections.synchronizedMap(new HashMap<String, byte[]>());
+    private static final Logger _log = LogManager.getLogger(GempukkuHttpRequestHandler.class);
+    private static final Logger _accesslog = LogManager.getLogger("access");
+    private final Map<String, byte[]> _fileCache = Collections.synchronizedMap(new HashMap<>());
 
-    private Map<Type, Object> _objects;
-    private UriRequestHandler _uriRequestHandler;
-    private IpBanDAO _ipBanDAO;
+    private final Map<Type, Object> _objects;
+    private final UriRequestHandler _uriRequestHandler;
+    private final IpBanDAO _ipBanDAO;
 
     public GempukkuHttpRequestHandler(Map<Type, Object> objects, UriRequestHandler uriRequestHandler) {
         _objects = objects;
@@ -58,9 +47,9 @@ public class GempukkuHttpRequestHandler extends SimpleChannelInboundHandler<Full
     }
 
     private static class RequestInformation {
-        private String uri;
-        private String remoteIp;
-        private long requestTime;
+        private final String uri;
+        private final String remoteIp;
+        private final long requestTime;
 
         private RequestInformation(String uri, String remoteIp, long requestTime) {
             this.uri = uri;
@@ -78,9 +67,9 @@ public class GempukkuHttpRequestHandler extends SimpleChannelInboundHandler<Full
         if (HttpUtil.is100ContinueExpected(httpRequest))
             send100Continue(ctx);
 
-        String uri = httpRequest.getUri();
+        String uri = httpRequest.uri();
 
-        if (uri.indexOf("?") > -1)
+        if (uri.contains("?"))
             uri = uri.substring(0, uri.indexOf("?"));
 
         String ip = httpRequest.headers().get("X-Forwarded-For");
@@ -88,21 +77,39 @@ public class GempukkuHttpRequestHandler extends SimpleChannelInboundHandler<Full
         if(ip == null)
            ip = ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress();
 
-        final RequestInformation requestInformation = new RequestInformation(httpRequest.getUri(),
+        final RequestInformation requestInformation = new RequestInformation(httpRequest.uri(),
                 ip,
                 System.currentTimeMillis());
 
         ResponseSender responseSender = new ResponseSender(ctx, httpRequest);
 
         try {
-            if (isBanned(requestInformation.remoteIp))
-                responseSender.writeError(404);
-            else
+            if (isBanned(requestInformation.remoteIp)) {
+                responseSender.writeError(401);
+                _log.info("Denying entry to user from banned IP " + requestInformation.remoteIp);
+            }
+            else {
                 _uriRequestHandler.handleRequest(uri, httpRequest, _objects, responseSender, requestInformation.remoteIp);
+            }
         } catch (HttpProcessingException exp) {
-            responseSender.writeError(exp.getStatus());
+            int code = exp.getStatus();
+            //401, 403, 404, and other 400-series errors should just do minimal logging,
+            if(code % 400 < 100 && code != 400) {
+                _log.debug("HTTP " + code + " response for " + requestInformation.remoteIp + ": " + requestInformation.uri);
+            }
+            // but 400 itself should error out
+            else if(code == 400 || code % 500 < 100) {
+                _log.error("HTTP code " + code + " response for " + requestInformation.remoteIp + ": " + requestInformation.uri, exp);
+            }
+
+            if(exp.getMessage() != null) {
+                responseSender.writeError(exp.getStatus(), Collections.singletonMap("message", exp.getMessage()));
+            }
+            else {
+                responseSender.writeError(exp.getStatus());
+            }
         } catch (Exception exp) {
-            _log.error("Error while processing request", exp);
+            _log.error("Error response for " + uri, exp);
             responseSender.writeError(500);
         }
     }
@@ -138,7 +145,7 @@ public class GempukkuHttpRequestHandler extends SimpleChannelInboundHandler<Full
     }
 
     private Map<String, String> getHeadersForFile(Map<String, String> headers, File file) {
-        Map<String, String> fileHeaders = new HashMap<String, String>(headers);
+        Map<String, String> fileHeaders = new HashMap<>(headers);
 
         boolean disableCaching = false;
         boolean cache = false;
@@ -160,7 +167,12 @@ public class GempukkuHttpRequestHandler extends SimpleChannelInboundHandler<Full
         } else if (fileName.endsWith(".gif")) {
             cache = true;
             contentType = "image/gif";
-        } else if (fileName.endsWith(".wav")) {
+        }
+        else if (fileName.endsWith(".svg")) {
+            cache = true;
+            contentType = "image/svg+xml";
+        }
+        else if (fileName.endsWith(".wav")) {
             cache = true;
             contentType = "audio/wav";
         } else {
@@ -205,8 +217,8 @@ public class GempukkuHttpRequestHandler extends SimpleChannelInboundHandler<Full
     }
 
     private class ResponseSender implements ResponseWriter {
-        private ChannelHandlerContext ctx;
-        private HttpRequest request;
+        private final ChannelHandlerContext ctx;
+        private final HttpRequest request;
 
         public ResponseSender(ChannelHandlerContext ctx, HttpRequest request) {
             this.ctx = ctx;
@@ -235,6 +247,21 @@ public class GempukkuHttpRequestHandler extends SimpleChannelInboundHandler<Full
         }
 
         @Override
+        public void sendOK() {
+            writeHtmlResponse("OK");
+        }
+
+        @Override
+        public void sendXmlOK() {
+            writeXmlResponse(null, null);
+        }
+
+        @Override
+        public void sendJsonOK() {
+            writeJsonResponse("OK");
+        }
+
+        @Override
         public void writeXmlResponse(Document document, Map<? extends CharSequence, String> headers) {
             try {
                 String contentType;
@@ -250,8 +277,8 @@ public class GempukkuHttpRequestHandler extends SimpleChannelInboundHandler<Full
                     response1 = writer.toString();
                     contentType = "application/xml; charset=UTF-8";
                 } else {
-                    response1 = "OK";
-                    contentType = "text/plain";
+                    response1 = "<result>OK</result>";
+                    contentType = "application/xml; charset=UTF-8";
                 }
                 HttpHeaders headers1 = convertToHeaders(headers);
                 headers1.set(CONTENT_TYPE, contentType);
@@ -262,6 +289,7 @@ public class GempukkuHttpRequestHandler extends SimpleChannelInboundHandler<Full
             } catch (Exception exp) {
                 byte[] content = new byte[0];
                 // Build the response object.
+                _log.error("Error response for " + request.uri(), exp);
                 FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR, Unpooled.wrappedBuffer(content), null, EmptyHttpHeaders.INSTANCE);
                 sendResponse(ctx, request, response);
             }
@@ -281,13 +309,24 @@ public class GempukkuHttpRequestHandler extends SimpleChannelInboundHandler<Full
 
         @Override
         public void writeJsonResponse(String json) {
+            writeJsonResponse(200, json);
+        }
+
+        @Override
+        public void writeJsonResponse(int status, String json) {
             HttpHeaders headers = new DefaultHttpHeaders();
             headers.set(CONTENT_TYPE, "application/json; charset=UTF-8");
 
             if (json == null)
                 json = "{}";
+
+            if(!json.startsWith("{") && !json.startsWith("[")) {
+                JSONObject obj = new JSONObject();
+                obj.put("response", json);
+                json = obj.toString();
+            }
             // Build the response object.
-            FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(json.getBytes(CharsetUtil.UTF_8)), headers, EmptyHttpHeaders.INSTANCE);
+            FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, HttpResponseStatus.valueOf(status), Unpooled.wrappedBuffer(json.getBytes(CharsetUtil.UTF_8)), headers, EmptyHttpHeaders.INSTANCE);
             sendResponse(ctx, request, response);
         }
 
@@ -333,6 +372,7 @@ public class GempukkuHttpRequestHandler extends SimpleChannelInboundHandler<Full
             } catch (IOException exp) {
                 byte[] content = new byte[0];
                 // Build the response object.
+                _log.error("Error response for " + request.uri(), exp);
                 FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, HttpResponseStatus.valueOf(500), Unpooled.wrappedBuffer(content), convertToHeaders(null), EmptyHttpHeaders.INSTANCE);
                 sendResponse(ctx, request, response);
             }

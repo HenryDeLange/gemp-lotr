@@ -1,0 +1,159 @@
+{
+	51_331: {
+		cardInfo: {
+			//id: 1_331.1
+			parent: 1_331
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN01E331.1_card.jpg
+			collInfo: 1C331
+			rarity: C
+		}
+		title: Ettenmoors
+		unique: false
+		twilight: 2
+		type: Site
+		site: 2
+		block: Fellowship
+		direction: Left
+		keywords: Plains
+		effects: {
+			type: activated
+			phase: skirmish
+			cost: {
+				type: exert
+				select: choose(your,character,not(enduring))
+				memorize: exertedCharacter
+			}
+			effect: {
+				type: modifyStrength
+				select: memory(exertedCharacter)
+				amount: 2
+			}
+		}
+		gametext: <b>Plains.</b> <b>Skirmish:</b> Exert your character (except an enduring character), to make it strength +2. 
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	
+	51_333: {
+		cardInfo: {
+			//id: 1_333.1
+			parent: 1_333
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN01E333.1.jpg
+			collInfo: 1
+			rarity: U
+		}
+		title: Midgewater Moors
+		twilight: 1
+		type: site
+		site: 2
+		block: fellowship
+		keyword: plains
+		direction: left
+		effects: {
+			type: Trigger
+			optional: false
+			trigger: {
+				type: played
+				filter: minion
+			}
+			effect: {
+				type: choice
+				player: freeps
+				texts: [
+					Exert a companion
+					Discard a card from hand
+				]
+				effects: [
+					{
+						type: exert
+						player: freeps
+						select: choose(companion)
+					}
+					{
+						type: discardFromHand
+						hand: freeps
+						player: freeps
+						forced: false
+						count: 1
+					}
+				]
+			}
+		}
+		gametext: <b>Plains.</b> Each time a minion is played, the Free Peoples player must exert a companion or discard a card from hand.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+		51_361: {
+		cardInfo: {
+			//id: 51_361.1
+			parent: 1_361
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN01E361.1_card.jpg
+			collInfo: 1U361
+			rarity: U
+		}
+		title: Slopes of Amon Hen
+		unique: false
+		twilight: 9
+		type: Site
+		site: 9
+		block: Fellowship
+		direction: Left
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: modifyCost
+					filter: isengard,minion
+					requires: {
+						type: IsGreaterThan
+						firstNumber: {
+							type: ForEachYouCanSpot
+							filter: companion
+						}
+						secondNumber: {
+							type: ForEachYouCanSpot
+							filter: minion
+						}
+					}
+					amount: {
+						type: ForEachYouCanSpot
+						filter: isengard, minion
+						multiplier: -1
+					}
+				}
+			}
+		]
+		gametext: While you can spot more companions than minions, [isengard] minions are twilight cost -1 for each [isengard] minion you can spot.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

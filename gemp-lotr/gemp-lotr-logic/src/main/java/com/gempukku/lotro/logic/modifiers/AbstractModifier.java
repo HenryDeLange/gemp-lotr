@@ -15,20 +15,16 @@ import java.util.Map;
 import java.util.Set;
 
 public abstract class AbstractModifier implements Modifier {
-    private PhysicalCard _physicalCard;
-    private String _text;
-    private Filter _affectFilter;
-    private Condition _condition;
-    private ModifierEffect _effect;
-
-    protected AbstractModifier(PhysicalCard source, String text, Filterable affectFilter, ModifierEffect effect) {
-        this(source, text, affectFilter, null, effect);
-    }
+    private final PhysicalCard _physicalCard;
+    private final String _text;
+    private final Filter _affectFilter;
+    private final Condition _condition;
+    private final ModifierEffect _effect;
 
     protected AbstractModifier(PhysicalCard source, String text, Filterable affectFilter, Condition condition, ModifierEffect effect) {
         _physicalCard = source;
         _text = text;
-        _affectFilter = (affectFilter != null) ? Filters.and(affectFilter) : null;
+        _affectFilter = (affectFilter != null) ? Filters.changeToFilter(affectFilter) : null;
         _condition = condition;
         _effect = effect;
     }
@@ -129,6 +125,11 @@ public abstract class AbstractModifier implements Modifier {
     }
 
     @Override
+    public boolean isAdditionalRaceModifier(LotroGame game, PhysicalCard physicalCard, Race race) {
+        return false;
+    }
+
+    @Override
     public int getTwilightCostModifier(LotroGame game, PhysicalCard physicalCard, PhysicalCard target, boolean ignoreRoamingPenalty) {
         return 0;
     }
@@ -147,7 +148,7 @@ public abstract class AbstractModifier implements Modifier {
     }
 
     @Override
-    public boolean canTakeWoundsFromLosingSkirmish(LotroGame game, PhysicalCard physicalCard, Set<PhysicalCard> winners) {
+    public boolean canTakeWoundsFromLosingSkirmish(LotroGame game, PhysicalCard physicalCard) {
         return true;
     }
 
@@ -177,6 +178,11 @@ public abstract class AbstractModifier implements Modifier {
     }
 
     @Override
+    public boolean isAssignmentCostPaid(LotroGame game, PhysicalCard card) {
+        return false;
+    }
+
+    @Override
     public boolean isAllyPreventedFromParticipatingInArcheryFire(LotroGame game, PhysicalCard card) {
         return false;
     }
@@ -193,6 +199,11 @@ public abstract class AbstractModifier implements Modifier {
 
     @Override
     public int getMoveLimitModifier(LotroGame game) {
+        return 0;
+    }
+
+    @Override
+    public int getThreatLimitModifier(LotroGame game) {
         return 0;
     }
 
@@ -337,6 +348,12 @@ public abstract class AbstractModifier implements Modifier {
     }
 
     @Override
+    public boolean hasFlagActive(LotroGame game, ModifierFlag modifierFlag, String playerId) {
+        // Flags that are not scoped to a player apply to everyone.
+        return hasFlagActive(game, modifierFlag);
+    }
+
+    @Override
     public boolean isSiteReplaceable(LotroGame game, String playerId) {
         return true;
     }
@@ -372,6 +389,9 @@ public abstract class AbstractModifier implements Modifier {
     }
 
     @Override
+    public Evaluator getShadowSkirmishStrengthOverrideEvaluator(LotroGame game, PhysicalCard shadowCharacter) { return null; }
+
+    @Override
     public boolean canSpotCulture(LotroGame game, Culture culture, String playerId) {
         return true;
     }
@@ -382,8 +402,36 @@ public abstract class AbstractModifier implements Modifier {
     }
 
     @Override
+    public int getSiteControlledSpotCountModifier(LotroGame game, String playerId) { return 0; }
+
+    @Override
     public int getSanctuaryHealModifier(LotroGame game) {
         return 0;
+    }
+
+    @Override
+    public int getStartingFellowshipCostModifier(LotroGame game, String playerId) {
+        return 0;
+    }
+
+    @Override
+    public int getMinimumBidModifier(LotroGame game, String playerId) {
+        return 0;
+    }
+
+    @Override
+    public boolean isHandRevealed(LotroGame game, String playerId) {
+        return false;
+    }
+
+    @Override
+    public int getOverrideUniqueness(LotroGame game, PhysicalCard card) {
+        return -1;
+    }
+
+    @Override
+    public boolean loosensUniqueness(LotroGame game, PhysicalCard card) {
+        return false;
     }
 
     @Override
@@ -394,5 +442,15 @@ public abstract class AbstractModifier implements Modifier {
     @Override
     public void appendPotentialDiscounts(LotroGame game, CostToEffectAction action, PhysicalCard card) {
 
+    }
+
+    @Override
+    public boolean deadPileGoesToDiscard(LotroGame game, PhysicalCard card) {
+        return false;
+    }
+
+    @Override
+    public boolean sanctuaryMayRemoveBurdens(LotroGame game, String playerId) {
+        return false;
     }
 }

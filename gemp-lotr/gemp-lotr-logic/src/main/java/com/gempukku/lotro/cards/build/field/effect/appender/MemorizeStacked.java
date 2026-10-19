@@ -22,12 +22,15 @@ import java.util.List;
 
 public class MemorizeStacked implements EffectAppenderProducer {
     @Override
-    public EffectAppender createEffectAppender(JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
+    public EffectAppender createEffectAppender(boolean cost, JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
         FieldUtils.validateAllowedFields(effectObject, "filter", "on", "memory");
 
         final String filter = FieldUtils.getString(effectObject.get("filter"), "filter", "any");
         final String on = FieldUtils.getString(effectObject.get("on"), "on");
         final String memory = FieldUtils.getString(effectObject.get("memory"), "memory");
+
+        if (memory == null)
+            throw new InvalidCardDefinitionException("Memory is required for a MemorizeStacked effect.");
 
         final FilterableSource filterSource = environment.getFilterFactory().generateFilter(filter, environment);
         final FilterableSource onFilterSource = environment.getFilterFactory().generateFilter(on, environment);
@@ -42,9 +45,9 @@ public class MemorizeStacked implements EffectAppenderProducer {
                         final Filterable onFilterable = onFilterSource.getFilterable(actionContext);
                         final Collection<PhysicalCard> cardsWithStack = Filters.filterActive(game, onFilterable);
 
-                        List<PhysicalCard> cardsToMemorize = new LinkedList<PhysicalCard>();
+                        List<PhysicalCard> cardsToMemorize = new LinkedList<>();
                         for (PhysicalCard cardWithStack : cardsWithStack)
-                            cardsToMemorize.addAll(Filters.filter(game.getGameState().getStackedCards(cardWithStack), game, filterable));
+                            cardsToMemorize.addAll(Filters.filter(game, game.getGameState().getStackedCards(cardWithStack), filterable));
                         actionContext.setCardMemory(memory, cardsToMemorize);
                     }
                 };

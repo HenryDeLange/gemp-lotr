@@ -2,7 +2,7 @@ package com.gempukku.lotro.async.handler;
 
 import com.gempukku.lotro.async.HttpProcessingException;
 import com.gempukku.lotro.async.ResponseWriter;
-import com.gempukku.lotro.common.ApplicationConfiguration;
+import com.gempukku.lotro.common.AppConfig;
 import com.gempukku.polling.LongPollingSystem;
 import io.netty.handler.codec.http.HttpRequest;
 
@@ -12,35 +12,41 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 public class RootUriRequestHandler implements UriRequestHandler {
-    private String _serverContextPath = "/gemp-lotr-server/";
-    private String _webContextPath = "/gemp-lotr/";
-    private HallRequestHandler _hallRequestHandler;
-    private WebRequestHandler _webRequestHandler;
-    private LoginRequestHandler _loginRequestHandler;
-    private StatusRequestHandler _statusRequestHandler;
-    private DeckRequestHandler _deckRequestHandler;
-    private AdminRequestHandler _adminRequestHandler;
-    private ChatRequestHandler _chatRequestHandler;
-    private CollectionRequestHandler _collectionRequestHandler;
-    private DeliveryRequestHandler _deliveryRequestHandler;
-    private GameRequestHandler _gameRequestHandler;
-    private LeagueRequestHandler _leagueRequestHandler;
-    private MerchantRequestHandler _merchantRequestHandler;
-    private RegisterRequestHandler _registerRequestHandler;
-    private ReplayRequestHandler _replayRequestHandler;
-    private GameHistoryRequestHandler _gameHistoryRequestHandler;
-    private ServerStatsRequestHandler _serverStatsRequestHandler;
-    private PlayerStatsRequestHandler _playerStatsRequestHandler;
-    private TournamentRequestHandler _tournamentRequestHandler;
-    private SoloDraftRequestHandler _soloDraftRequestHandler;
-    private PlaytestRequestHandler _playtestRequestHandler;
-    private PlayerInfoRequestHandler _playerInfoRequestHandler;
+    private final String _serverContextPath = "/gemp-lotr-server/";
+    private final String _webContextPath = "/gemp-lotr/";
+    private final HallRequestHandler _hallRequestHandler;
+    private final WebRequestHandler _webRequestHandler;
+    private final LoginRequestHandler _loginRequestHandler;
+    private final StatusRequestHandler _statusRequestHandler;
+    private final DeckRequestHandler _deckRequestHandler;
+    private final AdminRequestHandler _adminRequestHandler;
+    private final ChatRequestHandler _chatRequestHandler;
+    private final CollectionRequestHandler _collectionRequestHandler;
+    private final DeliveryRequestHandler _deliveryRequestHandler;
+    private final GameRequestHandler _gameRequestHandler;
+    private final LeagueRequestHandler _leagueRequestHandler;
+    private final CalendarRequestHandler _calendarRequestHandler;
+    private final EventHistoryRequestHandler _eventHistoryRequestHandler;
+    private final MerchantRequestHandler _merchantRequestHandler;
+    private final RegisterRequestHandler _registerRequestHandler;
+    private final ReplayRequestHandler _replayRequestHandler;
+    private final GameHistoryRequestHandler _gameHistoryRequestHandler;
+    private final ServerStatsRequestHandler _serverStatsRequestHandler;
+    private final PlayerStatsRequestHandler _playerStatsRequestHandler;
+    private final TournamentRequestHandler _tournamentRequestHandler;
+    private final SoloDraftRequestHandler _soloDraftRequestHandler;
+    private final PlaytestRequestHandler _playtestRequestHandler;
+    private final PlayerInfoRequestHandler _playerInfoRequestHandler;
+    private final TableDraftRequestHandler _tableDraftRequestHandler;
+    private final RtmdFeedbackRequestHandler _rtmdFeedbackRequestHandler;
+    private final PatchNotesRequestHandler _patchNotesRequestHandler;
+    private final ShareRequestHandler _shareRequestHandler;
 
-    private Pattern originPattern;
+    private final Pattern originPattern;
 
     public RootUriRequestHandler(Map<Type, Object> context, LongPollingSystem longPollingSystem) {
-        _webRequestHandler = new WebRequestHandler(ApplicationConfiguration.getProperty("web.path"));
-        String originAllowedPattern = ApplicationConfiguration.getProperty("origin.allowed.pattern");
+        _webRequestHandler = new WebRequestHandler();
+        String originAllowedPattern = AppConfig.getProperty("origin.allowed.pattern");
         originPattern = Pattern.compile(originAllowedPattern);
         _hallRequestHandler = new HallRequestHandler(context, longPollingSystem);
         _deckRequestHandler = new DeckRequestHandler(context);
@@ -52,6 +58,8 @@ public class RootUriRequestHandler implements UriRequestHandler {
         _deliveryRequestHandler = new DeliveryRequestHandler(context);
         _gameRequestHandler = new GameRequestHandler(context, longPollingSystem);
         _leagueRequestHandler = new LeagueRequestHandler(context);
+        _calendarRequestHandler = new CalendarRequestHandler(context);
+        _eventHistoryRequestHandler = new EventHistoryRequestHandler(context);
         _merchantRequestHandler = new MerchantRequestHandler(context);
         _registerRequestHandler = new RegisterRequestHandler(context);
         _replayRequestHandler = new ReplayRequestHandler(context);
@@ -62,11 +70,18 @@ public class RootUriRequestHandler implements UriRequestHandler {
         _soloDraftRequestHandler = new SoloDraftRequestHandler(context);
         _playtestRequestHandler = new PlaytestRequestHandler(context);
         _playerInfoRequestHandler = new PlayerInfoRequestHandler(context);
+        _tableDraftRequestHandler = new TableDraftRequestHandler(context);
+        _rtmdFeedbackRequestHandler = new RtmdFeedbackRequestHandler(context);
+        _patchNotesRequestHandler = new PatchNotesRequestHandler(context);
+        _shareRequestHandler = new ShareRequestHandler(context);
     }
 
     @Override
     public void handleRequest(String uri, HttpRequest request, Map<Type, Object> context, ResponseWriter responseWriter, String remoteIp) throws Exception {
-        if (uri.startsWith(_webContextPath)) {
+        if (ShareRequestHandler.handles(uri)) {
+            // public share links (/gemp-lotr/share/<kind>/<id>): a link preview page that redirects into the hall
+            _shareRequestHandler.handleRequest(uri, request, context, responseWriter, remoteIp);
+        } else if (uri.startsWith(_webContextPath)) {
             _webRequestHandler.handleRequest(uri.substring(_webContextPath.length()), request, context, responseWriter, remoteIp);
         } else if (uri.equals("/gemp-lotr")) {
             responseWriter.writeError(301, Collections.singletonMap("Location", "/gemp-lotr/"));
@@ -106,6 +121,10 @@ public class RootUriRequestHandler implements UriRequestHandler {
                 _deliveryRequestHandler.handleRequest(uri.substring(_serverContextPath.length() + 8), request, context, responseWriter, remoteIp);
             } else if (uri.startsWith(_serverContextPath + "game")) {
                 _gameRequestHandler.handleRequest(uri.substring(_serverContextPath.length() + 4), request, context, responseWriter, remoteIp);
+            } else if (uri.startsWith(_serverContextPath + "calendar")) {
+                _calendarRequestHandler.handleRequest(uri.substring(_serverContextPath.length() + 8), request, context, responseWriter, remoteIp);
+            } else if (uri.startsWith(_serverContextPath + "eventHistory")) {
+                _eventHistoryRequestHandler.handleRequest(uri.substring(_serverContextPath.length() + 12), request, context, responseWriter, remoteIp);
             } else if (uri.startsWith(_serverContextPath + "league")) {
                 _leagueRequestHandler.handleRequest(uri.substring(_serverContextPath.length() + 6), request, context, responseWriter, remoteIp);
             } else if (uri.startsWith(_serverContextPath + "merchant")) {
@@ -114,13 +133,17 @@ public class RootUriRequestHandler implements UriRequestHandler {
                 _tournamentRequestHandler.handleRequest(uri.substring(_serverContextPath.length() + 10), request, context, responseWriter, remoteIp);
             } else if (uri.startsWith(_serverContextPath + "soloDraft")) {
                 _soloDraftRequestHandler.handleRequest(uri.substring(_serverContextPath.length() + 9), request, context, responseWriter, remoteIp);
-
             } else if (uri.startsWith(_serverContextPath + "playtesting")) {
                 _playtestRequestHandler.handleRequest(uri.substring(_serverContextPath.length() + 11), request, context, responseWriter, remoteIp);
-
             } else if (uri.startsWith(_serverContextPath + "player")) {
                 _playerInfoRequestHandler.handleRequest(uri.substring(_serverContextPath.length() + 6), request, context, responseWriter, remoteIp);
-
+            } else if (uri.startsWith(_serverContextPath + "tableDraft")) {
+                _tableDraftRequestHandler.handleRequest(uri.substring(_serverContextPath.length() + 10), request, context, responseWriter, remoteIp);
+            } else if (uri.startsWith(_serverContextPath + "rtmdFeedback")) {
+                _rtmdFeedbackRequestHandler.handleRequest(uri.substring(_serverContextPath.length() + 12), request, context, responseWriter, remoteIp);
+            } else if (uri.startsWith(_serverContextPath + "patchnotes")) {
+                // public, read-only: Server Info > Patch Notes
+                _patchNotesRequestHandler.handleRequest(uri.substring(_serverContextPath.length() + 10), request, context, responseWriter, remoteIp);
             } else {
                 throw new HttpProcessingException(404);
             }

@@ -1,0 +1,1508 @@
+{
+	30_1: {
+		cardInfo: {
+			image: hobbit/HDG301.jpg
+			collInfo: 30_1
+			rarity: _
+		}
+		title: Ancestral Knowledge
+		culture: dwarven
+		twilight: 2
+		type: event
+		timeword: maneuver
+		effects: {
+			type: event
+			cost: {
+				type: exert
+				select: choose(dwarf,character)
+			}
+			effect: {
+				type: discard
+				select: choose(condition)
+				count: {
+					type: Conditional
+					requires: {
+						type: canSpot
+						filter: side(shadow),condition
+						count: 4
+					}
+					true: 2
+					false: 1
+				}
+			}
+		}
+	}
+	30_2: {
+		cardInfo: {
+			image: hobbit/HDG302.jpg
+			collInfo: 30_2
+			rarity: _
+		}
+		title: Balin
+		subtitle: Brother of Dwalin
+		unique: true
+		culture: dwarven
+		twilight: 3
+		type: companion
+		race: dwarf
+		strength: 7
+		vitality: 3
+		resistance: 6
+		effects: {
+			type: activated
+			phase: fellowship
+			cost: {
+				type: exert
+				select: self
+			}
+			effect: {
+				type: shuffleCardsFromDiscardIntoDrawDeck
+				select: choose(side(free people),event)
+			}
+		}
+	}
+	30_3: {
+		cardInfo: {
+			image: hobbit/HDG303.jpg
+			collInfo: 30_3
+			rarity: _
+		}
+		title: Battle Fury
+		culture: dwarven
+		twilight: 1
+		type: event
+		timeword: skirmish
+		effects: {
+			type: event
+			effect: {
+				type: modifyStrength
+				select: choose(dwarf,character)
+				memorize: chosenDwarf
+				amount: {
+					type: Conditional
+					requires: {
+						type: memoryMatches
+						memory: chosenDwarf
+						filter: hasAttached(culture(dwarven),follower)
+					}
+					true: 4
+					false: 3
+				}
+			}
+		}
+	}
+	30_4: {
+		cardInfo: {
+			image: hobbit/HDG304.jpg
+			collInfo: 30_4
+			rarity: _
+		}
+		title: Battle of Azanulbizar
+		culture: dwarven
+		twilight: 0
+		type: event
+		timeword: maneuver
+		effects: {
+			type: event
+			cost: {
+				type: exert
+				select: choose(dwarf,character)
+			}
+			effect: {
+				type: choice
+				texts: [
+					Wound 2 Orcs
+					Wound 1 Orc twice
+				]
+				effects: [
+					{
+						type: wound
+						select: choose(orc)
+						count: 2
+					}
+					{
+						type: wound
+						select: choose(orc)
+						times: 2
+					}
+				]
+			}
+		}
+	}
+	30_5: {
+		cardInfo: {
+			image: hobbit/HDG305.jpg
+			collInfo: 30_5
+			rarity: _
+		}
+		title: Bifur
+		subtitle: Inarticulate
+		unique: true
+		culture: dwarven
+		twilight: 1
+		type: follower
+		race: dwarf
+		strength: 1
+		effects: [
+			{
+				type: aidCost
+				cost: {
+					type: exert
+					select: choose(companion)
+				}
+			}
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: winsSkirmish
+					filter: bearer
+				}
+				requires: {
+					type: fierceSkirmish
+				}
+				effect: {
+					type: discard
+					select: choose(condition)
+				}
+			}
+		]
+	}
+	30_6: {
+		cardInfo: {
+			image: hobbit/HDG306.jpg
+			collInfo: 30_6
+			rarity: _
+		}
+		title: Bofur
+		subtitle: Encouraging Fellow
+		unique: true
+		culture: dwarven
+		twilight: 2
+		type: follower
+		race: dwarf
+		strength: 1
+		effects: [
+			{
+				type: aidCost
+				cost: {
+					type: addBurdens
+				}
+			}
+			{
+				type: Response
+				trigger: {
+					type: aboutToTakeWound
+					filter: bearer
+				}
+				cost: [
+					{
+						type: memorize
+						memory: oldBearer
+						filter: bearer
+					}
+					{
+						type: transferToSupport
+						select: self
+					}
+				]
+				effect: {
+					type: preventWound
+					select: choose(memory(oldBearer))
+				}
+			}
+		]
+	}
+	30_7: {
+		cardInfo: {
+			image: hobbit/HDG307.jpg
+			collInfo: 30_7
+			rarity: _
+		}
+		title: Bombur
+		subtitle: Chief Cook
+		unique: true
+		culture: dwarven
+		twilight: 3
+		type: follower
+		race: dwarf
+		strength: 2
+		effects: [
+			{
+				type: aidCost
+				cost: {
+					type: exert
+					select: choose(culture(dwarven),companion)
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: addKeyword
+					filter: bearer
+					keyword: damage+1
+				}
+			}
+		]
+	}
+	30_8: {
+		cardInfo: {
+			image: hobbit/HDG308.jpg
+			collInfo: 30_8
+			rarity: _
+		}
+		title: Dori
+		subtitle: Really a Decent Fellow
+		unique: true
+		culture: dwarven
+		twilight: 1
+		type: follower
+		race: dwarf
+		strength: 1
+		effects: [
+			{
+				type: aidCost
+				cost: {
+					type: exert
+					select: choose(name(Bilbo))
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: cantBeOverwhelmedMultiplier
+					filter: bearer
+					multiplier: 3
+				}
+			}
+		]
+	}
+	30_9: {
+		cardInfo: {
+			image: hobbit/HDG309.jpg
+			collInfo: 30_9
+			rarity: _
+		}
+		title: Dwalin
+		subtitle: Brother of Balin
+		unique: true
+		culture: dwarven
+		twilight: 3
+		type: companion
+		race: dwarf
+		strength: 7
+		vitality: 3
+		resistance: 6
+		keyword: damage+1
+		effects: {
+			type: activated
+			phase: maneuver
+			cost: {
+				type: exert
+				select: self
+			}
+			effect: {
+				type: addKeyword
+				select: self
+				keyword: defender+1
+				until: start(regroup)
+			}
+		}
+	}
+	30_10: {
+		cardInfo: {
+			image: hobbit/HDG3010.jpg
+			collInfo: 30_10
+			rarity: _
+		}
+		title: Fili
+		subtitle: Brother of Kili
+		unique: true
+		culture: dwarven
+		twilight: 2
+		type: companion
+		race: dwarf
+		strength: 6
+		vitality: 3
+		resistance: 6
+		keyword: damage+1
+		effects: {
+			type: Response
+			trigger: {
+				type: aboutToTakeWound
+				filter: culture(dwarven),companion
+			}
+			cost: [
+				{
+					type: exert
+					select: self
+				}
+				{
+					type: addTwilight
+					amount: 1
+				}
+			]
+			effect: {
+				type: preventWound
+				select: choose(culture(dwarven),companion)
+			}
+		}
+	}
+	30_11: {
+		cardInfo: {
+			image: hobbit/HDG3011.jpg
+			collInfo: 30_11
+			rarity: _
+		}
+		title: Gloin
+		subtitle: Father of Gimli
+		unique: true
+		culture: dwarven
+		twilight: 2
+		type: companion
+		race: dwarf
+		strength: 6
+		vitality: 3
+		resistance: 6
+		keyword: damage+1
+		effects: {
+			type: activated
+			phase: skirmish
+			cost: {
+				type: exert
+				select: self
+			}
+			effect: {
+				type: modifyStrength
+				select: self
+				amount: 3
+			}
+		}
+	}
+	30_12: {
+		cardInfo: {
+			image: hobbit/HDG3012.jpg
+			collInfo: 30_12
+			rarity: _
+		}
+		title: Kili
+		subtitle: Brother of Fili
+		unique: true
+		culture: dwarven
+		twilight: 2
+		type: companion
+		race: dwarf
+		strength: 6
+		vitality: 3
+		resistance: 6
+		keyword: archer
+		effects: {
+			type: activated
+			phase: archery
+			cost: {
+				type: exert
+				select: self
+			}
+			effect: [
+				{
+					type: wound
+					select: choose(minion)
+				}
+				{
+					type: disableArcheryTotalContribution
+					select: self
+				}
+			]
+		}
+	}
+	30_13: {
+		cardInfo: {
+			image: hobbit/HDG3013.jpg
+			collInfo: 30_13
+			rarity: _
+		}
+		title: Lore of Imladris
+		culture: dwarven
+		twilight: 1
+		type: event
+		timeword: maneuver
+		effects: {
+			type: event
+			effect: {
+				type: choice
+				texts: [
+					Heal a companion
+					Heal 2 Dwarf companions
+				]
+				effects: [
+					{
+						type: heal
+						 select: choose(companion)
+					}
+					{
+						type: If
+						check: {
+							type: canSpot
+							filter: name(Elrond)
+						}
+						true: {
+							type: heal
+							select: choose(companion,dwarf)
+							count: 2
+						}
+					}
+				]
+			}
+		}
+	}
+	30_14: {
+		cardInfo: {
+			image: hobbit/HDG3014.jpg
+			collInfo: 30_14
+			rarity: _
+		}
+		title: Noble Intentions
+		culture: dwarven
+		twilight: 0
+		type: event
+		timeword: skirmish
+		effects: {
+			type: event
+			cost: {
+				type: exert
+				select: choose(companion,not(name(Bilbo)))
+			}
+			effect: {
+				type: modifyStrength
+				select: choose(name(Bilbo))
+				amount: 3
+			}
+		}
+	}
+	30_15: {
+		cardInfo: {
+			image: hobbit/HDG3015.jpg
+			collInfo: 30_15
+			rarity: _
+		}
+		title: Nori
+		subtitle: Of the Blue Mountains
+		unique: true
+		culture: dwarven
+		twilight: 3
+		type: companion
+		race: dwarf
+		strength: 7
+		vitality: 3
+		resistance: 6
+		effects: {
+			type: activated
+			phase: maneuver
+			cost: [
+				{
+					type: exert
+					select: self
+					times: 2
+				}
+				{
+					type: discard
+					select: choose(culture(dwarven),follower)
+				}
+			]
+			effect: {
+				type: discard
+				select: choose(possession)
+			}
+		}
+	}
+	30_16: {
+		cardInfo: {
+			image: hobbit/HDG3016.jpg
+			collInfo: 30_16
+			rarity: _
+		}
+		title: Oin
+		subtitle: Knowledgeable Healer
+		unique: true
+		culture: dwarven
+		twilight: 1
+		type: follower
+		race: dwarf
+		strength: 1
+		effects: [
+			{
+				type: aidCost
+				cost: {
+					type: discardFromHand
+					forced: false
+					select: choose(culture(dwarven))
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: transferred
+					filter: self
+					to: companion
+				}
+				effect: {
+					type: heal
+					select: bearer
+				}
+			}
+		]
+	}
+	30_17: {
+		cardInfo: {
+			image: hobbit/HDG3017.jpg
+			collInfo: 30_17
+			rarity: _
+		}
+		title: Orcrist
+		unique: true
+		culture: dwarven
+		twilight: 2
+		type: artifact
+		itemclass: hand weapon
+		strength: 2
+		target: name(Thorin)
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: addKeyword
+					filter: bearer
+					keyword: damage+1
+				}
+			}
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: winsSkirmish
+					filter: bearer
+				}
+				effect: {
+					type: wound
+					select: choose(orc)
+				}
+			}
+		]
+	}
+	30_18: {
+		cardInfo: {
+			image: hobbit/HDG3018.jpg
+			collInfo: 30_18
+			rarity: _
+		}
+		title: Ori
+		subtitle: Dwarven Chronicler
+		unique: true
+		culture: dwarven
+		twilight: 1
+		type: follower
+		race: dwarf
+		strength: 1
+		effects: [
+			{
+				type: aidCost
+				cost: {
+					type: discardFromHand
+					forced: false
+					select: choose(culture(dwarven))
+				}
+			}
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: transferred
+					filter: self
+					to: name(Balin)
+				}
+				effect: {
+					type: drawCards
+					count: 3
+				}
+			}
+		]
+	}
+	30_19: {
+		cardInfo: {
+			image: hobbit/HDG3019.jpg
+			collInfo: 30_19
+			rarity: _
+		}
+		title: Thorin
+		subtitle: Oakenshield
+		unique: true
+		culture: dwarven
+		twilight: 2
+		type: companion
+		race: dwarf
+		strength: 7
+		vitality: 4
+		resistance: 6
+		keyword: damage+1
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: modifyStrength
+					filter: self
+					amount: {
+						type: forEachYouCanSpot
+						filter: culture(dwarven),follower,attachedTo(self)
+					}
+				}
+			}
+			{
+				type: activated
+				phase: fellowship
+				cost: {
+					type: discard
+					select: choose(culture(dwarven),follower)
+				}
+				effect: {
+					type: putCardsFromDiscardOnBottomOfDeck
+					select: choose(culture(dwarven),artifact)
+				}
+			}
+		]
+	}
+	30_20: {
+		cardInfo: {
+			image: hobbit/HDG3020.jpg
+			collInfo: 30_20
+			rarity: _
+		}
+		title: To me! O My Kinsfolk!
+		culture: dwarven
+		twilight: 0
+		type: event
+		timeword: fellowship
+		effects: {
+			type: event
+			effect: {
+				type: playCardFromDiscard
+				select: choose(culture(dwarven),follower)
+			}
+		}
+	}
+	30_21: {
+		cardInfo: {
+			image: hobbit/HDG3021.jpg
+			collInfo: 30_21
+			rarity: _
+		}
+		title: Elrond
+		subtitle: Elven Lord
+		unique: true
+		culture: elven
+		twilight: 4
+		type: ally
+		allyHome: 3H
+		race: elf
+		strength: 8
+		vitality: 4
+		keyword: wise
+		effects: [
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: startOfTurn
+				}
+				effect: {
+					type: choice
+					texts: [
+						Heal a Wise ally
+						Heal Elrond twice
+					]
+					effects: [
+						{
+							type: heal
+							select: choose(wise,ally)
+						}
+						{
+							type: heal
+							select: self
+							times: 2
+						}
+					]
+				}
+			}
+			{
+				type: activated
+				phase: regroup
+				cost: {
+					type: exert
+					select: self
+					times: 2
+				}
+				effect: {
+					type: heal
+					select: choose(companion)
+				}
+			}
+		]
+	}
+	30_22: {
+		cardInfo: {
+			image: hobbit/HDG3022.jpg
+			collInfo: 30_22
+			rarity: _
+		}
+		title: Bard
+		subtitle: The Bowman
+		unique: true
+		culture: esgaroth
+		twilight: 2
+		type: ally
+		allyHome: 6H
+		race: man
+		strength: 6
+		vitality: 3
+		keyword: archer
+		effects: {
+			type: activated
+			phase: regroup
+			cost: {
+				type: exert
+				select: self
+			}
+			effect: [
+				{
+					type: wound
+					select: choose(minion)
+					memorize: chosenMinion
+				}
+				{
+					type: If
+					check: {
+						type: memoryMatches
+						memory: chosenMinion
+						filter: name(Smaug)
+					}
+					true: {
+						type: wound
+						select: memory(chosenMinion)
+					}
+				}
+			]
+		}
+	}
+	30_23: {
+		cardInfo: {
+			image: hobbit/HDG3023.jpg
+			collInfo: 30_23
+			rarity: _
+		}
+		title: A Wizard Is Never Late
+		culture: gandalf
+		twilight: 1
+		type: event
+		timeword: fellowship
+		effects: {
+			type: event
+			effect: {
+				type: choice
+				texts: [
+					Play from your draw deck
+					Play from your discard pile
+				]
+				effects: [
+					{
+						type: playCardFromDrawDeck
+						select: choose(or(name(Gandalf),and(ally,not(dwarf))))
+						showAll: true
+						shuffle: true
+					}
+					{
+						type: playCardFromDiscard
+						select: choose(or(name(Gandalf),and(ally,not(dwarf))))
+					}
+				]
+			}
+		}
+	}
+	30_24: {
+		cardInfo: {
+			image: hobbit/HDG3024.jpg
+			collInfo: 30_24
+			rarity: _
+		}
+		title: Dawn Take You All
+		culture: gandalf
+		twilight: 3
+		type: event
+		timeword: skirmish
+		keyword: [
+			spell
+		]
+		effects: {
+			type: event
+			cost: {
+				type: exert
+				select: choose(name(Gandalf))
+				times: 2
+			}
+			effect: {
+				type: choice
+				texts: [
+					Discard a Troll
+					Wound a minion twice
+				]
+				effects: [
+					{
+						type: discard
+						select: choose(troll)
+					}
+					{
+						type: wound
+						select: choose(minion)
+						times: 2
+					}
+				]
+			}
+		}
+	}
+	30_25: {
+		cardInfo: {
+			image: hobbit/HDG3025.jpg
+			collInfo: 30_25
+			rarity: _
+		}
+		title: Gandalf
+		subtitle: Leader of Dwarves
+		unique: true
+		culture: gandalf
+		twilight: 2
+		type: companion
+		race: wizard
+		strength: 7
+		vitality: 4
+		resistance: 6
+		keyword: wise
+		effects: [
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: reconciles
+					player: you
+				}
+				requires: {
+					type: sarumanfirstsentenceactive
+				}
+				effect: {
+					type: drawCards
+					count: 2
+				}
+			}
+			{
+				type: activated
+				phase: skirmish
+				text: Play a [GANDALF] skirmish event
+				cost: [
+					{
+						type: PlayCardFromHand
+						select: choose(culture(gandalf),timeword(skirmish),event)
+					}
+					{
+						type: addBurdens
+						amount: 1
+					}
+				]
+				effect: {
+					type: playCardFromDrawDeck
+					select: choose(dwarf)
+					showAll: true
+					shuffle: true
+				}
+			}
+			{
+				type: activated
+				phase: skirmish
+				text: Play a [DWARVEN] skirmish event
+				cost: {
+					type: PlayCardFromHand
+					select: choose(culture(dwarven),timeword(skirmish),event)
+				}
+				effect: {
+					type: modifyStrength
+					select: choose(orc,inSkirmishAgainst(name(Bilbo)))
+					amount: -2
+				}
+			}
+		]
+	}
+	30_26: {
+		cardInfo: {
+			image: hobbit/HDG3026.jpg
+			collInfo: 30_26
+			rarity: _
+		}
+		title: Gandalf
+		subtitle: Friend of Thorin
+		unique: true
+		culture: gandalf
+		twilight: 1
+		type: companion
+		race: wizard
+		strength: 7
+		vitality: 4
+		resistance: 6
+		keyword: wise
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: cantBeDiscarded
+					requires: [
+						{
+							type: canSpot
+							filter: culture(dwarven),follower
+							count: 2
+						}
+						{
+							type: sarumanfirstsentenceactive
+						}
+					]
+					filter: self
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: modifyCost
+					filter: name(Thorin)
+					amount: -2
+				}
+			}
+			{
+				type: activated
+				phase: fellowship
+				cost: [
+					{
+						type: discard
+						select: choose(culture(dwarven),follower)
+					}
+					{
+						type: addBurdens
+						amount: 1
+					}
+				]
+				effect: {
+					type: drawCards
+					count: 3
+				}
+			}
+		]
+	}
+	30_27: {
+		cardInfo: {
+			image: hobbit/HDG3027.jpg
+			collInfo: 30_27
+			rarity: _
+		}
+		title: Gandalf
+		subtitle: The Grey
+		unique: true
+		culture: gandalf
+		twilight: 2
+		type: companion
+		race: wizard
+		strength: 7
+		vitality: 4
+		resistance: 6
+		keyword: wise
+		effects: [
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: played
+					filter: your,culture(gandalf),event
+				}
+				requires: {
+					type: sarumanfirstsentenceactive
+				}
+				effect: {
+					type: wound
+					select: choose(minion,not(name(Smaug)))
+				}
+			}
+			{
+				type: activated
+				phase: fellowship
+				cost: {
+					type: addBurdens
+					amount: 2
+				}
+				effect: {
+					type: choice
+					texts: [
+						Play from your draw deck
+						Play from your discard pile
+					]
+					effects: [
+			  {
+			  type: playCardFromDrawDeck
+			  select: choose(or(artifact,and(dwarf,companion)))
+				showAll: true
+				shuffle: true
+			}
+			{
+			  type: playCardFromDiscard
+			  select: choose(or(artifact,and(dwarf,companion)))
+			}
+		  ]
+		}
+	  }
+	]
+  }
+  30_28: {
+	title: Gandalf
+	subtitle: Leader of the Company
+		unique: true
+	culture: gandalf
+	twilight: 4
+	type: companion
+	race: wizard
+	strength: 7
+	vitality: 4
+	resistance: 6
+	keyword: wise
+	effects: [
+	  {
+		type: modifier
+		modifier: {
+		  type: cantBeDiscarded
+		  requires: {
+			type: sarumanfirstsentenceactive
+		  }
+		  filter: self
+		}
+	  }
+	  {
+		type: trigger
+		optional: true
+		trigger: {
+		  type: startOfPhase
+		  phase: fellowship
+		}
+		cost: {
+		  type: addBurdens
+		  amount: 1
+		}
+		effect: {
+		  type: playCardFromDrawDeck
+		  select: choose(dwarf,companion)
+			showAll: true
+			shuffle: true
+		}
+	  }
+	]
+  }
+  30_29: {
+	title: Glamdring
+		unique: true
+	culture: gandalf
+	twilight: 2
+	type: artifact
+	itemclass: hand weapon
+	strength: 2
+	target: name(Gandalf)
+	effects: {
+	  type: trigger
+	  optional: true
+	  trigger: {
+		type: winsSkirmish
+		filter: bearer
+	  }
+	  effect: {
+		type: removeBurdens
+		amount: 1
+	  }
+	}
+  }
+  30_30: {
+		title: He Gives Me Courage
+		culture: gandalf
+		twilight: 2
+		type: event
+		timeword: maneuver
+		effects: {
+		  type: event
+		  requires: {
+				type: canSpot
+				filter: name(Gandalf)
+		  }
+		  effect: {
+			type: choice
+			texts: [
+			  Remove a burden
+			  Exert Gandalf and an [ELVEN] Wise Ally to remove 2 burdens
+			]
+			effects: [
+			  {
+					type: removeBurdens
+					amount: 1
+			  }
+			  {
+					type: costToEffect
+					cost: [
+					  {
+						type: exert
+						select: choose(name(Gandalf))
+					  }
+					  {
+						type: exert
+						select: choose(culture(elven),wise,ally)
+					  }
+					]
+					effect: {
+					  type: removeBurdens
+					  amount: 2
+					}
+			  }
+			]
+	  }
+	}
+  }
+  30_31: {
+	title: Take Up Arms
+	culture: gandalf
+	twilight: 1
+	type: event
+	timeword: skirmish
+	keyword: [
+	  spell
+	]
+	effects: {
+	  type: event
+	  requires: {
+		type: canSpot
+		filter: name(Gandalf)
+	  }
+	  effect: {
+		type: modifyStrength
+		select: choose(minion)
+		amount: -3
+	  }
+	}
+  }
+  30_43: {
+	title: Bilbo
+	subtitle: Expert Burglar
+		unique: true
+	culture: shire
+	twilight: 0
+	type: companion
+	race: hobbit
+	strength: 3
+	vitality: 4
+	resistance: 8
+	canStartWithRing: true
+	keyword: [
+	  burglar
+	]
+	effects: [
+	  {
+		type: trigger
+		optional: true
+		trigger: {
+		  type: played
+		  filter: culture(dwarven),timeword(fellowship),event
+		}
+		effect: {
+		  type: drawCards
+		  count: 2
+		}
+	  }
+	  {
+		type: activated
+		phase: fellowship
+		cost: {
+		  type: discard
+		  select: choose(culture(dwarven),follower)
+		}
+		effect: {
+		  type: modifyStrength
+		  select: self
+		  amount: {
+			type: Conditional
+			requires: {
+			  type: canSpot
+			  filter: name(Gollum)
+			}
+			true: 2
+			false: 1
+		  }
+		  until: start(regroup)
+		}
+	  }
+	  {
+		type: activated
+		phase: skirmish
+		cost: {
+		  type: discard
+		  select: choose(culture(dwarven),follower)
+		}
+		effect: {
+		  type: modifyStrength
+		  select: self
+		  amount: {
+			type: Conditional
+			requires: {
+			  type: canSpot
+			  filter: name(Gollum)
+			}
+			true: 2
+			false: 1
+		  }
+		  until: start(regroup)
+		}
+	  }
+	]
+  }
+  30_44: {
+	title: Bilbo
+	subtitle: Collector of Treasures
+		unique: true
+	culture: shire
+	twilight: 0
+	type: companion
+	race: hobbit
+	strength: 3
+	vitality: 4
+	resistance: 8
+	canStartWithRing: true
+	keyword: [
+	  burglar
+	]
+	effects: [
+	  {
+		type: trigger
+		optional: true
+		trigger: {
+		  type: discarded
+		  fromZone: hand
+		  source: follower
+		}
+		effect: {
+		  type: drawCards
+		  count: 2
+		}
+	  }
+	  {
+		type: activated
+		phase: skirmish
+		requires: {
+		  type: canSpot
+		  filter: self,inSkirmishAgainst(or(name(Smaug),name(Gollum)))
+		}
+		cost: {
+		  type: addBurdens
+		  amount: 1
+		}
+		effect: {
+		  type: modifyStrength
+		  select: self
+		  amount: {
+			type: cardAffectedLimitPerPhase
+			limit: 3
+			source: 3
+		  }
+		}
+	  }
+	]
+  }
+  30_45: {
+	title: Bilbo
+	subtitle: Master in Riddles
+		unique: true
+	culture: shire
+	twilight: 0
+	type: companion
+	race: hobbit
+	strength: 3
+	vitality: 4
+	resistance: 8
+	canStartWithRing: true
+	keyword: [
+	  burglar
+	]
+	effects: [
+	  {
+		type: modifier
+		modifier: {
+		  type: modifyStrength
+		  filter: self,inSkirmishAgainst(or(name(Smaug),name(Gollum)))
+		  amount: 2
+		}
+	  }
+	  {
+		type: trigger
+		optional: true
+		trigger: {
+		  type: heals
+		  filter: companion
+		}
+		requires: {
+		  type: canSpot
+		  filter: minion
+		}
+		effect: {
+		  type: drawCards
+		}
+	  }
+	]
+  }
+  30_46: {
+	title: Bilbo
+	subtitle: Reliable Companion
+		unique: true
+	culture: shire
+	twilight: 0
+	type: companion
+	race: hobbit
+	strength: 3
+	vitality: 4
+	resistance: 8
+	canStartWithRing: true
+	keyword: [
+	  burglar
+	]
+	effects: [
+	  {
+		type: modifier
+		modifier: {
+		  type: cantBeOverwhelmedMultiplier
+		  filter: self,inSkirmishAgainst(or(name(Smaug),name(Gollum)))
+		  multiplier: 3
+		}
+	  }
+	  {
+		type: activated
+		phase: skirmish
+		cost: {
+		  type: PlayCardFromHand
+		  select: choose(culture(dwarven),timeword(skirmish),event)
+		}
+		effect: {
+		  type: drawCards
+		  count: {
+			type: Conditional
+			requires: {
+			  type: canSpot
+			  filter: self,inSkirmish
+			}
+			true: 4
+			false: 2
+		  }
+		}
+	  }
+	]
+  }
+  30_47: {
+	title: Sting
+		unique: true
+	culture: shire
+	twilight: 1
+	type: artifact
+	itemclass: hand weapon
+	strength: 2
+	target: name(Bilbo)
+	effects: {
+	  type: trigger
+	  optional: true
+	  trigger: {
+		type: winsSkirmish
+		filter: bearer
+	  }
+	  requires: {
+		type: playedCardThisPhase
+		filter: your,culture(dwarven),event
+	  }
+	  effect: {
+		type: discard
+		select: choose(condition)
+	  }
+	}
+  }
+  30_48: {
+	title: The One Ring
+		unique: true
+	culture: shire
+	twilight: 0
+	type: artifact
+	itemclass: ring
+	vitality: 1
+	resistance: 1
+	target: name(Bilbo)
+	effects: [
+	  {
+		type: modifier
+		modifier: {
+		  type: modifyStrength
+		  requires: [
+			{
+			  type: ringIsOn
+			}
+			{
+			  type: ringIsActive
+			}
+		  ]
+		  filter: bearer
+		  amount: 2
+		}
+	  }
+	  {
+		type: trigger
+		optional: false
+		requires: [
+		  {
+			type: ringIsOn
+		  }
+		  {
+			type: ringIsActive
+		  }
+		  {
+			type: phase
+			phase: skirmish
+		  }
+		]
+		trigger: {
+		  type: aboutToTakeWound
+		  filter: bearer
+		}
+		effect: [
+		  {
+			type: negateWound
+			select: all(bearer)
+		  }
+		  {
+			type: addBurdens
+		  }
+		]
+	  }
+	  {
+		type: activated
+		phase: skirmish
+		requires: {
+		  type: ringIsActive
+		}
+		cost: {
+		  type: addBurdens
+		  amount: 1
+		}
+		effect: {
+		  type: putOnRing
+		}
+	  }
+	]
+  }
+}

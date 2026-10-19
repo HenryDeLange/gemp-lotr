@@ -7,15 +7,14 @@ var GameAnimations = Class.extend({
     cardActivatedDuration:1200,
     decisionDuration:1200,
     removeCardFromPlayDuration:600,
+    flipDuration:80,
 
     init:function (gameUI) {
         this.game = gameUI;
     },
 
     getAnimationLength:function (origValue) {
-        if (this.game.replayMode)
             return origValue * this.replaySpeed;
-        return origValue;
     },
 
     cardActivated:function (element, animate) {
@@ -53,11 +52,16 @@ var GameAnimations = Class.extend({
 
             var participantId = element.getAttribute("participantId");
             var blueprintId = element.getAttribute("blueprintId");
+            var testingText = element.getAttribute("testingText");
+            var backSideTestingText = element.getAttribute("backSideTestingText");
 
             // Play-out game event animation only if it's not the player who initiated it
             if (this.game.spectatorMode || this.game.replayMode || (participantId != this.game.bottomPlayerId)) {
-                var card = new Card(blueprintId, "ANIMATION", "anim", participantId);
-                var cardDiv = createSimpleCardDiv(card.imageUrl);
+                var card = new Card(blueprintId, testingText, backSideTestingText, "ANIMATION", "anim", participantId);
+                var cardDiv = Card.CreateSimpleCardDiv(card.imageUrl, card.testingText, card.foil, card.incomplete, 8);
+                
+                // var display = new CardDisplay(card, $("#main").width() / 2, $("#main").width() / 2)
+                // var cardDiv = display.baseDiv;
 
                 $("#main").queue(
                     function (next) {
@@ -69,6 +73,8 @@ var GameAnimations = Class.extend({
 
                         var cardHeight = (gameHeight / 2);
                         var cardWidth = card.getWidthForHeight(cardHeight);
+                        
+                        that.handleCardAnimatedStart(cardDiv);
 
                         $(cardDiv).css(
                             {
@@ -121,17 +127,22 @@ var GameAnimations = Class.extend({
             var participantId = element.getAttribute("participantId");
             var blueprintId = element.getAttribute("blueprintId");
             var targetCardIds = element.getAttribute("otherCardIds").split(",");
+            var testingText = element.getAttribute("testingText");
+            var backSideTestingText = element.getAttribute("backSideTestingText");
 
             // Play-out card affects card animation only if it's not the player who initiated it
-            if (this.game.spectatorMode || this.game.replayMode || this.game.replayMode || (participantId != this.game.bottomPlayerId)) {
+            if (this.game.spectatorMode || this.game.replayMode || (participantId != this.game.bottomPlayerId)) {
                 $("#main").queue(
                     function (next) {
                         for (var i = 0; i < targetCardIds.length; i++) {
                             var targetCardId = targetCardIds[i];
 
-                            var card = new Card(blueprintId, "ANIMATION", "anim" + i, participantId);
-                            var cardDiv = createSimpleCardDiv(card.imageUrl);
-
+                            var card = new Card(blueprintId, testingText, backSideTestingText, "ANIMATION", "anim" + i, participantId);
+                            var cardDiv = Card.CreateSimpleCardDiv(card.imageUrl, card.testingText, card.foil, card.incomplete, 8);
+                
+                            // var display = new CardDisplay(card, $("#main").width() / 2, $("#main").width() / 2)
+                            // var cardDiv = display.baseDiv;
+                                                        
                             var targetCard = $(".card:cardId(" + targetCardId + ")");
                             if (targetCard.length > 0) {
                                 cardDiv.data("card", card);
@@ -156,6 +167,8 @@ var GameAnimations = Class.extend({
                                     shadowStartPosX = $(targetCard).position().left;
                                     shadowStartPosY = $(targetCard).position().top;
                                 }
+                                
+                                that.handleCardAnimatedStart(cardDiv);
 
                                 $(cardDiv).css(
                                     {
@@ -189,6 +202,8 @@ var GameAnimations = Class.extend({
                                 var cardData = $(this).data("card");
                                 if (cardData.zone == "ANIMATION") {
                                     $(this).remove();
+                                } else {
+                                    that.handleCardAnimatedEnd(this);
                                 }
                             }
                         );
@@ -202,22 +217,31 @@ var GameAnimations = Class.extend({
         var participantId = element.getAttribute("participantId");
         var cardId = element.getAttribute("cardId");
         var zone = element.getAttribute("zone");
+        var hindered = element.getAttribute("hindered") === "true";
 
         var that = this;
         $("#main").queue(
             function (next) {
                 var blueprintId = element.getAttribute("blueprintId");
                 var targetCardId = element.getAttribute("targetCardId");
+                var targetType = element.getAttribute("targetType");
                 var controllerId = element.getAttribute("controllerId");
+                var testingText = element.getAttribute("testingText");
+                var backSideTestingText = element.getAttribute("backSideTestingText");
 
                 if (controllerId != null)
                     participantId = controllerId;
 
                 var card;
                 if (zone == "ADVENTURE_PATH")
-                    card = new Card(blueprintId, zone, cardId, participantId, element.getAttribute("index"));
+                    card = new Card(blueprintId, testingText, backSideTestingText, zone, cardId, participantId, element.getAttribute("index"), hindered);
                 else
-                    card = new Card(blueprintId, zone, cardId, participantId);
+                    card = new Card(blueprintId, testingText, backSideTestingText, zone, cardId, participantId, undefined, hindered);
+
+                // For meta-site modifier cards, swap images so the visual card
+                // is the base and the modifier is the bottom overlay.
+                // This affects both the board rendering and hover/card info.
+                Card.applyMetaSiteOverlay(card);
 
                 var cardDiv = that.game.createCardDiv(card, null, card.isFoil(), card.hasErrata());
                 if (zone == "DISCARD")
@@ -226,12 +250,41 @@ var GameAnimations = Class.extend({
                     that.game.deadPileDialogs[participantId].append(cardDiv);
                 else if (zone == "ADVENTURE_DECK")
                     that.game.adventureDeckDialogs[participantId].append(cardDiv);
+                else if (zone == "REMOVED")
+                    that.game.removedPileDialogs[participantId].append(cardDiv);
+                else if (zone == "DECK") {
+                    that.game.miscPileDialogs[participantId].append(cardDiv);
+                    animate = false;
+                }
+                // A hand card we are sent that is not our own hand is a revealed hand. Spectators have no hand
+                // group at all, so this includes the bottom player's hand when spectating.
+                else if (zone == "HAND" && (that.game.spectatorMode || participantId != that.game.bottomPlayerId)) {
+                    that.game.ensureRevealedHandDialog(participantId);
+                    that.game.revealedHandDialogs[participantId].append(cardDiv);
+                }
                 else
                     $("#main").append(cardDiv);
 
                 if (targetCardId != null) {
                     var targetCardData = $(".card:cardId(" + targetCardId + ")").data("card");
-                    targetCardData.attachedCards.push(cardDiv);
+                    if(targetCardData != null) {
+                        if(targetType == "attached") {
+                            targetCardData.attachedCards.push(cardDiv);
+                        }
+                        else if(targetType == "stacked") {
+                            targetCardData.stackedCards.push(cardDiv);
+                            
+                            var cardDiv = $(".card:cardId(" + cardId + ")")
+                            cardDiv.addClass("stacked");
+                            if(!that.game.useOldStackingVisuals){
+                                cardDiv.addClass("stack-horiz")
+                            }
+                        }
+                        else {
+                            //Have to have this or else old replays break
+                            targetCardData.attachedCards.push(cardDiv);
+                        }
+                    }
                 }
 
                 next();
@@ -246,7 +299,7 @@ var GameAnimations = Class.extend({
         }
 
         if (animate && (this.game.spectatorMode || this.game.replayMode || (participantId != this.game.bottomPlayerId))
-            && zone != "DISCARD" && zone != "DEAD" && zone != "HAND" && zone != "ADVENTURE_DECK") {
+            && zone != "DISCARD" && zone != "DEAD" && zone != "HAND" && zone != "ADVENTURE_DECK" && zone != "DECK") {
             var oldValues = {};
 
             $("#main").queue(
@@ -267,6 +320,8 @@ var GameAnimations = Class.extend({
 
                     var cardHeight = (gameHeight / 2);
                     var cardWidth = card.getWidthForHeight(cardHeight);
+                    
+                    that.handleCardAnimatedStart(cardDiv);
 
                     $(cardDiv).css(
                         {
@@ -280,7 +335,8 @@ var GameAnimations = Class.extend({
 
                     $(cardDiv).animate(
                         {
-                            opacity:1},
+                            opacity:1
+                        },
                         {
                             duration:that.getAnimationLength(that.putCardIntoPlayDuration / 8),
                             easing:"linear",
@@ -291,7 +347,8 @@ var GameAnimations = Class.extend({
                                     cardWidth / 2 + now * (cardWidth / 2),
                                     cardHeight / 2 + now * (cardHeight / 2), 100);
                             },
-                            complete:next});
+                            complete:next
+                        });
                 }).queue(
                 function (next) {
                     setTimeout(next, that.getAnimationLength(that.putCardIntoPlayDuration * (5 / 8)));
@@ -324,6 +381,7 @@ var GameAnimations = Class.extend({
                 function (next) {
                     var cardDiv = $(".card:cardId(" + cardId + ")");
                     $(cardDiv).css({zIndex:oldValues["zIndex"]});
+                    that.handleCardAnimatedEnd(cardDiv);
                     next();
                 });
         }
@@ -336,6 +394,7 @@ var GameAnimations = Class.extend({
                 var cardId = element.getAttribute("cardId");
                 var zone = element.getAttribute("zone");
                 var targetCardId = element.getAttribute("targetCardId");
+                var targetType = element.getAttribute("targetType");
                 var participantId = element.getAttribute("participantId");
                 var controllerId = element.getAttribute("controllerId");
 
@@ -347,13 +406,26 @@ var GameAnimations = Class.extend({
                     function () {
                         var cardData = $(this).data("card");
                         var index = -1;
-                        for (var i = 0; i < cardData.attachedCards.length; i++)
+                        for (var i = 0; i < cardData.attachedCards.length; i++) {
                             if (cardData.attachedCards[i].data("card").cardId == cardId) {
                                 index = i;
                                 break;
                             }
-                        if (index != -1)
+                        }
+                        if (index != -1) {
                             cardData.attachedCards.splice(index, 1);
+                        }
+                        
+                        index = -1;
+                        for (var i = 0; i < cardData.stackedCards.length; i++) {
+                            if (cardData.stackedCards[i].data("card").cardId == cardId) {
+                                index = i;
+                                break;
+                            }
+                        }
+                        if (index != -1) {
+                            cardData.stackedCards.splice(index, 1);
+                        }
                     }
                 );
 
@@ -366,7 +438,20 @@ var GameAnimations = Class.extend({
                 if (targetCardId != null) {
                     // attach to new card if it's attached
                     var targetCardData = $(".card:cardId(" + targetCardId + ")").data("card");
-                    targetCardData.attachedCards.push(card);
+                    if(targetType == "attached") {
+                        targetCardData.attachedCards.push(card);
+                    }
+                    else if(targetType == "stacked") {
+                        targetCardData.stackedCards.push(card);
+                        card.addClass("stacked");
+                        if(!that.game.useOldStackingVisuals){
+                            card.addClass("stack-horiz")
+                        }
+                    }
+                    else {
+                        //Have to have this or else old replays break
+                        targetCardData.attachedCards.push(card);
+                    }
                 }
 
                 next();
@@ -380,6 +465,91 @@ var GameAnimations = Class.extend({
                 });
         }
     },
+    
+    flipCardsInPlay:function (element, animate) {
+        var that = this;
+        var hindered = element.getAttribute("hindered") === "true";
+        var cardFlippedIds = element.getAttribute("otherCardIds").split(",");
+        var oldWidths = {};
+        
+        if(cardFlippedIds == "")
+            return;
+        
+        if (animate) {
+            $("#main").queue(
+                function (next) {
+                    for (var i = 0; i < cardFlippedIds.length; i++) {
+                        var cardId = cardFlippedIds[i];
+                        var cardDiv = $(".card:cardId(" + cardId + ")");
+                        var cardData = cardDiv.data("card");
+                        oldWidths[cardId] = cardDiv.width();
+                        
+                        cardDiv.animate(
+                            {
+                                width: 0
+                            },
+                            {
+                                duration:that.getAnimationLength(that.flipDuration),
+                                easing:"swing",
+                                queue:false
+                            });
+
+                    }
+                    setTimeout(next, that.getAnimationLength(that.flipDuration));
+                });
+        }
+
+        $("#main").queue(
+            function (next) {
+                for (var i = 0; i < cardFlippedIds.length; i++) {
+                    var cardId = cardFlippedIds[i];
+                    var cardDiv = $(".card:cardId(" + cardId + ")");
+                    var cardData = cardDiv.data("card");
+                    cardData.flipOverCard(hindered);
+                    
+                    if(cardData.flipped) {
+                       $(".cardStrength", cardDiv).css({display:"none"});
+                       $(".cardStrengthBg", cardDiv).css({display:"none"});
+                       $(".cardVitality", cardDiv).css({display:"none"});
+                       $(".cardVitalityBg", cardDiv).css({display:"none"});
+                       $(".cardResistance", cardDiv).css({display:"none"});
+                       $(".cardResistanceBg", cardDiv).css({display:"none"});
+                       $(".cardSiteNumber", cardDiv).css({display:"none"});
+                       $(".cardSiteNumberBg", cardDiv).css({display:"none"}); 
+                    }
+                }
+                 next();
+            });
+        
+        if (animate) {
+            $("#main").queue(
+                function (next) {
+                    for (var i = 0; i < cardFlippedIds.length; i++) {
+                        var cardId = cardFlippedIds[i];
+                        var cardDiv = $(".card:cardId(" + cardId + ")");
+                        var cardData = cardDiv.data("card");
+                        
+                        cardDiv.animate(
+                            {
+                                width: oldWidths[cardId]
+                            },
+                            {
+                                duration:that.getAnimationLength(that.flipDuration),
+                                easing:"swing",
+                                queue:false
+                            });
+                    }
+                    
+                    setTimeout(next, that.getAnimationLength(that.flipDuration));
+                });
+        }
+
+        // $("#main").queue(
+        //     function (next) {
+        //         that.game.layoutGroupWithCard(cardId);
+        //         next();
+        //     });
+    },
 
     removeCardFromPlay:function (element, animate) {
         var that = this;
@@ -389,7 +559,9 @@ var GameAnimations = Class.extend({
         if (animate && (this.game.spectatorMode || this.game.replayMode || (participantId != this.game.bottomPlayerId))) {
             $("#main").queue(
                 function (next) {
-                    $(".card:cardId(" + cardRemovedIds + ")")
+                    const cardDiv = $(".card:cardId(" + cardRemovedIds + ")");
+                    that.handleCardAnimatedStart(cardDiv);
+                    cardDiv
                         .animate(
                         {
                             opacity:0},
@@ -408,18 +580,43 @@ var GameAnimations = Class.extend({
 
                     if (card.length > 0) {
                         var cardData = card.data("card");
-                        if (cardData.zone == "ATTACHED" || cardData.zone == "STACKED") {
+                        
+                        if (cardData.zone == "ATTACHED") {
                             $(".card").each(
                                 function () {
                                     var cardData = $(this).data("card");
+                                    if(!cardData || !cardData.attachedCards)
+                                        return;
                                     var index = -1;
-                                    for (var i = 0; i < cardData.attachedCards.length; i++)
+                                    for (var i = 0; i < cardData.attachedCards.length; i++) {
                                         if (cardData.attachedCards[i].data("card").cardId == cardId) {
                                             index = i;
                                             break;
                                         }
-                                    if (index != -1)
+                                    }
+                                    if (index != -1) {
                                         cardData.attachedCards.splice(index, 1);
+                                    }
+                                }
+                            );
+                        }
+                        
+                        if (cardData.zone == "STACKED") {
+                            $(".card").each(
+                                function () {
+                                    var cardData = $(this).data("card");
+                                    if(!cardData || !cardData.stackedCards)
+                                        return;
+                                    var index = -1;
+                                    for (var i = 0; i < cardData.stackedCards.length; i++) {
+                                        if (cardData.stackedCards[i].data("card").cardId == cardId) {
+                                            index = i;
+                                            break;
+                                        }
+                                    }
+                                    if (index != -1) {
+                                        cardData.stackedCards.splice(index, 1);
+                                    }
                                 }
                             );
                         }
@@ -468,6 +665,7 @@ var GameAnimations = Class.extend({
         var that = this;
         $("#main").queue(
             function (next) {
+                var inactiveCardIds = element.getAttribute("otherCardIds");
                 var playerId = element.getAttribute("participantId");
                 var playerIndex = that.game.getPlayerIndex(playerId);
 
@@ -480,6 +678,20 @@ var GameAnimations = Class.extend({
                         $(this).removeClass("current");
                 });
                 that.game.advPathGroup.setCurrentPlayerIndex(playerIndex);
+                
+                if(inactiveCardIds) {
+                    var ids = inactiveCardIds.split(",");
+                    
+                    $(".card").each(function () {
+                        var cardData = $(this).data("card");
+                        if ($.inArray(cardData.cardId, ids) > -1) {
+                            $(this).addClass("inactive");
+                        }
+                        else {
+                            $(this).removeClass("inactive");
+                        }
+                    });
+                }
 
                 next();
             });
@@ -498,12 +710,35 @@ var GameAnimations = Class.extend({
             function (next) {
                 var cardId = element.getAttribute("cardId");
                 var opposingCardIds = element.getAttribute("otherCardIds").split(",");
-
-                for (var i = 0; i < opposingCardIds.length; i++) {
-                    if ($(".card:cardId(" + opposingCardIds[i] + ")").data("card").assign != cardId)
-                        that.game.assignMinion(opposingCardIds[i], cardId);
+                
+                //A negative card id indicates that this is a split-up skirmish where minions are
+                // going to each wait their turn.  To avoid confusion, they will be off to the side
+                // but "assigned" to a see-through version of our character
+                if(Number(cardId) < 0) {
+                    var existingFakeDiv = $(".card:cardId(extra" + cardId + ")");
+                    if(existingFakeDiv == null || existingFakeDiv.length == 0) {
+                        var realCard = $(".card:cardId(" + (Number(cardId) * -1) + ")").data("card");
+                        var newId = that.game.createVirtualCard(cardId, "" + realCard.blueprintId);
+                        existingFakeDiv = $(".card:cardId(" + newId + ")");
+                    }
+                    
+                    if (opposingCardIds != null && opposingCardIds != "") {
+                        for (var i = 0; i < opposingCardIds.length; i++) {
+                            if (existingFakeDiv.data("card").assign != cardId) {
+                                that.game.assignMinion(opposingCardIds[i], cardId);
+                            }
+                        }
+                    }
                 }
-
+                else {
+                    if (opposingCardIds != null && opposingCardIds != "") {
+                        for (var i = 0; i < opposingCardIds.length; i++) {
+                            if ($(".card:cardId(" + opposingCardIds[i] + ")").data("card").assign != cardId) {
+                                that.game.assignMinion(opposingCardIds[i], cardId);
+                            }
+                        }
+                    }
+                }
                 next();
             });
         if (animate) {
@@ -520,12 +755,25 @@ var GameAnimations = Class.extend({
         $("#main").queue(
             function (next) {
                 var cardId = element.getAttribute("cardId");
-
-                $(".card").each(function () {
-                    var cardData = $(this).data("card");
-                    if (cardData.assign == cardId)
-                        that.game.unassignMinion(cardData.cardId);
-                });
+                
+                //This represents a skirmish that has been separated into
+                // multiple pending individual skirmishes
+                if(Number(cardId) < 0) {
+                    var opposingCardIds = element.getAttribute("otherCardIds").split(",");
+                    
+                    for (var i = 0; i < opposingCardIds.length; i++) {
+                        if ($(".card:cardId(" + opposingCardIds[i] + ")").data("card").assign == cardId)
+                            that.game.unassignMinion(opposingCardIds[i]);
+                    }
+                }
+                else {
+                    $(".card").each(function () {
+                        var cardData = $(this).data("card");
+                        if (cardData.assign == cardId) {
+                            that.game.unassignMinion(cardData.cardId);
+                        }
+                    });
+                }
 
                 next();
             });
@@ -633,7 +881,7 @@ var GameAnimations = Class.extend({
 
                 $(".card").each(function () {
                     var cardData = $(this).data("card");
-                    if (cardData.skirmish == true) {
+                    if (cardData && cardData.skirmish == true) {
                         delete cardData.skirmish;
                     }
                 });
@@ -728,6 +976,8 @@ var GameAnimations = Class.extend({
                 });
         }
     },
+    
+    
 
     gameStats:function (element, animate) {
         var that = this;
@@ -739,10 +989,26 @@ var GameAnimations = Class.extend({
                     for (var i = 0; i < charStatsArr.length; i++) {
                         var cardStats = charStatsArr[i].split("=");
                         var cardDiv = $(".card:cardId(" + cardStats[0] + ")");
+                        
                         that.game.ensureCardHasBoxes(cardDiv);
                         var cardStatArr = cardStats[1].split("|");
                         $(".cardStrength", cardDiv).html(cardStatArr[0]);
                         $(".cardVitality", cardDiv).html(cardStatArr[1]);
+                        
+                        //First we enable all icons, in case this card was recently hindered
+                        //(and thus needs to have its icons replaced)
+                        var cardData = cardDiv.data("card");
+                        if(cardData != null && !cardData.flipped) {
+                            $(".cardStrength", cardDiv).css({display:""});
+                            $(".cardStrengthBg", cardDiv).css({display:""});
+                            $(".cardVitality", cardDiv).css({display:""});
+                            $(".cardVitalityBg", cardDiv).css({display:""});
+                            $(".cardResistance", cardDiv).css({display:""});
+                            $(".cardResistanceBg", cardDiv).css({display:"none"});
+                            $(".cardSiteNumber", cardDiv).css({display:""});
+                            $(".cardSiteNumberBg", cardDiv).css({display:"none"});
+                        }
+                            
                         if (cardStatArr.length > 2) {
                             if (cardStatArr[2].indexOf("R") == 0) {
                                 var resistanceDiv = $(".cardResistance", cardDiv);
@@ -768,6 +1034,17 @@ var GameAnimations = Class.extend({
                                 $(".cardSiteNumberBg", cardDiv).css({display:""});
                             }
                         }
+                        //If the card is hindered, now we disable all icon display
+                        if(cardData != null && cardData.flipped) {
+                            $(".cardStrength", cardDiv).css({display:"none"});
+                            $(".cardStrengthBg", cardDiv).css({display:"none"});
+                            $(".cardVitality", cardDiv).css({display:"none"});
+                            $(".cardVitalityBg", cardDiv).css({display:"none"});
+                            $(".cardResistance", cardDiv).css({display:"none"});
+                            $(".cardResistanceBg", cardDiv).css({display:"none"});
+                            $(".cardSiteNumber", cardDiv).css({display:"none"});
+                            $(".cardSiteNumberBg", cardDiv).css({display:"none"});
+                        }
                     }
                 }
 
@@ -786,32 +1063,81 @@ var GameAnimations = Class.extend({
                     $(".shadowArchery").html(shadowArchery);
 
                 $(".move").html(moveCount + "/" + moveLimit);
+                
+                var initiative = element.getAttribute("initiative");
+                var ruleof4 = element.getAttribute("ruleof4");
+                
+                if(initiative == "FREE_PEOPLE") {
+                    $("#initiative-player").html("Free Peoples");
+                }
+                else {
+                    $("#initiative-player").html("<b>Shadow</b>");
+                }
+                
+                if(ruleof4 == null || ruleof4 == "-1") {
+                    $("#ruleof4").hide();
+                }
+                else {
+                    $("#ruleof4").show();
+                    $("#ruleof4-count").html(ruleof4);
+                    if(ruleof4 >= "4") {
+                        $("#ruleof4-status").html(" cards.<br/><b>(Rule of 4 limit reached!)</b>");
+                    }
+                    else if(ruleof4 == "1"){
+                        $("#ruleof4-status").html(" card");
+                    }
+                    else {
+                        $("#ruleof4-status").html(" card");
+                    }
+                }
+                
 
                 var playerZones = element.getElementsByTagName("playerZones");
+                var revealedHands = [];
                 for (var i = 0; i < playerZones.length; i++) {
                     var playerZone = playerZones[i];
 
                     var playerId = playerZone.getAttribute("name");
+                    if (playerZone.getAttribute("handRevealed") === "true")
+                        revealedHands.push(playerId);
                     var hand = playerZone.getAttribute("HAND");
                     var discard = playerZone.getAttribute("DISCARD");
                     var adventureDeck = playerZone.getAttribute("ADVENTURE_DECK");
                     var dead = playerZone.getAttribute("DEAD");
                     var deck = playerZone.getAttribute("DECK");
+                    var removed = playerZone.getAttribute("REMOVED");
 
                     $("#deck" + that.game.getPlayerIndex(playerId)).text(deck);
                     $("#hand" + that.game.getPlayerIndex(playerId)).text(hand);
                     $("#discard" + that.game.getPlayerIndex(playerId)).text(discard);
                     $("#deadPile" + that.game.getPlayerIndex(playerId)).text(dead);
                     $("#adventureDeck" + that.game.getPlayerIndex(playerId)).text(adventureDeck);
+                    $("#removedPile" + that.game.getPlayerIndex(playerId)).text(removed);
                 }
+                // Replays recorded before the server sent this flag have no playerZones flag at all; the opponent's
+                // link then still appears when their first revealed card arrives (ensureRevealedHandDialog).
+                if (playerZones.length > 0)
+                    that.game.setRevealedHands(revealedHands);
 
-                var playerThreats = element.getElementsByTagName("threats")
+                var playerThreats = element.getElementsByTagName("threats");
+                var playerThreatTotals = element.getElementsByTagName("threatTotals");
                 for (var i = 0; i < playerThreats.length; i++) {
                     var playerThreat = playerThreats[i];
+                    var playerTotal = playerThreatTotals[i];
 
                     var playerId = playerThreat.getAttribute("name");
                     var value = playerThreat.getAttribute("value");
-                    $("#threats" + that.game.getPlayerIndex(playerId)).text(value);
+                    var total = "-1";
+                    if(playerThreatTotals != null && playerTotal != null) {
+                        total = playerTotal.getAttribute("value");   
+                    }
+                    
+                    if(total == "-1") {
+                        $("#threats" + that.game.getPlayerIndex(playerId)).text(value);
+                    }
+                    else {
+                        $("#threats" + that.game.getPlayerIndex(playerId)).text("" + value + "/" + total);
+                    }
                 }
 
                 if (that.game.fpStrengthDiv != null) {
@@ -879,6 +1205,10 @@ var GameAnimations = Class.extend({
         var that = this;
         $("#main").queue(
             function (next) {
+                if(!that.game.replayMode) {
+                    that.game.startTimerTick();
+                }
+                
                 var decisionType = decision.getAttribute("decisionType");
                 if (decisionType == "INTEGER") {
                     that.game.integerDecision(decision);
@@ -895,7 +1225,7 @@ var GameAnimations = Class.extend({
                 } else if (decisionType == "ASSIGN_MINIONS") {
                     that.game.assignMinionsDecision(decision);
                 }
-
+                
                 if (!animate)
                     that.game.layoutUI(false);
 
@@ -932,5 +1262,13 @@ var GameAnimations = Class.extend({
                 that.game.layoutUI(true);
                 next();
             });
+    },
+
+    handleCardAnimatedStart: function (cardDiv) {
+        cardDiv && cardDiv[0] && $(cardDiv[0]).addClass('card-animating');
+    },
+
+    handleCardAnimatedEnd: function (cardDiv) {
+        cardDiv && cardDiv[0] && $(cardDiv[0]).removeClass('card-animating');
     }
 });

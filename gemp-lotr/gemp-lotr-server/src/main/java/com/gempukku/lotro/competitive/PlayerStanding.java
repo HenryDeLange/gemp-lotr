@@ -1,61 +1,57 @@
 package com.gempukku.lotro.competitive;
 
+import com.gempukku.lotro.common.DBDefs;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
 public class PlayerStanding {
-    private String _playerName;
-    private int _points;
-    private int _gamesPlayed;
-    private int _playerWins;
-    private int _playerLosses;
-    private int _playerByes;
-    private float _opponentWin;
-    private int _standing;
+    public String playerName;
+    public int points;
+    public int gamesPlayed;
+    public int playerWins;
+    public int playerLosses;
+    public int byeRound;
+    public int medianScore;
+    public int cumulativeScore;
+    public float opponentWinRate;
+    public int standing;
 
-    public PlayerStanding(String playerName, int points, int gamesPlayed, int playerWins, int playerLosses, int playerByes) {
-        _playerName = playerName;
-        _points = points;
-        _gamesPlayed = gamesPlayed;
-        _playerWins = playerWins;
-        _playerLosses = playerLosses;
-        _playerByes = playerByes;
+    public PlayerStanding(String playerName, int points, int gamesPlayed, int playerWins, int playerLosses,
+            int byeRound) {
+        this(playerName, points, gamesPlayed, playerWins, playerLosses,
+        byeRound, 0, 0, 0, 0);
     }
 
-    public int getGamesPlayed() {
-        return _gamesPlayed;
+    public PlayerStanding(String playerName, int points, int gamesPlayed, int playerWins, int playerLosses,
+            int byeRound, float opponentWinRate, int standing) {
+        this(playerName, points, gamesPlayed, playerWins, playerLosses,
+                byeRound, 0, 0, opponentWinRate, standing);
     }
 
-    public float getOpponentWin() {
-        return _opponentWin;
+    public PlayerStanding(String playerName, int points, int gamesPlayed, int playerWins, int playerLosses,
+            int byeRound, int medianScore, int cumulativeScore, float opponentWinRate, int standing) {
+        this.playerName = playerName;
+        this.points = points;
+        this.gamesPlayed = gamesPlayed;
+        this.playerWins = playerWins;
+        this.playerLosses = playerLosses;
+        this.byeRound = byeRound;
+        this.medianScore = medianScore;
+        this.cumulativeScore = cumulativeScore;
+        this.opponentWinRate = opponentWinRate;
+        this.standing = standing;
     }
 
-    public String getPlayerName() {
-        return _playerName;
-    }
+    public static PlayerStanding CopyStanding(PlayerStanding original) {
+        var copy = new PlayerStanding(original.playerName, original.points, original.gamesPlayed, original.playerWins,
+                original.playerLosses, original.byeRound);
+        copy.medianScore = original.medianScore;
+        copy.cumulativeScore = original.cumulativeScore;
+        copy.opponentWinRate = original.opponentWinRate;
+        copy.standing = original.standing;
 
-    public int getPoints() {
-        return _points;
-    }
-
-    public int getStanding() {
-        return _standing;
-    }
-
-    public int getPlayerWins() {
-        return _playerWins;
-    }
-
-    public int getPlayerLosses() {
-        return _playerLosses;
-    }
-
-    public int getPlayerByes() {
-        return _playerByes;
-    }
-
-    public void setOpponentWin(float opponentWin) {
-        _opponentWin = opponentWin;
-    }
-
-    public void setStanding(int standing) {
-        _standing = standing;
+        return copy;
     }
 }

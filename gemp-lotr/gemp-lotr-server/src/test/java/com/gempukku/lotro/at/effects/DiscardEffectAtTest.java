@@ -30,13 +30,13 @@ public class DiscardEffectAtTest extends AbstractAtTest {
 
         skipMulligans();
 
-        final PhysicalCardImpl merry = new PhysicalCardImpl(101, "1_303", P1, _library.getLotroCardBlueprint("1_303"));
-        final PhysicalCardImpl hobbitSword = new PhysicalCardImpl(101, "1_299", P1, _library.getLotroCardBlueprint("1_299"));
+        final PhysicalCardImpl merry = new PhysicalCardImpl(101, "1_303", P1, _cardLibrary.getLotroCardBlueprint("1_303"));
+        final PhysicalCardImpl hobbitSword = new PhysicalCardImpl(101, "1_299", P1, _cardLibrary.getLotroCardBlueprint("1_299"));
 
         _game.getGameState().addCardToZone(_game, merry, Zone.FREE_CHARACTERS);
         _game.getGameState().attachCard(_game, hobbitSword, merry);
 
-        final Set<PhysicalCard> discardedFromPlay = new HashSet<PhysicalCard>();
+        final Set<PhysicalCard> discardedFromPlay = new HashSet<>();
 
         _game.getActionsEnvironment().addUntilEndOfTurnActionProxy(
                 new AbstractActionProxy() {
@@ -71,15 +71,15 @@ public class DiscardEffectAtTest extends AbstractAtTest {
 
         skipMulligans();
 
-        final PhysicalCardImpl merry = new PhysicalCardImpl(101, "1_303", P1, _library.getLotroCardBlueprint("1_303"));
-        final PhysicalCardImpl alatar = new PhysicalCardImpl(101, "13_28", P1, _library.getLotroCardBlueprint("13_28"));
-        final PhysicalCardImpl whisperInTheDark = new PhysicalCardImpl(101, "18_77", P1, _library.getLotroCardBlueprint("18_77"));
+        final PhysicalCardImpl merry = new PhysicalCardImpl(101, "1_303", P1, _cardLibrary.getLotroCardBlueprint("1_303"));
+        final PhysicalCardImpl alatar = new PhysicalCardImpl(101, "13_28", P1, _cardLibrary.getLotroCardBlueprint("13_28"));
+        final PhysicalCardImpl whisperInTheDark = new PhysicalCardImpl(101, "18_77", P1, _cardLibrary.getLotroCardBlueprint("18_77"));
 
         _game.getGameState().addCardToZone(_game, merry, Zone.FREE_CHARACTERS);
         _game.getGameState().attachCard(_game, alatar, merry);
         _game.getGameState().attachCard(_game, whisperInTheDark, alatar);
 
-        final Set<PhysicalCard> discardedFromPlay = new HashSet<PhysicalCard>();
+        final Set<PhysicalCard> discardedFromPlay = new HashSet<>();
 
         _game.getActionsEnvironment().addUntilEndOfTurnActionProxy(
                 new AbstractActionProxy() {
@@ -116,13 +116,13 @@ public class DiscardEffectAtTest extends AbstractAtTest {
 
         skipMulligans();
 
-        final PhysicalCardImpl merry = new PhysicalCardImpl(101, "1_303", P1, _library.getLotroCardBlueprint("1_303"));
-        final PhysicalCardImpl hobbitSword = new PhysicalCardImpl(101, "1_299", P1, _library.getLotroCardBlueprint("1_299"));
+        final PhysicalCardImpl merry = new PhysicalCardImpl(101, "1_303", P1, _cardLibrary.getLotroCardBlueprint("1_303"));
+        final PhysicalCardImpl hobbitSword = new PhysicalCardImpl(101, "1_299", P1, _cardLibrary.getLotroCardBlueprint("1_299"));
 
         _game.getGameState().addCardToZone(_game, merry, Zone.FREE_CHARACTERS);
         _game.getGameState().stackCard(_game, hobbitSword, merry);
 
-        final Set<PhysicalCard> discardedFromPlay = new HashSet<PhysicalCard>();
+        final Set<PhysicalCard> discardedFromPlay = new HashSet<>();
 
         _game.getActionsEnvironment().addUntilEndOfTurnActionProxy(
                 new AbstractActionProxy() {

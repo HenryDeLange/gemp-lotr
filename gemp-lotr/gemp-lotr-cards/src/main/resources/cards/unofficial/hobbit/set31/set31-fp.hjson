@@ -1,0 +1,999 @@
+{
+	31_1: {
+		cardInfo: {
+			image: hobbit/HDG311.jpg
+			collInfo: 31_1
+			rarity: _
+		}
+		title: Dwarven Axe
+		culture: dwarven
+		twilight: 1
+		type: possession
+		itemclass: hand weapon
+		strength: 2
+		target: culture(dwarven),character
+		effects: {
+			type: modifier
+			modifier: {
+				type: addKeyword
+				filter: bearer
+				requires: {
+					type: location
+					filter: mountain
+				}
+				keyword: damage+1
+			}
+		}
+	}
+	31_2: {
+		cardInfo: {
+			image: hobbit/HDG312.jpg
+			collInfo: 31_2
+			rarity: _
+		}
+		title: Dwarven Song
+		culture: dwarven
+		twilight: 3
+		type: event
+		timeword: fellowship
+		effects: {
+			type: event
+			cost: {
+				type: choice
+				texts: [
+					Sites 1-5
+					Sites 6-9
+				]
+				effects: [
+					{
+						type: If
+						check: {
+							type: location
+							filter: siteNumber(1-5),siteBlock(hobbit)
+						}
+						true: {
+							type: discard
+							select: choose(culture(dwarven),follower)
+							memorize: discardedFollower
+						}
+					}
+					{
+						type: If
+						check: {
+							type: location
+							filter: not(siteNumber(1-5),siteBlock(hobbit))
+						}
+					}
+				]
+			}
+			effect: [
+				{
+					type: If
+					check: {
+						type: location
+						filter: siteNumber(1-5),siteBlock(hobbit)
+					}
+					true: {
+						type: repeat
+						times: {
+							type: twilightCostInMemory
+							memory: discardedFollower
+						}
+						effect: {
+							type: playCardFromDrawDeck
+							select: choose(culture(dwarven),not(event))
+							showAll: true
+							shuffle: true
+						}
+					}
+				}
+				{
+					type: If
+					check: {
+						type: location
+						filter: not(siteNumber(1-5),siteBlock(hobbit))
+					}
+					true: {
+						type: heal
+						select: choose(name(Thorin))
+						times: 2
+					}
+				}
+			]
+		}
+	}
+	31_3: {
+		cardInfo: {
+			image: hobbit/HDG313.jpg
+			collInfo: 31_3
+			rarity: _
+		}
+		title: Emeralds of Girion
+		unique: true
+		culture: dwarven
+		twilight: 2
+		type: artifact
+		keyword: support area
+		effects: [
+			{
+				type: activated
+				phase: fellowship
+				cost: {
+					type: addTwilight
+					amount: 1
+				}
+				effect: {
+					type: putStackedCardsIntoHand
+					select: choose(any)
+					on: self
+				}
+			}
+			{
+				type: activated
+				phase: regroup
+				cost: {
+					type: exert
+					select: choose(culture(elven),ally)
+				}
+				effect: {
+					type: stackCardsFromDiscard
+					select: choose(or(and(culture(elven),event),name(Lore of Imladris)))
+					where: self
+				}
+			}
+		]
+	}
+	31_4: {
+		cardInfo: {
+			image: hobbit/HDG314.jpg
+			collInfo: 31_4
+			rarity: _
+		}
+		title: Great Barricade
+		unique: true
+		culture: dwarven
+		twilight: 2
+		type: possession
+		keyword: [
+			support area
+			fortification
+		]
+		effects: [
+			{
+				type: extraCost
+				cost: {
+					type: exert
+					select: choose(culture(dwarven),companion)
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: moves
+				}
+				requires: {
+					type: phase
+					phase: regroup
+				}
+				effect: {
+					type: discard
+					select: self
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: modifyStrength
+					filter: minion,inSkirmishAgainst(culture(dwarven),companion)
+					requires: {
+						type: location
+						filter: siteNumber(7-8)
+					}
+					amount: -3
+				}
+			}
+		]
+	}
+	31_5: {
+		cardInfo: {
+			image: hobbit/HDG315.jpg
+			collInfo: 31_5
+			rarity: _
+		}
+		title: Mithril-coat
+		unique: true
+		culture: dwarven
+		twilight: 2
+		type: artifact
+		vitality: 1
+		target: name(Bilbo)
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: modifyArcheryTotal
+					side: shadow
+					amount: -1
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: modifyCost
+					requires: {
+						type: canSpot
+						filter: bearer,inSkirmish
+					}
+					filter: side(shadow),event
+					amount: 2
+				}
+			}
+		]
+	}
+	31_6: {
+		cardInfo: {
+			image: hobbit/HDG316.jpg
+			collInfo: 31_6
+			rarity: _
+		}
+		title: Oakenshield
+		unique: true
+		culture: dwarven
+		twilight: 1
+		type: possession
+		itemclass: shield
+		strength: 1
+		target: name(Thorin)
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: modifyCost
+					filter: culture(dwarven),event
+					amount: -1
+				}
+			}
+			{
+				type: Response
+				trigger: {
+					type: aboutToTakeWound
+					filter: bearer
+				}
+				cost: [
+					{
+						type: memorize
+						filter: bearer
+						memory: oldBearer
+					}
+					{
+						type: discard
+						select: self
+					}
+				]
+				effect: {
+					type: preventWound
+					select: choose(memory(oldBearer))
+				}
+			}
+		]
+	}
+	31_7: {
+		cardInfo: {
+			image: hobbit/HDG317.jpg
+			collInfo: 31_7
+			rarity: _
+		}
+		title: The Arkenstone
+		unique: true
+		culture: dwarven
+		twilight: 2
+		type: artifact
+		keyword: support area
+		effects: [
+			{
+				type: activated
+				phase: fellowship
+				cost: {
+					type: addTwilight
+				}
+				effect: {
+					type: putStackedCardsIntoHand
+					select: choose(any)
+					on: self
+				}
+			}
+			{
+				type: activated
+				phase: regroup
+				cost: {
+					type: exert
+					select: choose(culture(dwarven),companion)
+				}
+				effect: {
+					type: If
+					check: {
+						type: perPhaseLimit
+						limit: 1
+					}
+					true: [
+						{
+							type: incrementPerPhaseLimit
+							limit: 1
+						}
+						{
+							type: stackCardsFromDeck
+							select: choose(culture(dwarven),event)
+							where: self
+							shuffle: true
+							showAll: true
+						}
+					]
+				}
+			}
+		]
+	}
+	31_8: {
+		cardInfo: {
+			image: hobbit/HDG318.jpg
+			collInfo: 31_8
+			rarity: _
+		}
+		title: Elf Army
+		unique: true
+		culture: elven
+		twilight: 3
+		type: ally
+		allyHome: 5H
+		race: elf
+		strength: 7
+		vitality: 4
+		keyword: archer
+		effects: {
+			type: activated
+			phase: maneuver
+			requires: {
+				type: isGreaterThan
+				firstNumber: {
+					type: forEachYouCanSpot
+					filter: minion
+				}
+				secondNumber: {
+					type: forEachYouCanSpot
+					filter: companion
+				}
+			}
+			cost: {
+				type: exert
+				select: self
+			}
+			effect: {
+				type: EnableParticipationInArcheryFireAndSkirmishes
+				select: self
+				until: start(regroup)
+			}
+		}
+	}
+	31_9: {
+		cardInfo: {
+			image: hobbit/HDG319.jpg
+			collInfo: 31_9
+			rarity: _
+		}
+		title: Legolas
+		subtitle: Prince of Mirkwood
+		unique: true
+		culture: elven
+		twilight: 2
+		type: ally
+		allyHome: 5H
+		race: elf
+		strength: 6
+		vitality: 3
+		keyword: archer
+		effects: {
+			type: activated
+			phase: archery
+			requires: {
+				type: canSpot
+				filter: orc
+			}
+			cost: {
+				type: exert
+				select: self
+			}
+			effect: {
+				type: modifyArcheryTotal
+				side: free people
+				amount: {
+					type: Conditional
+					requires: {
+						type: location
+						filter: or(river,forest)
+					}
+					true: 2
+					false: 1
+				}
+			}
+		}
+	}
+	31_10: {
+		cardInfo: {
+			image: hobbit/HDG3110.jpg
+			collInfo: 31_10
+			rarity: _
+		}
+		title: Tauriel
+		subtitle: Staunch Defender
+		unique: true
+		culture: elven
+		twilight: 2
+		type: ally
+		allyHome: 5H
+		race: elf
+		strength: 6
+		vitality: 3
+		keyword: archer
+		effects: {
+			type: activated
+			phase: maneuver
+			cost: {
+				type: exert
+				select: self
+			}
+			effect: {
+				type: returnToHand
+				select: choose(orc,MaxStrength(7))
+			}
+		}
+	}
+	31_11: {
+		cardInfo: {
+			image: hobbit/HDG3111.jpg
+			collInfo: 31_11
+			rarity: _
+		}
+		title: The Evil Becomes Stronger
+		culture: elven
+		twilight: 2
+		type: event
+		timeword: archery
+		effects: {
+			type: event
+			cost: {
+				type: spot
+				select: choose(culture(elven),archer,ally)
+				memorize: chosenAlly
+			}
+			effect: [
+				{
+					type: exert
+					select: choose(minion)
+				}
+				{
+					type: modifyStrength
+					select: memory(chosenAlly)
+					amount: 2
+					until: start(regroup)
+				}
+				{
+					type: EnableParticipationInArcheryFireAndSkirmishes
+					select: memory(chosenAlly)
+					until: start(regroup)
+				}
+			]
+		}
+	}
+	31_12: {
+		cardInfo: {
+			image: hobbit/HDG3112.jpg
+			collInfo: 31_12
+			rarity: _
+		}
+		title: Thranduil
+		subtitle: Elven King
+		unique: true
+		culture: elven
+		twilight: 4
+		type: ally
+		allyHome: 5H
+		race: elf
+		strength: 9
+		vitality: 4
+		effects: {
+			type: activated
+			phase: maneuver
+			cost: {
+				type: choice
+				texts: [
+					Exert Thorin twice
+					Discard a DWARVEN artifact
+				]
+				effects: [
+					{
+						type: exert
+						select: choose(name(Thorin))
+						times: 2
+					}
+					{
+						type: discard
+						select: choose(culture(dwarven),artifact)
+					}
+				]
+			}
+			effect: {
+				type: EnableParticipationInArcheryFireAndSkirmishes
+				select: self
+				until: start(regroup)
+			}
+		}
+	}
+	31_13: {
+		cardInfo: {
+			image: hobbit/HDG3113.jpg
+			collInfo: 31_13
+			rarity: _
+		}
+		title: Beorn
+		subtitle: Skin-Changer
+		unique: true
+		culture: gandalf
+		twilight: 3
+		type: follower
+		race: man
+		strength: 2
+		vitality: 1
+		effects: [
+			{
+				type: aidCost
+				cost: {
+					type: exert
+					select: choose(name(Gandalf))
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: cantBeDiscarded
+					filter: self
+					by: side(shadow)
+					requires: {
+						type: canSpot
+						filter: self,attachedTo(any)
+					}
+				}
+			}
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: winsSkirmish
+					filter: bearer
+				}
+				effect: {
+					type: putCardsFromDiscardIntoHand
+					select: choose(culture(gandalf))
+				}
+			}
+		]
+	}
+	31_14: {
+		cardInfo: {
+			image: hobbit/HDG3114.jpg
+			collInfo: 31_14
+			rarity: _
+		}
+		title: The Eagles Are Coming
+		culture: gandalf
+		twilight: 3
+		type: event
+		timeword: skirmish
+		keyword: [
+			spell
+		]
+		effects: {
+			type: event
+			cost: {
+				type: exert
+				select: choose(name(Gandalf))
+			}
+			effect: [
+				{
+					type: choice
+					texts: [
+						Play GANDALF follower from your draw deck
+						Play GANDALF follower from your discard pile
+					]
+					effects: [
+						{
+							type: playCardFromDrawDeck
+							select: choose(culture(gandalf),follower)
+							showAll: true
+							shuffle: true
+						}
+						{
+							type: playCardFromDiscard
+							select: choose(culture(gandalf),follower)
+						}
+					]
+				}
+				{
+					type: optional
+					text: Would you like to attach a GANDALF follower from your support area to a companion?
+					effect: {
+						type: transfer
+						select: choose(culture(gandalf),follower,zone(support))
+						where: choose(companion)
+					}
+				}
+			]
+		}
+	}
+	31_15: {
+		cardInfo: {
+			image: hobbit/HDG3115.jpg
+			collInfo: 31_15
+			rarity: _
+		}
+		title: Gwaihir
+		subtitle: Lord of the Eagles
+		unique: true
+		culture: gandalf
+		twilight: 1
+		type: follower
+		race: eagle
+		strength: 1
+		effects: [
+			{
+				type: aidCost
+				cost: {
+					type: discardFromHand
+					forced: false
+					select: choose(culture(gandalf))
+				}
+			}
+			{
+				type: activated
+				phase: skirmish
+				requires: {
+					type: canSpot
+					filter: self,attachedTo(any)
+				}
+				cost: [
+					{
+						type: memorize
+						filter: bearer
+						memory: oldBearer
+					}
+					{
+						type: transferToSupport
+						select: self
+					}
+				]
+				effect: {
+					type: If
+					check: {
+						type: canSpot
+						filter: inSkirmish,mounted,orc
+					}
+					true: {
+						type: cancelSkirmish
+						filter: memory(oldBearer)
+					}
+				}
+			}
+		]
+	}
+	31_16: {
+		cardInfo: {
+			image: hobbit/HDG3116.jpg
+			collInfo: 31_16
+			rarity: _
+		}
+		title: His Wrath Was Redoubled
+		culture: gandalf
+		twilight: 3
+		type: event
+		timeword: assignment
+		keyword: [
+			spell
+		]
+		effects: {
+			type: event
+			effect: [
+				{
+					type: modifyStrength
+					select: all(culture(dwarven),companion,hasAttached(follower))
+					amount: 2
+					until: start(regroup)
+				}
+				{
+					type: addKeyword
+					select: all(culture(dwarven),companion,hasAttached(and(follower,culture(gandalf))))
+					keyword: defender+1
+					until: start(regroup)
+				}
+			]
+		}
+	}
+	31_17: {
+		cardInfo: {
+			image: hobbit/HDG3117.jpg
+			collInfo: 31_17
+			rarity: _
+		}
+		title: Radagast
+		subtitle: The Brown
+		unique: true
+		culture: gandalf
+		type: ally
+		allyHome: 5H
+		race: wizard
+		twilight: 4
+		strength: 8
+		vitality: 4
+		keyword: wise
+		effects: {
+			type: activated
+			phase: fellowship
+			cost: {
+				type: playCardFromDiscard
+				select: choose(name(gandalf))
+			}
+			effect: [
+				{
+					type: addModifier
+					modifier: {
+						type: modifyMoveLimit
+						amount: 1
+					}
+					until: endOfTurn
+				}
+				{
+					type: optional
+					player: shadowPlayer
+					text: Would you like to draw 2 cards?
+					effect: {
+						type: drawCards
+						count: 2
+					}
+				}
+			]
+		}
+	}
+	31_18: {
+		cardInfo: {
+			image: hobbit/HDG3118.jpg
+			collInfo: 31_18
+			rarity: _
+		}
+		title: Wizard Staff
+		unique: true
+		culture: gandalf
+		twilight: 2
+		type: artifact
+		itemclass: staff
+		vitality: 1
+		target: wizard
+		effects: {
+			type: Trigger
+			optional: true
+			trigger: {
+				type: startOfTurn
+			}
+			cost: {
+				type: exert
+				select: bearer
+			}
+			effect: {
+				type: putCardsFromDeckIntoHand
+				select: choose(culture(gandalf),spell)
+				reveal: true
+				shuffle: true
+				showAll: true
+			}
+		}
+	}
+	31_38: {
+		cardInfo: {
+			image: hobbit/HDG3138.jpg
+			collInfo: 31_38
+			rarity: _
+		}
+		title: An Acorn from Beorn's House
+		culture: shire
+		twilight: 1
+		type: possession
+		target: name(Bilbo)
+		effects: {
+			type: activated
+			phase: regroup
+			cost: {
+				type: discard
+				select: self
+			}
+			effect: [
+				{
+					type: removeBurdens
+					amount: 1
+				}
+				{
+					type: discard
+					select: choose(side(shadow),condition)
+			  }
+	  ]
+	}
+  }
+  31_39: {
+	title: An Invisible Ring
+	culture: shire
+	type: event
+	timeword: skirmish
+	twilight: 1
+	effects: {
+	  type: event
+	  requires: {
+		type: ringIsOn
+	  }
+	  effect: [
+		{
+		  type: wound
+		  select: all(minion,inSkirmishAgainst(ring bearer))
+		}
+		{
+		  type: removefromthegame
+		  select: self
+		}
+	  ]
+	}
+  }
+  31_40: {
+	title: Barrels
+	culture: shire
+	type: event
+	timeword: regroup
+	twilight: 1
+	effects: {
+	  type: event
+	  cost: {
+		type: exert
+		count: 2
+		select: choose(culture(dwarven),companion)
+	  }
+	  effect: [
+		{
+		  type: discard
+		  count: 0-2
+		  select: choose(minion,not(name(Smaug)))
+		}
+		{
+		  type: drawCards
+		  count: 3
+		}
+		{
+		  type: If
+		  check: {
+			type: location
+			filter: river
+		  }
+		  true: {
+			type: addModifier
+			modifier: {
+			  type: modifyMoveLimit
+			  amount: 1
+			}
+			until: endOfTurn
+		  }
+		}
+	  ]
+	}
+  }
+  31_41: {
+	title: Burglar's Contract
+		unique: true
+	culture: shire
+	type: possession
+	twilight: 1
+	resistance: 1
+	target: name(Bilbo)
+	effects: {
+	  type: activated
+	  phase: skirmish
+	  cost: [
+		{
+		  type: addBurdens
+		  amount: 1
+		}
+		{
+		  type: exert
+		  select: bearer
+		}
+	  ]
+	  effect: {
+		type: modifyStrength
+		select: choose(not(bearer),companion)
+		amount: {
+		  type: cardAffectedLimitPerPhase
+		  limit: 4
+		  source: 2
+		}
+	  }
+	}
+  }
+  31_42: {
+	title: Old Thrush
+		unique: true
+	culture: shire
+	type: follower
+	race: bird
+	twilight: 1
+	strength: 1
+	effects: [
+	  {
+		type: aidCost
+		cost: {
+		  type: exert
+		  select: choose(name(Bilbo))
+		}
+	  }
+	  {
+		type: activated
+		phase: maneuver
+		requires: {
+		  type: canSpot
+		  filter: self,attachedTo(any)
+		}
+		cost: {
+		  type: discard
+		  select: self
+		}
+		effect: {
+		  type: choice
+		  texts: [
+			Take a card from your draw deck into hand
+			Take a card from your discard into hand
+		  ]
+		  effects: [
+			{
+			  type: putCardsFromDeckIntoHand
+			  select: choose(side(free people),not(or(culture(gandalf),culture(elven))))
+				reveal: true
+				shuffle: true
+				showAll: true
+			}
+			{
+			  type: putCardsFromDiscardIntoHand
+			  select: choose(side(free people),not(or(culture(gandalf),culture(elven))))
+			}
+		  ]
+		}
+	  }
+	]
+  }
+  31_43: {
+	title: Skillful Negociator
+	culture: shire
+	type: event
+	timeword: maneuver
+	twilight: 1
+	effects: {
+	  type: event
+	  cost: [
+		{
+		  type: spot
+		  select: choose(ally)
+		  memorize: chosenAlly
+		}
+		{
+		  type: exert
+		  select: choose(name(Bilbo))
+		}
+	  ]
+	  effect: {
+		type: EnableParticipationInArcheryFireAndSkirmishes
+		select: memory(chosenAlly)
+		until: start(regroup)
+	  }
+	}
+  }
+}

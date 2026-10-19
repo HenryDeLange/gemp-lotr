@@ -11,7 +11,7 @@ import com.gempukku.lotro.logic.modifiers.ModifierEffect;
 import com.gempukku.lotro.logic.modifiers.ModifiersLogic;
 
 public class ToilRule {
-    private ModifiersLogic modifiersLogic;
+    private final ModifiersLogic modifiersLogic;
 
     public ToilRule(ModifiersLogic modifiersLogic) {
         this.modifiersLogic = modifiersLogic;
@@ -19,7 +19,7 @@ public class ToilRule {
 
     public void applyRule() {
         modifiersLogic.addAlwaysOnModifier(
-                new AbstractModifier(null, "Toil discount", Keyword.TOIL, ModifierEffect.POTENTIAL_DISCOUNT_MODIFIER) {
+                new AbstractModifier(null, "Toil discount", Keyword.TOIL, null, ModifierEffect.POTENTIAL_DISCOUNT_MODIFIER) {
                     @Override
                     public int getPotentialDiscount(LotroGame game, PhysicalCard discountCard) {
                         int toilCount = game.getModifiersQuerying().getKeywordCount(game, discountCard, Keyword.TOIL);

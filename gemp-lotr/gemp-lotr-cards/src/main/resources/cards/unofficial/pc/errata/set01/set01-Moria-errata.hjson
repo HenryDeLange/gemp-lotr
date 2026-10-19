@@ -1,0 +1,321 @@
+{
+	51_167: {
+		cardInfo: {
+			//id: 51_172.1
+			parent: 1_172
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN01E167.1_card.jpg
+			collInfo: 1R167
+			rarity: R
+		}
+		title: Denizens Enraged
+		unique: false
+		side: Shadow
+		culture: Moria
+		twilight: 1
+		type: Event
+		timewords: Skirmish
+		effects: {
+			type: event
+			effect: {
+				type: Choice
+				texts: [
+					Make a {Moria} minion strength +2
+					Make a {Moria} Orc strength +1 for each other [moria] minion
+				]
+				effects: [
+					{
+						type: modifyStrength
+						select: choose(moria, minion)
+						memorize: chosenMinion
+						amount: 2
+					}
+					{
+						type: modifyStrength
+						select: choose(culture(moria),orc)
+						memorize: chosenOrc
+						amount: {
+							type: forEachYouCanSpot
+							filter: not(memory(chosenOrc)),culture(moria),minion
+							limit: 5
+						}
+					}
+				]
+			}
+		}
+		gametext: Choose one: make a [moria] minion strength +2, or make a [moria] Orc strength +1 for each other [moria] minion you can spot (limit +5).
+		lore: "...there came a great noise: a rolling Boom that seemed to come from depths far below, and to tremble in the stone at their feet."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_172: {
+		cardInfo: {
+			//id: 51_172.1
+			parent: 1_172
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN01E172.1_card.jpg
+			collInfo: 1R172
+			rarity: R
+		}
+		title: Goblin Archer
+		unique: false
+		side: Shadow
+		culture: Moria
+		twilight: 5
+		type: Minion
+		race: Orc
+		strength: 4
+		vitality: 3
+		site: 4
+		keywords: Archer
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: modifyArcheryTotal
+					side: free people
+					amount: {
+						type: ForEachYouCanSpot
+						filter: culture(moria),archer
+						multiplier: -1
+					}
+				}
+			}
+			{
+				type: activated
+				phase: assignment
+				cost: {
+					type: Exert
+					select: self
+				}
+				effect: {
+					type: addModifier
+					modifier: {
+						type: cantBeAssignedToSkirmish
+						filter: culture(moria),archer
+					}
+				}
+			}
+		]
+		gametext: <b>Archer</b>.<br>The fellowship archery total is -1 for each [moria] archer you can spot.<br>Assignment: Exert this minion to prevent [moria] archers from being assigned to skirmishes.
+		lore: "An arrow whistled over Frodo's head."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	# 51_177: {
+	# 	cardInfo: {
+	# 		imagePath: errata/LOTR-EN01E177.1_card.jpg
+	# 		javaClass: false
+	# 		parent: 1_177
+	# 		parentPath: errata/pc
+	# 		revision: 1
+	# 		collInfo: 1C177
+	# 		rarity: C
+	# 		setNum: "1"
+	# 		cardNum: 177
+	# 		// Standard, Masterwork, Tengwar, FullArt, etc.  Top-level cards are always Standard.
+	# 		style: Standard
+	# 	}
+	# 	title: Goblin Patrol Troop
+	# 	unique: false
+	# 	side: Shadow
+	# 	culture: Moria
+	# 	twilight: 6
+	# 	type: Minion
+	# 	race: Orc
+	# 	strength: 13
+	# 	vitality: 3
+	# 	site: 4
+	# 	effects: {
+	# 		type: Activated
+	# 		phase: Shadow
+	# 		cost: {
+	# 			type: exert
+	# 			filter: choose(culture(moria),orc)
+	# 			count: 1
+	# 			times: 1
+	# 		}
+	# 		effect: {
+	# 			type: DrawCards
+	# 			count: 1
+	# 		}
+	# 	}
+	# 	gametext: Shadow: Exert a [moria] Orc to draw a card.
+	# 	lore: "As they ran they heard the beat and echo of many hurrying feet behind. A shrill yell went up: they had been seen. There was a ring and clash of steel."
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	51_177: {
+		cardInfo: {
+			//id: 1_177.2
+			parent: 1_177
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 2
+			image: errata/LOTR-EN01E177.2_card.jpg
+			collInfo: 1C177
+			rarity: C
+		}
+		title: Goblin Patrol Troop
+		unique: false
+		side: Shadow
+		culture: Moria
+		twilight: 6
+		type: Minion
+		race: Orc
+		strength: 13
+		vitality: 3
+		site: 4
+		effects: {
+			type: Activated
+			phase: Shadow
+			cost: {
+				type: exert
+				select: choose(or(self,and(unique,culture(moria),orc)))
+				count: 1
+				times: 1
+			}
+			effect: {
+				type: DrawCards
+				count: 1
+			}
+		}
+		gametext: Shadow: Exert this minion or a unique [moria] Orc to draw a card.
+		lore: "As they ran they heard the beat and echo of many hurrying feet behind. A shrill yell went up: they had been seen. There was a ring and clash of steel."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_195: {
+		cardInfo: {
+			//id: 1_195.1
+			parent: 1_195
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/51_195.jpg
+			collInfo: 1R195
+			rarity: R
+		}
+		title: Relics of Moria
+		unique: true
+		culture: moria
+		twilight: 1
+		type: condition
+		keyword: support area
+		effects: {
+			type: activated
+			phase: shadow
+			cost: {
+				type: removeTwilight
+				amount: 2
+			}
+			effect: {
+				type: playCardFromDiscard
+				removedTwilight: 2
+				select: choose(culture(moria),possession)
+			}
+		}
+		gametext: Plays to your support area.<br><b>Shadow:</b> Remove (2) to play a<br> [moria] possession from your discard pile.
+		lore: "By both the doors they could now see that many bones were lying, and among them were broken swords and axe-heads, and cloven shields and helms."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_198: {
+		cardInfo: {
+			//id: 1_198.1
+			parent: 1_198
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN01E198.1.jpg
+			collInfo: 1U198
+			rarity: U
+		}
+		title: Through the Misty Mountains
+		culture: moria
+		twilight: 1
+		type: condition
+		keyword: [
+			search
+			support area
+		]
+		effects: [
+			{
+				type: extraCost
+				cost: {
+					type: exert
+					select: choose(culture(moria),minion)
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: movesTo
+					filter: siteNumber(4-6)
+				}
+				requires: {
+					type: canSpot
+					filter: companion,or(dwarf,elf)
+				}				
+				effect: {
+					type: preventable
+					player: freeps
+					cost: {
+						type: discardCardAtRandomFromHand
+						forced: false
+						hand: freeps
+						count: 1
+					}
+					text: Discard a card at random from hand to prevent the Shadow player drawing a card
+					effect: {
+						type: drawCards
+						count: 1
+					}
+				}
+			}
+		]
+		gametext: <b>Search.</b> To play, exert a [moria] minion.<br>Each time the fellowship moves to any site 4, 5, or 6 and contains a Dwarf or Elf, draw a card.  The Free Peoples player may discard 1 card at random from hand to prevent this.
+		lore: "'One must tread the path that need chooses.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

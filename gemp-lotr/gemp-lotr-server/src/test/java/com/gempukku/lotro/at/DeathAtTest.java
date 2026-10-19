@@ -11,16 +11,16 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import static junit.framework.Assert.assertEquals;
+import static org.junit.Assert.assertEquals;
 
 public class DeathAtTest extends AbstractAtTest {
     @Test
     public void charactersDontDieIfPrintedVitalityEqualToWoundsButCurrentVitalityMoreThanZero() throws DecisionResultInvalidException, CardNotFoundException {
-        Map<String, Collection<String>> extraCards = new HashMap<String, Collection<String>>();
+        Map<String, Collection<String>> extraCards = new HashMap<>();
         initializeSimplestGame(extraCards);
 
-        PhysicalCardImpl boromir = new PhysicalCardImpl(100, "1_96", P1, _library.getLotroCardBlueprint("1_96"));
-        PhysicalCardImpl sagaOfElendil = new PhysicalCardImpl(101, "1_114", P1, _library.getLotroCardBlueprint("1_114"));
+        PhysicalCardImpl boromir = new PhysicalCardImpl(100, "1_96", P1, _cardLibrary.getLotroCardBlueprint("1_96"));
+        PhysicalCardImpl sagaOfElendil = new PhysicalCardImpl(101, "1_114", P1, _cardLibrary.getLotroCardBlueprint("1_114"));
 
         skipMulligans();
 
@@ -57,10 +57,10 @@ public class DeathAtTest extends AbstractAtTest {
 
     @Test
     public void charactersDieIfCurrentVitalityIsZero() throws DecisionResultInvalidException, CardNotFoundException {
-        Map<String, Collection<String>> extraCards = new HashMap<String, Collection<String>>();
+        Map<String, Collection<String>> extraCards = new HashMap<>();
         initializeSimplestGame(extraCards);
 
-        PhysicalCardImpl boromir = new PhysicalCardImpl(100, "1_96", P1, _library.getLotroCardBlueprint("1_96"));
+        PhysicalCardImpl boromir = new PhysicalCardImpl(100, "1_96", P1, _cardLibrary.getLotroCardBlueprint("1_96"));
 
         skipMulligans();
 

@@ -5,14 +5,13 @@ import com.gempukku.lotro.common.Filterable;
 import com.gempukku.lotro.common.Keyword;
 import com.gempukku.lotro.common.Side;
 import com.gempukku.lotro.game.PhysicalCard;
-import com.gempukku.lotro.game.state.GameState;
 import com.gempukku.lotro.game.state.LotroGame;
 
 public class AllyParticipatesInArcheryFireAndSkirmishesModifier extends AbstractModifier {
-    private PhysicalCard _source;
+    private final PhysicalCard _source;
 
-    public AllyParticipatesInArcheryFireAndSkirmishesModifier(PhysicalCard source, Filterable affectFilter) {
-        super(source, "Can participate in archery and skirmishes", affectFilter, ModifierEffect.PRESENCE_MODIFIER);
+    public AllyParticipatesInArcheryFireAndSkirmishesModifier(PhysicalCard source, Filterable affectFilter, Condition condition) {
+        super(source, "Can participate in archery and skirmishes", affectFilter, condition, ModifierEffect.PRESENCE_MODIFIER);
         _source = source;
     }
 
@@ -25,6 +24,6 @@ public class AllyParticipatesInArcheryFireAndSkirmishesModifier extends Abstract
     public boolean isAllyParticipateInSkirmishes(LotroGame game, Side sidePlayer, PhysicalCard card) {
         boolean unhasty = game.getModifiersQuerying().hasKeyword(game, card, Keyword.UNHASTY);
         return sidePlayer == Side.SHADOW
-                || !unhasty || _source.getBlueprint().getCulture() == Culture.GANDALF;
+                || !unhasty || game.getModifiersQuerying().isCulture(game, _source, Culture.GANDALF);
     }
 }

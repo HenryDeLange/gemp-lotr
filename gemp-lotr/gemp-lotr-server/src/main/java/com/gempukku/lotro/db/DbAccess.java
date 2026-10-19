@@ -1,32 +1,52 @@
 package com.gempukku.lotro.db;
 
-import com.gempukku.lotro.common.ApplicationConfiguration;
-import org.apache.commons.dbcp.ConnectionFactory;
-import org.apache.commons.dbcp.DriverManagerConnectionFactory;
-import org.apache.commons.dbcp.PoolableConnectionFactory;
-import org.apache.commons.dbcp.PoolingDataSource;
-import org.apache.commons.pool.impl.GenericObjectPool;
+import com.gempukku.lotro.common.AppConfig;
+import com.gempukku.lotro.db.converters.LocalDateConverter;
+import org.apache.commons.dbcp2.ConnectionFactory;
+import org.apache.commons.dbcp2.DriverManagerConnectionFactory;
+import org.apache.commons.dbcp2.PoolableConnectionFactory;
+import org.apache.commons.dbcp2.PoolingDataSource;
+import org.apache.commons.pool2.impl.GenericObjectPool;
+import org.sql2o.Sql2o;
+import org.sql2o.converters.Converter;
+import org.sql2o.quirks.NoQuirks;
 
 import javax.sql.DataSource;
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 
 public class DbAccess {
-    private DataSource _dataSource;
+    private final DataSource _dataSource;
 
     public DbAccess() {
+        this(AppConfig.getProperty("db.connection.url"), AppConfig.getProperty("db.connection.username"), AppConfig.getProperty("db.connection.password"), false);
+    }
+
+    public DbAccess(String url, String user, String pass, boolean batch) {
         try {
-            Class.forName(ApplicationConfiguration.getProperty("db.connection.class"));
+            Class.forName(AppConfig.getProperty("db.connection.class"));
         } catch (ClassNotFoundException e) {
             throw new RuntimeException("Couldn't find the DB driver", e);
         }
 
-        _dataSource = setupDataSource(ApplicationConfiguration.getProperty("db.connection.url"));
+        _dataSource = setupDataSource(url, user, pass, batch);
+    }
+
+    public static final Map<Class, Converter> CustomMappers = new HashMap<>() {{
+       put(LocalDate.class, new LocalDateConverter());
+    }};
+
+    public Sql2o openDB() {
+        return new Sql2o(_dataSource, new NoQuirks(CustomMappers));
     }
 
     public DataSource getDataSource() {
         return _dataSource;
     }
 
-    private DataSource setupDataSource(String connectURI) {
+    private DataSource setupDataSource(String connectURI, String user, String pass, Boolean batch) {
         //
         // First, we'll create a ConnectionFactory that the
         // pool will use to create Connections.
@@ -34,9 +54,24 @@ public class DbAccess {
         // using the connect string passed in the command line
         // arguments.
         //
+        Properties props = new Properties() {{
+            setProperty("user", user);
+            setProperty("password", pass);
+            setProperty("rewriteBatchedStatements", batch.toString().toLowerCase());
+            setProperty("innodb_autoinc_lock_mode", "2");
+        }};
         ConnectionFactory connectionFactory =
-                new DriverManagerConnectionFactory(connectURI, ApplicationConfiguration.getProperty("db.connection.username"),
-                        ApplicationConfiguration.getProperty("db.connection.password"));
+                new DriverManagerConnectionFactory(connectURI, props);
+
+        //
+        // Next we'll create the PoolableConnectionFactory, which wraps
+        // the "real" Connections created by the ConnectionFactory with
+        // the classes that implement the pooling functionality.
+        //
+        var poolableConnectionFactory = new PoolableConnectionFactory(connectionFactory, null);
+        poolableConnectionFactory.setDefaultAutoCommit(true);
+        poolableConnectionFactory.setDefaultReadOnly(false);
+        poolableConnectionFactory.setValidationQuery(AppConfig.getProperty("db.connection.validateQuery"));
 
         //
         // Now we'll need a ObjectPool that serves as the
@@ -45,19 +80,11 @@ public class DbAccess {
         // We'll use a GenericObjectPool instance, although
         // any ObjectPool implementation will suffice.
         //
-        GenericObjectPool connectionPool =
-                new GenericObjectPool();
+        var connectionPool = new GenericObjectPool<>(poolableConnectionFactory);
         connectionPool.setTestOnBorrow(true);
 
-        //
-        // Next we'll create the PoolableConnectionFactory, which wraps
-        // the "real" Connections created by the ConnectionFactory with
-        // the classes that implement the pooling functionality.
-        //
-        PoolableConnectionFactory poolableConnectionFactory =
-                new PoolableConnectionFactory(connectionFactory, connectionPool, null, ApplicationConfiguration.getProperty("db.connection.validateQuery"), false, true);
-
-        connectionPool.setFactory(poolableConnectionFactory);
+        // Set the factory's pool property to the owning pool
+        poolableConnectionFactory.setPool(connectionPool);
 
         //
         // Finally, we create the PoolingDriver itself,

@@ -14,7 +14,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class ActivatePhaseActionsRule {
-    private DefaultActionsEnvironment actionsEnvironment;
+    private final DefaultActionsEnvironment actionsEnvironment;
 
     public ActivatePhaseActionsRule(DefaultActionsEnvironment actionsEnvironment) {
         this.actionsEnvironment = actionsEnvironment;
@@ -26,7 +26,7 @@ public class ActivatePhaseActionsRule {
                     @Override
                     public List<? extends Action> getPhaseActions(String playerId, LotroGame game) {
                         List<Action> result = new LinkedList<>();
-                        for (PhysicalCard activableCard : Filters.filter(game.getGameState().getInPlay(), game, getActivatableCardsFilter(playerId))) {
+                        for (PhysicalCard activableCard : Filters.filter(game, game.getGameState().getInPlay(), getActivatableCardsFilter(playerId))) {
                             if (!game.getModifiersQuerying().hasTextRemoved(game, activableCard)) {
                                 final List<? extends ActivateCardAction> actions = activableCard.getBlueprint().getPhaseActionsInPlay(playerId, game, activableCard);
                                 if (actions != null)
@@ -50,14 +50,15 @@ public class ActivatePhaseActionsRule {
     private Filter getActivatableCardsFilter(String playerId) {
         return Filters.or(
                 Filters.and(CardType.SITE,
-                        new Filter() {
-                            @Override
-                            public boolean accepts(LotroGame game, PhysicalCard physicalCard) {
-                                if (game.getGameState().getCurrentPhase().isRealPhase())
-                                    return Filters.currentSite.accepts(game, physicalCard);
-                                return false;
-                            }
-                        }),
-                Filters.and(Filters.not(CardType.SITE), Filters.owner(playerId), Filters.active));
+						(Filter) (game, physicalCard) -> {
+							if (game.getGameState().getCurrentPhase().isRealPhase())
+								return Filters.currentSite.accepts(game, physicalCard);
+							return false;
+						}),
+                Filters.and(Filters.not(CardType.SITE), Filters.owner(playerId), Filters.active),
+                Filters.and(Filters.not(CardType.SITE), Filters.active,
+                        (Filter) (game, physicalCard) -> game.getModifiersQuerying().hasExtraPhaseActionsFromOtherPlayer(game, physicalCard)),
+                Filters.and(CardType.METASITE)
+        );
     }
 }

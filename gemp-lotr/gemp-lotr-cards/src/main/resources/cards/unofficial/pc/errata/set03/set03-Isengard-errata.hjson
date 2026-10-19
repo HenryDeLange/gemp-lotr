@@ -1,0 +1,1093 @@
+{
+	# 53_50: {
+	# 	cardInfo: {
+	# 		imagePath: errata/LOTR-EN03E050.1_card.jpg
+	# 		javaClass: false
+	# 		parent: 3_50
+	# 		parentPath: errata/pc
+	# 		revision: 1
+	# 		collInfo: 3R50
+	# 		rarity: R
+	# 		setNum: "3"
+	# 		cardNum: 50
+	# 		// Standard, Masterwork, Tengwar, FullArt, etc.  Top-level cards are always Standard.
+	# 		style: Standard
+	# 	}
+	# 	title: Can You Protect Me From Yourself?
+	# 	unique: false
+	# 	side: Shadow
+	# 	culture: Isengard
+	# 	twilight: 1
+	# 	type: Condition
+	# 	target: or(companion,ally)
+	# 	effects: [
+	# 		{
+	# 			type: Trigger
+	# 			optional: false
+	# 			trigger: {
+	# 				type: WinsSkirmish
+	# 				filter: bearer
+	# 				against: culture(isengard),minion
+	# 			}
+	# 			effect: {
+	# 				type: AddBurdens
+	# 				amount: 1
+	# 			}
+	# 		}
+	# 		{
+	# 			type: Trigger
+	# 			trigger: {
+	# 				type: StartOfPhase
+	# 				phase: regroup
+	# 			}
+	# 			requires: {
+	# 				type: IsGreaterThanOrEqual
+	# 				firstNumber: {
+	# 					type: ForEachVitality
+	# 					filter: bearer
+	# 				}
+	# 				secondNumber: 3
+	# 			}
+	# 			effect: [
+	# 				{
+	# 					# We do this just to make the option prompt a
+	# 					# little more elegant.
+	# 					type: Memorize
+	# 					filter: bearer
+	# 					memory: oldBearer
+	# 				}
+	# 				{
+	# 					type: Optional
+	# 					player: freeps
+	# 					text: Would you like to exert {oldBearer} twice to discard Can You Protect Me From Yourself?
+	# 					effect: {
+	# 						type: CostToEffect
+	# 						cost: {
+	# 							type: exert
+	# 							player: freeps
+	# 							times: 2
+	# 							select: oldBearer
+	# 						}
+	# 						effect: {
+	# 							type: Discard
+	# 							select: self
+	# 						}
+	# 					}
+	# 				}
+	# 			]
+	# 		}
+	# 	]
+	# 	gametext: Bearer must be a companion or ally.<br>Each time bearer wins a skirmish against an [isengard] minion, add a burden.<br>At the start of the regroup phase, the Free Peoples player may exert bearer twice to discard this condition.
+	# 	lore: "'Where is the Ring?'"
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	# 53_50: {
+	# 	cardInfo: {
+	# 		imagePath: errata/LOTR-EN03E050.2_card.jpg
+	# 		javaClass: false
+	# 		parent: 3_50
+	# 		parentPath: errata/pc
+	# 		revision: 2
+	# 		collInfo: 3R50
+	# 		rarity: R
+	# 		setNum: "3"
+	# 		cardNum: 50
+	# 		// Standard, Masterwork, Tengwar, FullArt, etc.  Top-level cards are always Standard.
+	# 		style: Standard
+	# 	}
+	# 	title: Can You Protect Me From Yourself?
+	# 	unique: false
+	# 	side: Shadow
+	# 	culture: Isengard
+	# 	twilight: 0
+	# 	type: Event
+	# 	timeword: Maneuver
+	# 	effects: [
+	# 		{
+	# 			type: toPlay
+	# 			requires: [
+	# 				{
+	# 					type: canSpot
+	# 					filter: culture(isengard),minion
+	# 				}
+	# 			]
+	# 		}
+	# 		{
+	# 			type: event
+	# 			effect: {
+	# 				type: preventable
+	# 				text: Would you like to add 2 burdens to prevent exhausting Aragorn?
+	# 				player: fp
+	# 				cost: {
+	# 					type: addBurdens
+	# 					amount: 2
+	# 				}
+	# 				effect: {
+	# 					type: exhaust
+	# 					select: choose(name(Aragorn))
+	# 				}
+	# 			}
+	# 		}
+	# 	]
+	# 	gametext: Spot an [isengard] minion to exhaust Aragorn. The Free Peoples player may add 2 burdens to prevent this. 
+	# 	lore: "'Where is the Ring?'"
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	53_50: {
+		cardInfo: {
+			//id: 3_50.3
+			parent: 3_50
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 3
+			image: errata/LOTR-EN03E050.3_card.jpg
+			collInfo: 3R50
+			rarity: R
+		}
+		title: Can You Protect Me From Yourself?
+		unique: false
+		side: Shadow
+		culture: Isengard
+		twilight: 1
+		type: Condition
+		target: or(companion,ally),not(hasAttached(name(Can You Protect Me From Yourself?)))
+		effects: [
+			{
+				type: Trigger
+				optional: false
+				optional: false
+				trigger: {
+					type: WinsSkirmish
+					filter: bearer
+					against: culture(isengard),minion
+				}
+				effect: {
+					type: AddBurdens
+					amount: 1
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: StartOfPhase
+					phase: regroup
+				}
+				requires: {
+					type: IsGreaterThanOrEqual
+					firstNumber: {
+						type: ForEachVitality
+						filter: bearer
+					}
+					secondNumber: 3
+				}
+				effect: [
+					{
+						type: Optional
+						player: freeps
+						text: Would you like to exert {bearer} twice to discard Can You Protect Me From Yourself?
+						cost: {
+							type: exert
+							player: freeps
+							times: 2
+							select: bearer
+						}
+						effect: {
+							type: Discard
+							select: self
+						}
+					}
+				]
+			}
+		]
+		gametext: Bearer must be a companion or ally. Limit 1 per bearer.<br>Each time bearer wins a skirmish against an [isengard] minion, add a burden.<br>At the start of the regroup phase, the Free Peoples player may exert bearer twice to discard this condition.
+		lore: "'Where is the Ring?'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	53_53: {
+		cardInfo: {
+			//id: 53_53.1
+			parent: 3_53
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN03E053.1_card.jpg
+			collInfo: 3U53
+			rarity: U
+		}
+		title: Hate and Anger
+		unique: false
+		side: Shadow
+		culture: Isengard
+		twilight: 2
+		type: Event
+		timewords: Shadow
+		effects: {
+			type: event
+			requires: [
+				{
+					type: canSpot
+					filter: urukHai
+				}
+				{
+					type: canSpot
+					filter: orc
+				}
+			]
+			effect: {
+				type: drawCards
+				count: 3
+			}
+		}
+		gametext: Spot an Uruk-hai and an Orc to draw 3 cards.
+		lore: "The frenzy of Uruks is born of the fear of the very Goblins that work the pits."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	53_54: {
+		cardInfo: {
+			//id: 3_54.1
+			parent: 3_54
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN03E054.1.jpg
+			collInfo: 3R54
+			rarity: R
+		}
+		title: Hollowing of Isengard
+		unique: false
+		culture: isengard
+		twilight: 2
+		type: condition
+		keyword: support area
+		effects: [
+			{
+				type: toPlay
+				requires: {
+					type: canSpot
+					filter: culture(isengard),minion
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: startofphase
+					phase: Shadow
+				}
+				optional: true
+				cost: {
+					type: discardfromhand
+					forced: false
+					select: choose(culture(isengard))
+					count: 1
+					memorize: discardedCard
+				}
+				effect: {
+					type: addTwilight
+					amount: {
+						type: Conditional
+						requires: {
+							type: MemoryMatches
+							memory: discardedCard
+							filter: Orc
+						}
+						true: 5
+						false: 3
+					}
+				}
+			}
+		]
+		gametext: To play, spot an [isengard] minion.\At the start of your Shadow phase, you may discard an [isengard] card from hand to add (3) (or (5) if that card was an Orc).
+		lore: "'Rip them all down!'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	# 53_66: {
+	# 	cardInfo: {
+	# 		//id: 53_66.1
+	# 		parent: 3_66
+	# 		variant: ERRATA
+	# 		variantPath: errata/pc
+	# 		revision: 1
+	# 		image: errata/LOTR-EN03E066.1_card.jpg
+	# 		collInfo: 3R66
+	# 		rarity: R
+	# 	}
+	# 	title: Orthanc Berserker
+	# 	unique: true
+	# 	side: Shadow
+	# 	culture: Isengard
+	# 	twilight: 5
+	# 	type: Minion
+	# 	race: Uruk-hai
+	# 	strength: 11
+	# 	vitality: 3
+	# 	site: 5
+	# 	keywords: Damage+1
+	# 	effects: {
+	# 		type: activated
+	# 		phase: maneuver
+	# 		requires: {
+	# 			type: or
+	# 			requires: [
+	# 				{
+	# 					type: canSpotBurdens
+	# 					amount: 5
+	# 				}
+	# 				{
+	# 					type: canSpot
+	# 					filter: culture(isengard)
+	# 					count: 5
+	# 				}
+	# 			]
+	# 		}
+	# 		cost: {
+	# 			type: exert
+	# 			select: self
+	# 			times: 2
+	# 		}
+	# 		effect: {
+	# 			type: exhaust
+	# 			select: choose(companion,not(ringBearer))
+	# 		}
+	# 	}
+	# 	gametext: <b>Damage +1</b>.<br><b>Maneuver:</b> Spot 5 burdens or 5 [isengard] cards and exert Orthanc Berserker twice to exhaust a companion (except the Ring-bearer).
+	# 	lore: "The voice of Saruman compels his minions to stop at nothing to earn his favor."
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+
+	53_66: {
+		cardInfo: {
+			//id: 53_66.2
+			parent: 3_66
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 2
+			image: errata/LOTR-EN03E066.2_card.jpg
+			collInfo: 3R66
+			rarity: R
+		}
+		title: Orthanc Berserker
+		unique: true
+		side: Shadow
+		culture: Isengard
+		twilight: 5
+		type: Minion
+		race: Uruk-hai
+		strength: 11
+		vitality: 3
+		site: 5
+		keywords: Damage+1
+		effects: {
+			type: activated
+			phase: maneuver
+			requires: {
+				type: canSpotBurdens
+				amount: 4
+			}
+			cost: {
+				type: exert
+				select: self
+				times: 2
+			}
+			effect: {
+				type: exhaust
+				select: choose(companion,not(ringBearer))
+			}
+		}
+		gametext: <b>Damage +1</b>.<br><b>Maneuver:</b> Spot 4 burdens and exert Orthanc Berserker twice to exhaust a companion (except the Ring-bearer).
+		lore: "The voice of Saruman compels his minions to stop at nothing to earn his favor."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+
+	# 53_68: {
+	# 	cardInfo: {
+	# 	# 		imagePath: errata/53_68.jpg
+	# 		//If this is true, then all gameplay-related info outside this cardInfo definition
+	# 		// will be ignored and the java class loaded instead.
+	# 		javaClass: false
+	# 		//This instructs the blueprint generator to insert this card as an alt of the listed
+	# 		// parent blueprint. Can of course be ommitted if not an errata or promo.
+	# 		parent: 3_68
+	# 		//This is the tree path to use within the alts structure on the parent.
+	# 		// Can of course be ommitted if parent is null. 
+	# 		parentPath: errata/pc
+	# 		//Versioning differentiates releases within a particular alt path, such as PC errata
+	# 		// version 1 vs version 2.  PC version 2 will not conflict with, say, Decipher version 2.
+	# 		//Top-level cards should always be version 0.
+	# 		revision: 1
+	# 		collInfo: 3R68
+	# 		rarity: R
+	# 		setNum: "3"
+	# 		cardNum: 68
+	# 		// Standard, Masterwork, Tengwar, FullArt, etc.  Top-level cards are always Standard.
+	# 		style: Standard
+	# 	}
+	# 	title: Saruman
+	# 	subtitle: Keeper of Isengard
+	# 	unique: true
+	# 	side: shadow
+	# 	culture: Isengard
+	# 	type: minion
+	# 	race: Wizard
+	# 	twilight: 4
+	# 	strength: 8
+	# 	vitality: 4
+	# 	site: 4
+	# 	effects: [
+	# 		{
+	# 			type: modifier
+	# 			modifier: {
+	# 				type: cantTakeWounds
+	# 				filter: self
+	# 				requires: [
+	# 					{
+	# 						type: phase
+	# 						phase: archery
+	# 					}
+	# 					{
+	# 						type: sarumanfirstsentenceactive
+	# 					}
+	# 				]
+	# 			}
+	# 		}
+	# 		{
+	# 			type: modifier
+	# 			modifier: {
+	# 				type: DisableSkirmishAssignment
+	# 				filter: self
+	# 				requires: {
+	# 					type: sarumanfirstsentenceactive
+	# 				}
+	# 			}
+	# 		}
+	# 		{
+	# 			type: activated
+	# 			phase: maneuver
+	# 			cost: {
+	# 				type: exert
+	# 				filter: self
+	# 			}
+	# 			effect: {
+	# 				type: addKeyword
+	# 				select: choose(uruk-hai)
+	# 				keyword: fierce
+	# 				until: start(regroup)
+	# 				memorize: chosenUruk
+	# 			}
+	# 		}
+	# 		{
+	# 			type: Response
+	# 			trigger: {
+	# 				type: aboutToTakeWound
+	# 				filter: uruk-hai
+	# 			}
+	# 			cost: {
+	# 				type: exert
+	# 				filter: self
+	# 			}
+	# 			effect:
+	# 			{
+	# 				type: preventWound
+	# 				select: choose(uruk-hai)
+	# 			}
+	# 		}
+	# 	]
+	# 	gametext: Saruman may not take wounds during the archery phase and may not be assigned to a skirmish.<br>Maneuver: Exert Saruman to make an Uruk-hai <b>fierce</b> until the regroup phase.<br>Response: If an Uruk-hai is about to take a wound, exert Saruman to prevent that wound.
+	# 	lore: ""
+	# 	promotext: ""
+	# 	alts: {
+	# 		//These are just CardInfo objects
+	# 		promos: {
+	# 		}
+	# 		//These are full card definitions, with redundant info that is the same as the original card ommitted
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	53_68: {
+		cardInfo: {
+			//id: 3_68.2
+			parent: 3_68
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 2
+			image: errata/LOTR-EN03E068.1.jpg
+			collInfo: 3R68
+			rarity: R
+		}
+		title: Saruman
+		subtitle: Keeper of Isengard
+		unique: true
+		side: shadow
+		culture: Isengard
+		type: minion
+		race: Wizard
+		twilight: 4
+		strength: 8
+		vitality: 4
+		site: 4
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: cantTakeWounds
+					filter: self
+					requires: [
+						{
+							type: phase
+							phase: archery
+						}
+						{
+							type: sarumanfirstsentenceactive
+						}
+					]
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: cantbeassignedtoskirmish
+					filter: self
+					requires: {
+						type: sarumanfirstsentenceactive
+					}
+				}
+			}
+			{
+				type: activated
+				phase: maneuver
+				cost: {
+					type: exert
+					select: self
+				}
+				effect: {
+					type: addKeyword
+					select: choose(uruk-hai)
+					keyword: fierce
+					until: start(regroup)
+					memorize: chosenUruk
+				}
+			}
+			{
+				type: Response
+				trigger: {
+					type: aboutToTakeWound
+					filter: uruk-hai
+				}
+				cost: {
+					type: choice
+					memorize: theChoice
+					texts: [
+						Exert Saruman
+						Discard Saruman
+					]
+					effects: [
+						{
+							type: If
+							check: {
+								type: canSpot
+								filter: self,not(exhausted)
+							}
+							true: {
+								type: exert
+								select: self
+							}
+						}
+						{
+							type: If
+							check: {
+								type: canSpot
+								filter: self,exhausted
+							}
+							true: {
+								type: discard
+								select: self
+							}
+						}
+					]
+				}
+				effect:
+				{
+					type: preventWound
+					select: choose(uruk-hai)
+				}
+			}
+		]
+		gametext: Saruman may not take wounds during the archery phase and may not be assigned to a skirmish.<br>Maneuver: Exert Saruman to make an Uruk-hai <b>fierce</b> until the regroup phase.<br>Response: If an Uruk-hai is about to take a wound, discard (or exert) Saruman to prevent that wound.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	# 53_67: {
+	# 	cardInfo: {
+	# 		//id: 3_67.1
+	# 		parent: 3_67
+	# 		variant: ERRATA
+	# 		variantPath: promos/pc
+	# 		revision: 1
+	# 		image: errata/53_67.jpg
+	# 		collInfo: 3R67
+	# 		rarity: R
+	# 	}
+	# 	title: The Palantir of Orthanc
+	# 	unique: true
+	# 	culture: isengard
+	# 	twilight: 0
+	# 	type: artifact
+	# 	itemclass: palantir
+	# 	keyword: support area
+	# 	effects: [
+	# 		{
+	# 			type: toPlay
+	# 			requires: {
+	# 				type: canSpot
+	# 				filter: culture(isengard),minion
+	# 			}
+	# 		}
+	# 		{
+	# 			type: activated
+	# 			phase: shadow
+	# 			cost: [
+	# 				{
+	# 					type: removeTwilight
+	# 					amount: 2
+	# 				}
+	# 			]
+	# 			requires: {
+	# 				type: canSpot
+	# 				filter: culture(isengard),minion
+	# 				count: 2
+	# 			}
+	# 			effect: [
+	# 				{
+	# 					type: revealRandomCardsFromHand
+	# 					forced: true
+	# 					hand: freeps
+	# 					count: 1
+	# 					memorize: revealedCard
+	# 				}
+	# 				{
+	# 					type: putCardsFromHandOnTopOfDeck
+	# 					select: all(memory(revealedCard))
+	# 					player: shadow
+	# 					hand: freeps
+	# 					reveal: true
+	# 				}
+	# 			]
+	# 		}
+	# 	]
+	# 	gametext: To play, spot an [isengard] minion. Plays to your support area.<br><b>Shadow:</b> Spot 2 [isengard] minions and remove (2) to reveal a card at random from the Free Peoples player's hand. Place that card on top of that player's draw deck.
+	# 	lore: "'Seven stars and seven stones....'"
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	53_67: {
+		cardInfo: {
+			//id: 53_67.2
+			parent: 3_67
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 2
+			image: errata/LOTR-EN03E067.2_card.jpg
+			collInfo: 3R67
+			rarity: R
+		}
+		title: The Palantir of Orthanc
+		unique: true
+		side: Shadow
+		culture: Isengard
+		twilight: 0
+		type: Artifact
+		itemclass: Palantir
+		keywords: Support Area
+		effects: [
+			{
+				type: Activated
+				phase: Shadow
+				limitPerPhase: 1
+				cost: {
+					type: Exert
+					select: choose(Isengard, minion)
+					memorize: exertedMinion
+				}
+				effect: [
+					{
+						type: Optional
+						text: Would you like to put any cards in hand on top of your draw deck?
+						player: Free Peoples
+						effect: {
+							type: PutCardsFromHandOnTopOfDeck
+							player: Free Peoples
+							hand: Free Peoples
+							count: any
+							reveal: false
+						}
+					}
+					{
+						type: RevealHand
+						hand: Free Peoples
+						memorize: freepsHand
+					}
+					{
+						type: ModifyStrength
+						amount: {
+							type: ForEachInMemory
+							memory: freepsHand
+							filter: side(Free Peoples)
+						}
+						select: memory(exertedMinion)
+						until: start(regroup)
+					}
+				]
+			}
+		]
+		gametext: Plays to your support area.<br><b>Shadow:</b> Exert an [isengard] minion.  The Free Peoples player may place any number of cards from hand on top of their draw deck, then reveals their hand.  For each Free Peoples card revealed, make that minion strength +1 until the regroup phase.  Limit once per phase.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	53_70: {
+		cardInfo: {
+			//id: 53_70.1
+			parent: 3_70
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN03E070.1_card.jpg
+			collInfo: 3C70
+			rarity: C
+		}
+		title: Servants to Saruman
+		unique: false
+		side: Shadow
+		culture: Isengard
+		twilight: 0
+		type: Event
+		timewords: Skirmish
+		effects: {
+			type: event
+			effect: {
+				type: modifyStrength
+				select: choose(culture(isengard),orc)
+				memorize: chosenOrc
+				amount: {
+					type: Conditional
+					requires: {
+						type: memoryMatches
+						memory: chosenOrc
+						filter: maxStrength(7)
+					}
+					true: 4
+					false: 2
+				}
+			}
+		}
+		gametext: <b>Skirmish:</b> Make an [isengard] Orc strength +2 (or +4 if that Orc is strength 7 or less).
+		lore: "'This is grievous news concerning Saruman... for we trusted him and he is deep in all our counsels.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	53_72: {
+		cardInfo: {
+			//id: 53_72.1
+			parent: 3_72
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN03E072.1_card.jpg
+			collInfo: 3U72
+			rarity: U
+		}
+		title: Trapped and Alone
+		unique: false
+		side: Shadow
+		culture: Isengard
+		twilight: 1
+		type: Condition
+		keywords: Support Area
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: cancelKeywordBonus
+					filter: character,inSkirmishAgainst(culture(isengard),orc)
+					keyword: damage
+					from: weapon
+				}
+			}
+			{
+				type: activated
+				phase: skirmish
+				cost: {
+					type: Spot
+					select: choose(inSkirmish,Isengard,orc)
+					memorize: selectedOrc
+				}
+				effect: [
+					{
+						type: ChooseActiveCards
+						player: freeps
+						select: choose(not(memory(selectedOrc)),Isengard,orc)
+						memorize: shuffledOrc
+						text: Choose another {Isengard} Orc to shuffle into its owner's draw deck.
+					}
+					{
+						type: ShuffleCardsFromPlayIntoDrawDeck
+						player: shadow
+						select: memory(shuffledOrc)
+					}
+					{
+						type: CancelSkirmish
+					}
+				]
+			}
+		]
+		gametext: Each character skirmishing an [isengard] Orc loses all <b>damage</b> bonuses from weapons.<br>Skirmish: Spot a skirmishing [Isengard] Orc.  Make the Free Peoples shuffle another [Isengard] Orc into your draw deck to cancel the active skirmish.
+		lore: "'...I had no chance of escape, and my days were bitter.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	# 53_74: {
+	# 	cardInfo: {
+	# 		//id: 53_74.1
+	# 		parent: 3_74
+	# 		variant: ERRATA
+	# 		variantPath: errata/pc
+	# 		revision: 1
+	# 		image: errata/LOTR-EN03E074.1_card.jpg
+	# 		collInfo: 3C74
+	# 		rarity: C
+	# 	}
+	# 	title: Uruk Raider
+	# 	unique: false
+	# 	side: Shadow
+	# 	culture: Isengard
+	# 	twilight: 2
+	# 	type: Minion
+	# 	race: Uruk-hai
+	# 	strength: 6
+	# 	vitality: 2
+	# 	site: 5
+	# 	keywords: [
+	# 		Tracker
+	# 		Damage+1
+	# 	]
+	# 	effects: [
+	# 		{
+	# 			type: modifier
+	# 			modifier: {
+	# 				type: modifyStrength
+	# 				requires: {
+	# 					type: hasCardInDeadPile
+	# 					filter: ally
+	# 				}
+	# 				filter: self
+	# 				amount: 3
+	# 			}
+	# 		}
+	# 		{
+	# 			type: modifier
+	# 			modifier: {
+	# 				type: addKeyword
+	# 				requires: {
+	# 					type: hasCardInDeadPile
+	# 					filter: ally
+	# 				}
+	# 				filter: self
+	# 				keyword: fierce
+	# 			}
+	# 		}
+	# 		{
+	# 			type: Trigger
+	# 			optional: true
+	# 			trigger: {
+	# 				type: Exerted
+	# 				filter: ally
+	# 				memorize: exertedAlly
+	# 			}
+	# 			requires: {
+	# 				type: CanSpot
+	# 				filter: culture(isengard),another
+	# 			}
+	# 			cost: {
+	# 				type: Exert
+	# 				select: self
+	# 			}
+	# 			effect: {
+	# 				type: Wound
+	# 				select: memory(exertedAlly)
+	# 			}
+	# 		}
+	# 	]
+	# 	gametext: Tracker. Damage +1.<br>While an ally is in the dead pile, this minion is strength +3 and <b>fierce</b>.<br>Each time an ally exerts, you may spot another [isengard] card and exert this minion to wound that ally.
+	# 	lore: "'There is no safety where Saruman's emblem is shown.'"
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	53_74: {
+		cardInfo: {
+			//id: 53_74.2
+			parent: 3_74
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 2
+			image: errata/LOTR-EN03E074.2_card.jpg
+			collInfo: 3C74
+			rarity: C
+		}
+		title: Uruk Raider
+		unique: false
+		side: Shadow
+		culture: Isengard
+		twilight: 2
+		type: Minion
+		race: Uruk-hai
+		strength: 6
+		vitality: 2
+		site: 5
+		keywords: Tracker
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: modifyStrength
+					requires: {
+						type: hasCardInDeadPile
+						filter: ally
+					}
+					filter: self
+					amount: 3
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: addKeyword
+					requires: {
+						type: hasCardInDeadPile
+						filter: ally
+					}
+					filter: self
+					keyword: damage+1
+				}
+			}
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: Exerted
+					filter: ally
+					memorize: exertedAlly
+				}
+				requires: {
+					type: CanSpot
+					filter: culture(isengard),another
+				}
+				cost: {
+					type: Exert
+					select: self
+				}
+				effect: {
+					type: Wound
+					select: memory(exertedAlly)
+				}
+			}
+		]
+		gametext: Tracker. <br>While an ally is in the dead pile, this minion is strength +3 and <b>damage +1</b>.<br>Each time an ally exerts, you may spot another [isengard] card and exert this minion to wound that ally.
+		lore: "'There is no safety where Saruman's emblem is shown.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+}

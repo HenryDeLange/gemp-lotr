@@ -3,34 +3,19 @@ package com.gempukku.lotro.logic.timing.results;
 import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.logic.timing.EffectResult;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
 public class CharacterWonSkirmishResult extends EffectResult {
-    private PhysicalCard _winner;
-    private Set<PhysicalCard> _involving;
-    private SkirmishType _type;
-
-    public enum SkirmishType {
-        OVERWHELM, NORMAL
-    }
-
-    public CharacterWonSkirmishResult(SkirmishType type, PhysicalCard winner, PhysicalCard involving) {
-        super(EffectResult.Type.CHARACTER_WON_SKIRMISH);
-        _type = type;
-        _winner = winner;
-        if (involving == null)
-            _involving = Collections.emptySet();
-        else
-            _involving = Collections.singleton(involving);
-    }
+    private final PhysicalCard _winner;
+    private final Set<PhysicalCard> _involving;
+    private final SkirmishType _type;
 
     public CharacterWonSkirmishResult(SkirmishType type, PhysicalCard winner, Set<PhysicalCard> involving) {
         super(EffectResult.Type.CHARACTER_WON_SKIRMISH);
         _type = type;
         _winner = winner;
-        _involving = new HashSet<PhysicalCard>(involving);
+        _involving = new HashSet<>(involving);
     }
 
     public Set<PhysicalCard> getInvolving() {

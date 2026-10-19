@@ -10,11 +10,13 @@ import java.util.List;
 
 public class PhysicalCardImpl implements PhysicalCard {
     private int _cardId;
-    private String _blueprintId;
-    private String _owner;
+    private boolean _flipped;
+    private final String _blueprintId;
+    private final String _owner;
     private String _cardController;
     private Zone _zone;
-    private LotroCardBlueprint _blueprint;
+    private Zone _playedFromZone;
+    private final LotroCardBlueprint _blueprint;
 
     private PhysicalCardImpl _attachedTo;
     private PhysicalCardImpl _stackedOn;
@@ -23,10 +25,14 @@ public class PhysicalCardImpl implements PhysicalCard {
     private List<ModifierHook> _modifierHooksStacked;
     private List<ModifierHook> _modifierHooksInDiscard;
     private List<ModifierHook> _modifierHooksControlledSite;
+    private List<ModifierHook> _modifierHooksPermanentSite;
 
-    private Object _whileInZoneData;
+    private WhileInZoneData _whileInZoneData;
 
     private Integer _siteNumber;
+
+    // Optional display name override (e.g., meta-site modifiers display the visual card's name)
+    private String _displayName;
 
     public PhysicalCardImpl(int cardId, String blueprintId, String owner, LotroCardBlueprint blueprint) {
         _cardId = cardId;
@@ -35,6 +41,7 @@ public class PhysicalCardImpl implements PhysicalCard {
         _blueprint = blueprint;
     }
 
+    @Override
     public void setCardId(int cardId) {
         _cardId = cardId;
     }
@@ -44,13 +51,44 @@ public class PhysicalCardImpl implements PhysicalCard {
         return _blueprintId;
     }
 
+    /**
+     * Returns a display name override, or null if the card should use its blueprint name.
+     * Used by meta-site modifiers to display the visual position card's name instead.
+     */
+    public String getDisplayName() {
+        return _displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        _displayName = displayName;
+    }
+
     public void setZone(Zone zone) {
         _zone = zone;
     }
 
     @Override
+    public boolean isFlipped() {
+        return _flipped;
+    }
+
+    @Override
+    public void setFlipped(boolean flipped) {
+        _flipped = flipped;
+    }
+
+    @Override
     public Zone getZone() {
         return _zone;
+    }
+
+    @Override
+    public void setPlayedFromZone(Zone zone) {
+        _playedFromZone = zone;
+    }
+    @Override
+    public Zone getPlayedFromZone() {
+        return _playedFromZone;
     }
 
     @Override
@@ -70,7 +108,7 @@ public class PhysicalCardImpl implements PhysicalCard {
     public void startAffectingGame(LotroGame game) {
         List<? extends Modifier> modifiers = _blueprint.getInPlayModifiers(game, this);
         if (modifiers != null) {
-            _modifierHooks = new LinkedList<ModifierHook>();
+            _modifierHooks = new LinkedList<>();
             for (Modifier modifier : modifiers)
                 _modifierHooks.add(game.getModifiersEnvironment().addAlwaysOnModifier(modifier));
         }
@@ -87,7 +125,7 @@ public class PhysicalCardImpl implements PhysicalCard {
     public void startAffectingGameStacked(LotroGame game) {
         List<? extends Modifier> modifiers = _blueprint.getStackedOnModifiers(game, this);
         if (modifiers != null) {
-            _modifierHooksStacked = new LinkedList<ModifierHook>();
+            _modifierHooksStacked = new LinkedList<>();
             for (Modifier modifier : modifiers)
                 _modifierHooksStacked.add(game.getModifiersEnvironment().addAlwaysOnModifier(modifier));
         }
@@ -104,7 +142,7 @@ public class PhysicalCardImpl implements PhysicalCard {
     public void startAffectingGameInDiscard(LotroGame game) {
         List<? extends Modifier> modifiers = _blueprint.getInDiscardModifiers(game, this);
         if (modifiers != null) {
-            _modifierHooksInDiscard = new LinkedList<ModifierHook>();
+            _modifierHooksInDiscard = new LinkedList<>();
             for (Modifier modifier : modifiers)
                 _modifierHooksInDiscard.add(game.getModifiersEnvironment().addAlwaysOnModifier(modifier));
         }
@@ -118,12 +156,12 @@ public class PhysicalCardImpl implements PhysicalCard {
         }
     }
 
-    public void startAffectingGameControlledSite(LotroGame game) {
-        List<? extends Modifier> modifiers = _blueprint.getControlledSiteModifiers(game, this);
+    public void startAffectingGamePermanentSite(LotroGame game) {
+        List<? extends Modifier> modifiers = _blueprint.getPermanentSiteModifiers(game, this);
         if (modifiers != null) {
-            _modifierHooksControlledSite = new LinkedList<ModifierHook>();
+            _modifierHooksPermanentSite = new LinkedList<>();
             for (Modifier modifier : modifiers)
-                _modifierHooksControlledSite.add(game.getModifiersEnvironment().addAlwaysOnModifier(modifier));
+                _modifierHooksPermanentSite.add(game.getModifiersEnvironment().addAlwaysOnModifier(modifier));
         }
     }
 
@@ -132,6 +170,15 @@ public class PhysicalCardImpl implements PhysicalCard {
             for (ModifierHook modifierHook : _modifierHooksControlledSite)
                 modifierHook.stop();
             _modifierHooksControlledSite = null;
+        }
+    }
+
+    public void startAffectingGameControlledSite(LotroGame game) {
+        List<? extends Modifier> modifiers = _blueprint.getControlledSiteModifiers(game, this);
+        if (modifiers != null) {
+            _modifierHooksControlledSite = new LinkedList<>();
+            for (Modifier modifier : modifiers)
+                _modifierHooksControlledSite.add(game.getModifiersEnvironment().addAlwaysOnModifier(modifier));
         }
     }
 
@@ -164,13 +211,13 @@ public class PhysicalCardImpl implements PhysicalCard {
     }
 
     @Override
-    public Object getWhileInZoneData() {
+    public WhileInZoneData getWhileInZoneData() {
         return _whileInZoneData;
     }
 
     @Override
-    public void setWhileInZoneData(Object object) {
-        _whileInZoneData = object;
+    public void setWhileInZoneData(WhileInZoneData whileInZoneData) {
+        _whileInZoneData = whileInZoneData;
     }
 
     @Override
@@ -181,5 +228,12 @@ public class PhysicalCardImpl implements PhysicalCard {
     @Override
     public void setSiteNumber(Integer number) {
         _siteNumber = number;
+    }
+
+    @Override
+    public void copyCardStats(PhysicalCard other) {
+        this._flipped = other.isFlipped();
+        this._cardController = other.getCardController();
+        this._siteNumber = other.getSiteNumber();
     }
 }

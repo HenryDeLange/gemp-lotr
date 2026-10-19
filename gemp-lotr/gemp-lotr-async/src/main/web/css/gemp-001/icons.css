@@ -1,0 +1,111 @@
+.custom-icon {
+	background-color: transparent; /* make the button transparent */
+	background-repeat: no-repeat; /* make the background image appear only once */
+	background-position: 0px 0px;  /* equivalent to 'top left' */
+	background-size:	20px;
+	border: none;  /* assuming we don't want any borders */
+	cursor: pointer; /* make the cursor like hovering over an <a> element */
+	height: 20px; /* make this the size of your image */
+	padding-left: 30px ; /* make text start to the right of the image */
+	vertical-align: middle; /* align the text vertically centered */
+	filter: brightness(0) invert(1);
+}
+
+.bigger-icon {
+	background-color: transparent; /* make the button transparent */
+	background-repeat: no-repeat; /* make the background image appear only once */
+	background-position: 0px 0px;  /* equivalent to 'top left' */
+	background-size:	35px;
+	border: none;  /* assuming we don't want any borders */
+	cursor: pointer; /* make the cursor like hovering over an <a> element */
+	padding-left: 50px ; /* make text start to the right of the image */
+	padding-top: 10px ;
+	vertical-align: middle; /* align the text vertically centered */
+	filter: brightness(0) invert(1);
+}
+
+.ui-tabs .ui-tabs-nav li > a.custom-icon {
+	padding: 0.5em 1em 0.5em 35px;
+	/*background-origin:	content-box;*/
+	background-position:	10px center;
+}
+
+.icon-discord {
+	background-image: url("../../images/icons/discord-brands.svg");
+}
+
+.icon-bug {
+	background-image: url("../../images/icons/bug-solid.svg");
+}
+
+.icon-report {
+	background-image: url("../../images/icons/ban-solid.svg");
+}
+
+.icon-wiki {
+	background-image: url("../../images/icons/book-open-solid.svg");
+}
+
+.icon-hall {
+	background-image: url("../../images/icons/swords.svg");
+	background-size: 25px;
+}
+
+.icon-help {
+	background-image: url("../../images/icons/circle-question-solid.svg");
+}
+
+.icon-events {
+	background-image: url("../../images/icons/flag-solid.svg");
+}
+
+.icon-stats {
+	background-image: url("../../images/icons/chart-line-solid.svg");
+}
+
+.icon-users {
+	background-image: url("../../images/icons/users-solid.svg");
+}
+
+.icon-account {
+	background-image: url("../../images/icons/gear-solid.svg");
+}
+
+.icon-deckbuilder {
+	background-image: url("../../images/icons/hammer-solid.svg");
+}
+
+.icon-merchant {
+	background-image: url("../../images/icons/store-slash-solid.svg");
+}
+
+.icon-admin {
+	background-image: url("../../images/icons/toolbox-solid.svg");
+}
+
+.icon-play {
+	background-image: url("../../images/icons/card-random.svg");
+	filter: invert(74%) sepia(62%) saturate(1872%) hue-rotate(333deg) brightness(101%) contrast(92%);
+}
+
+.icon-bot {
+	background-image: url("../../images/icons/processor.svg");
+	filter: invert(91%) sepia(43%) saturate(671%) hue-rotate(84deg) brightness(106%) contrast(104%);
+}
+
+.icon-unranked {
+	background-image: url("../../images/icons/tabletop-players.svg");
+	filter: invert(63%) sepia(9%) saturate(3388%) hue-rotate(70deg) brightness(93%) contrast(76%);
+}
+
+.icon-league {
+	background-image: url("../../images/icons/holy-grail.svg");
+	filter: invert(91%) sepia(19%) saturate(1241%) hue-rotate(13deg) brightness(106%) contrast(103%);
+}
+
+.icon-tournament {
+	background-image: url("../../images/icons/family-tree.svg");
+	filter: invert(69%) sepia(31%) saturate(683%) hue-rotate(322deg) brightness(102%) contrast(101%);
+}
+
+

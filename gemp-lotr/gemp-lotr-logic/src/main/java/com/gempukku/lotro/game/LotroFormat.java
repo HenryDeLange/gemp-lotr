@@ -1,55 +1,84 @@
 package com.gempukku.lotro.game;
 
+import com.gempukku.lotro.common.JSONDefs;
 import com.gempukku.lotro.common.SitesBlock;
+import com.gempukku.lotro.game.packs.SetDefinition;
 import com.gempukku.lotro.logic.vo.LotroDeck;
 
 import java.util.List;
 import java.util.Map;
 
 public interface LotroFormat {
-    public boolean isOrderedSites();
+    String PCSummary = """
+        As a reminder, PC formats incorporate the following changes:
+         <br/>- <a href="https://wiki.lotrtcgpc.net/wiki/PC_Errata" target="_blank">PC Errata are in effect</a>
+         <br/>- Sets V1 and V2 are legal (where applicable)
+         <br/>- Discard piles are public information for both sides
+         <br/>- The game ends after Regroup actions are made (instead of at the start of Regroup)
+        """;
 
-    public boolean canCancelRingBearerSkirmish();
+    boolean isOrderedSites();
 
-    public boolean hasRuleOfFour();
+    boolean canCancelRingBearerSkirmish();
 
-    public boolean hasMulliganRule();
+    boolean hasRuleOfFour();
+    boolean usesMaps();
 
-    public boolean winWhenShadowReconciles();
+    boolean hasMulliganRule();
 
-    public boolean winOnControlling5Sites();
+    boolean winWhenShadowReconciles();
 
-    public boolean isPlaytest();
+    boolean discardPileIsPublic();
 
-    public String getName();
+    boolean winOnControlling5Sites();
 
-    public void validateCard(String cardId) throws DeckInvalidException;
+    boolean isPlaytest();
+    boolean hallVisible();
 
-    public void validateDeck(LotroDeck deck) throws DeckInvalidException;
+    String getName();
 
-    public LotroDeck applyErrata(LotroDeck deck);
+    String getCode();
+    int getOrder();
 
-    public List<Integer> getValidSets();
+    String validateCard(String cardId);
+    String validateSite(String cardId);
 
-    public List<String> getBannedCards();
+    List<String> validateDeck(LotroDeck deck);
+    List<String> validateDeck(LotroDeck deck, DeckValidationContext context);
+    String validateDeckForHall(LotroDeck deck);
+    String validateDeckForHall(LotroDeck deck, DeckValidationContext context);
 
-    public List<String> getRestrictedCards();
+    LotroDeck applyErrata(LotroDeck deck);
 
-    public List<String> getValidCards();
+    List<String> getValidSets();
 
-    public List<String> getLimit2Cards();
+    List<String> getBannedCards();
 
-    public List<String> getLimit3Cards();
+    List<String> getRestrictedCards();
 
-    public List<String> getRestrictedCardNames();
+    List<String> getValidCards();
 
-    public Map<String,String> getErrataCardMap();
+    List<String> getLimit2Cards();
 
-    public SitesBlock getSiteBlock();
+    List<String> getLimit3Cards();
 
-    public String getSurveyUrl();
+    List<String> getRestrictedCardNames();
 
-    public int getHandSize();
+    boolean hasErrata();
+    Map<String,String> getErrataCardMap();
 
-    public Adventure getAdventure();
+    String applyErrata(String bpID);
+
+    List<String> findBaseCards(String bpID);
+
+    SitesBlock getSiteBlock();
+
+    String getSurveyUrl();
+
+    int getHandSize();
+
+    Adventure getAdventure();
+    JSONDefs.Format Serialize();
+    void generateBlockFilter(Map<String, LotroFormat> allFormats, Map<String, SetDefinition> allSets);
+    Map<String, JSONDefs.ErrataInfo> getRecentErrata();
 }

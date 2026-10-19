@@ -1,7 +1,10 @@
 package com.gempukku.lotro.db;
 
+import com.gempukku.lotro.common.DBDefs;
 import com.gempukku.lotro.tournament.TournamentMatch;
 import com.gempukku.lotro.tournament.TournamentMatchDAO;
+import org.sql2o.Query;
+import org.sql2o.Sql2o;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -13,97 +16,125 @@ import java.util.List;
 import java.util.Map;
 
 public class DbTournamentMatchDAO implements TournamentMatchDAO {
-    private DbAccess _dbAccess;
+    private final DbAccess _dbAccess;
 
     public DbTournamentMatchDAO(DbAccess dbAccess) {
         _dbAccess = dbAccess;
     }
 
     @Override
-    public void addMatch(String tournamentId, int round, String playerOne, String playerTwo) {
+    public int addMatch(String tournamentId, int round, String playerOne, String playerTwo) {
+
         try {
-            try (Connection conn = _dbAccess.getDataSource().getConnection()) {
-                try (PreparedStatement statement = conn.prepareStatement("insert into tournament_match (tournament_id, round, player_one, player_two) values (?, ?, ?, ?)")) {
-                    statement.setString(1, tournamentId);
-                    statement.setInt(2, round);
-                    statement.setString(3, playerOne);
-                    statement.setString(4, playerTwo);
-                    statement.execute();
-                }
+            var db = _dbAccess.openDB();
+
+            String sql = """
+                        INSERT INTO tournament_match (tournament_id, round, player_one, player_two)
+                        VALUES (:tid, :round, :player1, :player2)
+                        """;
+
+            try (org.sql2o.Connection conn = db.beginTransaction()) {
+                Query query = conn.createQuery(sql, true);
+                query.addParameter("tid", tournamentId)
+                        .addParameter("round", round)
+                        .addParameter("player1", playerOne)
+                        .addParameter("player2", playerTwo);
+
+                int id = query.executeUpdate()
+                        .getKey(Integer.class);
+                conn.commit();
+
+                return id;
             }
-        } catch (SQLException exp) {
-            throw new RuntimeException(exp);
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to insert tournament match", ex);
         }
+    }
+
+    @Override
+    public int addBye(String tournamentId, String player, int round) {
+        return addMatch(tournamentId, round, player, "bye");
     }
 
     @Override
     public void setMatchResult(String tournamentId, int round, String winner) {
+
         try {
-            try (Connection conn = _dbAccess.getDataSource().getConnection()) {
-                try (PreparedStatement statement = conn.prepareStatement("update tournament_match set winner=? where tournament_id=? and (player_one=? or player_two=?)")) {
-                    statement.setString(1, winner);
-                    statement.setString(2, tournamentId);
-                    statement.setString(3, winner);
-                    statement.setString(4, winner);
-                    statement.executeUpdate();
-                }
+            var db = _dbAccess.openDB();
+
+            String sql = """
+                        UPDATE tournament_match 
+                        SET winner = :winner 
+                        WHERE tournament_id = :tid 
+                            AND round = :round
+                            AND (player_one = :winner or player_two = :winner)
+                        """;
+
+            try (org.sql2o.Connection conn = db.beginTransaction()) {
+                Query query = conn.createQuery(sql, true);
+                query.addParameter("tid", tournamentId)
+                        .addParameter("winner", winner)
+                        .addParameter("round", round)
+                        .addToBatch();
+                query.executeBatch();
+                conn.commit();
             }
-        } catch (SQLException exp) {
-            throw new RuntimeException(exp);
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to update tournament match with winner", ex);
         }
     }
 
     @Override
-    public List<TournamentMatch> getMatches(String tournamentId) {
+    public List<DBDefs.TournamentMatch> getMatches(String tournamentId) {
         try {
-            try (Connection connection = _dbAccess.getDataSource().getConnection()) {
-                try (PreparedStatement statement = connection.prepareStatement("select player_one, player_two, winner, round from tournament_match where tournament_id=? and player_two <> 'bye'")) {
-                    statement.setString(1, tournamentId);
-                    try (ResultSet rs = statement.executeQuery()) {
-                        List<TournamentMatch> result = new ArrayList<TournamentMatch>();
-                        while (rs.next()) {
-                            String playerOne = rs.getString(1);
-                            String playerTwo = rs.getString(2);
-                            String winner = rs.getString(3);
-                            int round = rs.getInt(4);
+            var db = _dbAccess.openDB();
 
-                            result.add(new TournamentMatch(playerOne, playerTwo, winner, round));
-                        }
-                        return result;
-                    }
-                }
+            try (org.sql2o.Connection conn = db.open()) {
+                String sql = """
+                        SELECT 
+                            id, tournament_id, round, player_one, player_two, winner
+                        FROM tournament_match 
+                        WHERE tournament_id = :tid
+                            AND player_two <> 'bye'
+                        """;
+
+                return conn.createQuery(sql)
+                        .addParameter("tid", tournamentId)
+                        .executeAndFetch(DBDefs.TournamentMatch.class);
             }
-        } catch (SQLException exp) {
-            throw new RuntimeException(exp);
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to retrieve tournament matches for tournament '" + tournamentId + "'.", ex);
         }
     }
 
-    @Override
-    public void addBye(String tournamentId, String player, int round) {
-        addMatch(tournamentId, round, player, "bye");
-    }
+
 
     @Override
     public Map<String, Integer> getPlayerByes(String tournamentId) {
         try {
-            try (Connection connection = _dbAccess.getDataSource().getConnection()) {
-                try (PreparedStatement statement = connection.prepareStatement("select player_one from tournament_match where tournament_id=? and player_two = 'bye'")) {
-                    statement.setString(1, tournamentId);
-                    try (ResultSet rs = statement.executeQuery()) {
-                        Map<String, Integer> result = new HashMap<String, Integer>();
-                        while (rs.next()) {
-                            String player = rs.getString(1);
-                            Integer count = result.get(player);
-                            if (count == null)
-                                count = 0;
-                            result.put(player, count + 1);
-                        }
-                        return result;
-                    }
+            var db = _dbAccess.openDB();
+
+            try (org.sql2o.Connection conn = db.open()) {
+                String sql = """
+                        SELECT 
+                            *
+                        FROM tournament_match 
+                        WHERE tournament_id = :tid
+                             AND player_two = 'bye'
+                        """;
+
+                var matches =  conn.createQuery(sql)
+                        .addParameter("tid", tournamentId)
+                        .executeAndFetch(DBDefs.TournamentMatch.class);
+                var result = new HashMap<String, Integer>();
+                for(var match : matches) {
+                    result.put(match.player_one, match.round);
                 }
+
+                return result;
             }
-        } catch (SQLException exp) {
-            throw new RuntimeException(exp);
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to retrieve byes from tournament matches for tournament '" + tournamentId + "'.", ex);
         }
     }
 }

@@ -1,9 +1,6 @@
 package com.gempukku.lotro.logic.timing;
 
-import com.gempukku.lotro.common.CardType;
-import com.gempukku.lotro.common.Phase;
-import com.gempukku.lotro.common.Signet;
-import com.gempukku.lotro.common.Zone;
+import com.gempukku.lotro.common.*;
 import com.gempukku.lotro.filters.Filters;
 import com.gempukku.lotro.game.LotroCardBlueprint;
 import com.gempukku.lotro.game.PhysicalCard;
@@ -11,9 +8,7 @@ import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.game.state.Skirmish;
 import com.gempukku.lotro.logic.PlayerOrder;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class GameStats {
     private Integer wearingRing;
@@ -24,6 +19,9 @@ public class GameStats {
     private int _moveLimit;
     private int _moveCount;
 
+    private Side _initiative = Side.FREE_PEOPLE;
+    private int _fellowshipCardsDrawn;
+
     private int _fellowshipSkirmishStrength;
     private int _shadowSkirmishStrength;
 
@@ -32,12 +30,15 @@ public class GameStats {
 
     private boolean _fpOverwhelmed;
 
-    private Map<String, Map<Zone, Integer>> _zoneSizes = new HashMap<String, Map<Zone, Integer>>();
-    private Map<String, Integer> _threats = new HashMap<String, Integer>();
-    private Map<Integer, Integer> _charStrengths = new HashMap<Integer, Integer>();
-    private Map<Integer, Integer> _charVitalities = new HashMap<Integer, Integer>();
-    private Map<Integer, Integer> _siteNumbers = new HashMap<Integer, Integer>();
-    private Map<Integer, String> _charResistances = new HashMap<Integer, String>();
+    private Map<String, Map<Zone, Integer>> _zoneSizes = new HashMap<>();
+    private Map<String, Integer> _threats = new HashMap<>();
+    private Map<String, Integer> _threatTotals = new HashMap<>();
+    private Map<Integer, Integer> _charStrengths = new HashMap<>();
+    private Map<Integer, Integer> _charVitalities = new HashMap<>();
+    private Map<Integer, Integer> _siteNumbers = new HashMap<>();
+    private Map<Integer, String> _charResistances = new HashMap<>();
+    private Set<Integer> _hinderedStatus = new HashSet<>();
+    private Set<String> _revealedHands = new HashSet<>();
 
     /**
      * @return If the stats have changed
@@ -87,6 +88,23 @@ public class GameStats {
             _moveCount = newMoveCount;
         }
 
+        if(playerOrder != null) {
+            Side newInitiative = game.getModifiersQuerying().hasInitiative(game);
+            if(newInitiative != _initiative) {
+                changed = true;
+                _initiative = newInitiative;
+            }
+        }
+
+        int newFellowshipCardsDrawn = game.getModifiersQuerying().getFellowshipDrawnCards(game);
+        if(game.getGameState().getCurrentPhase() != Phase.FELLOWSHIP) {
+            newFellowshipCardsDrawn = -1;
+        }
+        if(newFellowshipCardsDrawn != _fellowshipCardsDrawn) {
+            changed = true;
+            _fellowshipCardsDrawn = newFellowshipCardsDrawn;
+        }
+
         int newFellowshipStrength = RuleUtils.getFellowshipSkirmishStrength(game);
         if (newFellowshipStrength != _fellowshipSkirmishStrength) {
             changed = true;
@@ -126,15 +144,16 @@ public class GameStats {
             _fpOverwhelmed = newFpOverwhelmed;
         }
 
-        Map<String, Map<Zone, Integer>> newZoneSizes = new HashMap<String, Map<Zone, Integer>>();
+        Map<String, Map<Zone, Integer>> newZoneSizes = new HashMap<>();
         if (playerOrder != null) {
             for (String player : playerOrder.getAllPlayers()) {
-                final HashMap<Zone, Integer> playerZoneSizes = new HashMap<Zone, Integer>();
+                final HashMap<Zone, Integer> playerZoneSizes = new HashMap<>();
                 playerZoneSizes.put(Zone.HAND, game.getGameState().getHand(player).size());
                 playerZoneSizes.put(Zone.DECK, game.getGameState().getDeck(player).size());
                 playerZoneSizes.put(Zone.ADVENTURE_DECK, game.getGameState().getAdventureDeck(player).size());
                 playerZoneSizes.put(Zone.DISCARD, game.getGameState().getDiscard(player).size());
                 playerZoneSizes.put(Zone.DEAD, game.getGameState().getDeadPile(player).size());
+                playerZoneSizes.put(Zone.REMOVED, game.getGameState().getRemoved(player).size());
                 newZoneSizes.put(player, playerZoneSizes);
             }
         }
@@ -144,15 +163,26 @@ public class GameStats {
             _zoneSizes = newZoneSizes;
         }
 
-        Map<Integer, Integer> newCharStrengths = new HashMap<Integer, Integer>();
-        Map<Integer, Integer> newCharVitalities = new HashMap<Integer, Integer>();
-        Map<Integer, Integer> newSiteNumbers = new HashMap<Integer, Integer>();
-        Map<Integer, String> newCharResistances = new HashMap<Integer, String>();
+        Map<Integer, Integer> newCharStrengths = new HashMap<>();
+        Map<Integer, Integer> newCharVitalities = new HashMap<>();
+        Map<Integer, Integer> newSiteNumbers = new HashMap<>();
+        Map<Integer, String> newCharResistances = new HashMap<>();
+        Set<Integer> newHindered = new HashSet<>();
+
+        for(var card : game.getGameState().getAllCards()) {
+            if(card.isFlipped()) {
+                newHindered.add(card.getCardId());
+            }
+        }
+
         for (PhysicalCard character : Filters.filterActive(game, Filters.or(CardType.COMPANION, CardType.ALLY, CardType.MINION))) {
+            if(game.getGameState().isHindered(character))
+                continue;
+
             newCharStrengths.put(character.getCardId(), game.getModifiersQuerying().getStrength(game, character));
             newCharVitalities.put(character.getCardId(), game.getModifiersQuerying().getVitality(game, character));
             final LotroCardBlueprint blueprint = character.getBlueprint();
-            if (blueprint.getCardType() == CardType.MINION || game.getModifiersQuerying().isAdditionalCardType(game, character, CardType.MINION))
+            if (blueprint.getCardType() == CardType.MINION || game.getModifiersQuerying().isCardType(game, character, CardType.MINION))
                 newSiteNumbers.put(character.getCardId(), game.getModifiersQuerying().getMinionSiteNumber(game, character));
             else {
                 final int resistance = game.getModifiersQuerying().getResistance(game, character);
@@ -196,15 +226,48 @@ public class GameStats {
             _charResistances = newCharResistances;
         }
 
-        Map<String, Integer> newThreats = new HashMap<String, Integer>();
+        if (!newHindered.equals(_hinderedStatus)) {
+            changed = true;
+            _hinderedStatus = newHindered;
+        }
+
+        Map<String, Integer> newThreats = new HashMap<>();
+        Map<String, Integer> newThreatTotals = new HashMap<>();
         if (playerOrder != null) {
-            for (String player : playerOrder.getAllPlayers())
+            for (String player : playerOrder.getAllPlayers()) {
                 newThreats.put(player, game.getGameState().getPlayerThreats(player));
+                if(player.equals(game.getGameState().getCurrentPlayerId())) {
+                    newThreatTotals.put(player, PlayConditions.getThreatLimit(game));
+                }
+                else {
+                    newThreatTotals.put(player, -1);
+                }
+            }
         }
 
         if (!newThreats.equals(_threats)) {
             changed = true;
             _threats = newThreats;
+        }
+
+        if (!newThreatTotals.equals(_threatTotals)) {
+            changed = true;
+            _threatTotals = newThreatTotals;
+        }
+
+        // Whose hand is revealed is a property of the player (whoever holds the revealing card), not of the side they
+        // are playing this turn.
+        Set<String> newRevealedHands = new HashSet<>();
+        if (playerOrder != null) {
+            for (String player : playerOrder.getAllPlayers()) {
+                if (game.getModifiersQuerying().isHandRevealed(game, player))
+                    newRevealedHands.add(player);
+            }
+        }
+
+        if (!newRevealedHands.equals(_revealedHands)) {
+            changed = true;
+            _revealedHands = newRevealedHands;
         }
 
         return changed;
@@ -229,6 +292,9 @@ public class GameStats {
     public int getMoveCount() {
         return _moveCount;
     }
+
+    public Side getInitiativeSide() { return _initiative; }
+    public int getFellowshipCardsDrawn() { return _fellowshipCardsDrawn; }
 
     public int getFellowshipSkirmishStrength() {
         return _fellowshipSkirmishStrength;
@@ -258,6 +324,10 @@ public class GameStats {
         return _threats;
     }
 
+    public Map<String, Integer> getThreatTotals() {
+        return _threatTotals;
+    }
+
     public Map<Integer, Integer> getCharStrengths() {
         return Collections.unmodifiableMap(_charStrengths);
     }
@@ -273,6 +343,17 @@ public class GameStats {
     public Map<Integer, String> getCharResistances() {
         return _charResistances;
     }
+    public Set<Integer> getHindered() {
+        return _hinderedStatus;
+    }
+
+    /**
+     * @return the players whose hands are currently revealed to everyone (e.g. by RTMD 92_7), so that every viewer --
+     * the owner, the opponent and spectators alike -- can be shown that hand's link
+     */
+    public Set<String> getRevealedHands() {
+        return _revealedHands;
+    }
 
     public GameStats makeACopy() {
         GameStats copy = new GameStats();
@@ -282,16 +363,21 @@ public class GameStats {
         copy._fellowshipSkirmishDamageBonus = _fellowshipSkirmishDamageBonus;
         copy._moveCount = _moveCount;
         copy._moveLimit = _moveLimit;
+        copy._initiative = _initiative;
+        copy._fellowshipCardsDrawn = _fellowshipCardsDrawn;
         copy._shadowArchery = _shadowArchery;
         copy._shadowSkirmishStrength = _shadowSkirmishStrength;
         copy._shadowSkirmishDamageBonus = _shadowSkirmishDamageBonus;
         copy._fpOverwhelmed = _fpOverwhelmed;
         copy._zoneSizes = _zoneSizes;
         copy._threats = _threats;
+        copy._threatTotals = _threatTotals;
         copy._charStrengths = _charStrengths;
         copy._charVitalities = _charVitalities;
         copy._siteNumbers = _siteNumbers;
         copy._charResistances = _charResistances;
+        copy._hinderedStatus = _hinderedStatus;
+        copy._revealedHands = _revealedHands;
         return copy;
     }
 }

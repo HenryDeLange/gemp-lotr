@@ -8,18 +8,14 @@ import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.PlayUtils;
 
 public class ExtraFilters {
-    public static Filter attachableTo(final LotroGame game, final Filterable... filters) {
-        return attachableTo(game, 0, filters);
-    }
-
     public static Filter attachableTo(final LotroGame game, final int twilightModifier, final Filterable... filters) {
-        return Filters.and(Filters.playable(game, twilightModifier),
+        return Filters.and(Filters.playable(twilightModifier),
                 new Filter() {
                     @Override
                     public boolean accepts(LotroGame game, PhysicalCard physicalCard) {
                         if (physicalCard.getBlueprint().getValidTargetFilter(physicalCard.getOwner(), game, physicalCard) == null)
                             return false;
-                        return PlayUtils.checkPlayRequirements(game, physicalCard, Filters.and(filters), 0, twilightModifier, false, false);
+                        return PlayUtils.checkPlayRequirements(game, physicalCard, Filters.and(filters), 0, twilightModifier, false, false, true);
                     }
                 });
     }

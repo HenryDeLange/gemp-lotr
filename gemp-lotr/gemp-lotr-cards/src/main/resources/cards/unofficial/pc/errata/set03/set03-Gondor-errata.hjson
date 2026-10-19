@@ -1,0 +1,169 @@
+{
+	53_38: {
+		cardInfo: {
+			//id: 3_38.1
+			parent: 3_38
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/53_38.jpg
+			collInfo: 3R38
+			rarity: R
+		}
+		title: Aragorn
+		subtitle: Heir to the White City
+		unique: true
+		culture: Gondor
+		type: companion
+		race: Man
+		twilight: 4
+		strength: 8
+		vitality: 4
+		resistance: 6
+		signet: frodo
+		keyword: [
+			Ranger
+		]
+		effects: {
+			type: Trigger
+			optional: false
+			trigger: {
+				type: moves
+			}
+			requires: {
+				type: phase
+				phase: fellowship
+			}
+			effect: {
+				type: removeTwilight
+				amount: 1
+			}
+		}
+		gametext: Ranger.<br>Each time the fellowship moves during the fellowship phase, remove (1).
+		lore: "'...his hood was cast back, and his dark hair was blowing in the wind, a light was in his eyes: a king returning from exile in his own land.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	53_41: {
+		cardInfo: {
+			//id: 3_41.1
+			parent: 3_41
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN03E041.1_card.jpg
+			collInfo: 3R41
+			rarity: R
+		}
+		title: Gondor Bowmen
+		unique: false
+		side: Free Peoples
+		culture: Gondor
+		twilight: 1
+		type: Condition
+		keyword: [
+			tale
+			support area
+		]
+		effects: [
+			{
+				type: Activated
+				phase: Archery
+				cost: [
+					{
+						type: Exert
+						select: choose(culture(gondor),companion)
+					}
+					{
+						type: Discard
+						select: self
+					}
+				]
+				effect: {
+					type: ModifyArcheryTotal
+					side: freeps
+					amount: 2
+				}
+			}
+		]
+		gametext: Tale.<br>Archery: Exert a [gondor] companion and discard this condition to make the fellowship archery total +2.
+		lore: Arrows of the Last Alliance brought death to Sauron's forces.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	53_42: {
+		cardInfo: {
+			//id: 3_42.1
+			parent: 3_42
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/53_42.jpg
+			collInfo: 3R42
+			rarity: R
+		}
+		title: Horn of Boromir
+		unique: true
+		side: free_people
+		culture: Gondor
+		type: possession
+		twilight: 1
+		target: name(Boromir)
+		effects: {
+			type: activated
+			phase: maneuver
+			cost: [
+				{
+					type: exert
+					select: bearer
+				}
+				{
+					type: discard
+					select: self
+				}
+			]
+			effect: [
+				{
+					type: spot
+					select: choose(ally)
+					memorize: chosenAlly
+				}
+				{
+					type: addModifier
+					modifier: {
+						type: modifyStrength
+						filter: memory(chosenAlly)
+						amount: 3
+					}
+					until: start(regroup)
+				}
+				{
+					type: EnableParticipationInArcheryFireAndSkirmishes
+					select: memory(chosenAlly)
+					until: start(regroup)
+				}
+			]
+		}
+		gametext: Bearer must be Boromir.<br><b>Maneuver:</b> Exert Boromir and discard this possession to spot an ally.  Until the regroup phase, that ally is strength +3 and participates in archery fire and skirmishes.
+		lore: "On a baldric he wore a great horn tipped with silver...."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

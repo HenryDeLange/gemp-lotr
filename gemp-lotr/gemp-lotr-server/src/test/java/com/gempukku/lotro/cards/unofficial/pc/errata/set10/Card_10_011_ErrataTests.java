@@ -1,0 +1,90 @@
+package com.gempukku.lotro.cards.unofficial.pc.errata.set10;
+
+import com.gempukku.lotro.framework.*;
+import com.gempukku.lotro.common.*;
+import com.gempukku.lotro.game.CardNotFoundException;
+import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
+import org.junit.Test;
+
+import java.util.HashMap;
+
+import static org.junit.Assert.*;
+import static com.gempukku.lotro.framework.Assertions.*;
+
+public class Card_10_011_ErrataTests
+{
+
+	protected VirtualTableScenario GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
+		return new VirtualTableScenario(
+				new HashMap<>()
+				{{
+					put("card", "60_11");
+					// put other cards in here as needed for the test case
+				}},
+				VirtualTableScenario.FellowshipSites,
+				VirtualTableScenario.FOTRFrodo,
+				VirtualTableScenario.RulingRing
+		);
+	}
+
+	@Test
+	public void GaladrielStatsAndKeywordsAreCorrect() throws DecisionResultInvalidException, CardNotFoundException {
+
+		/**
+		 * Set: 10
+		 * Name: Galadriel, Lady Redeemed
+		 * Unique: true
+		 * Side: Free Peoples
+		 * Culture: Elven
+		 * Twilight Cost: 3
+		 * Type: Companion
+		 * Subtype: Elf
+		 * Strength: 3
+		 * Vitality: 3
+		 * Resistance: 6
+		 * Game Text: When Galadriel is in your starting fellowship, her twilight cost is -3.
+		* 	<b>Fellowship</b> <i>or</i> <b>Regroup</b>: Discard an [elven] event from hand to hinder a Shadow condition or possession.
+		*/
+
+		var scn = GetScenario();
+
+		var card = scn.GetFreepsCard("card");
+
+		assertEquals("Galadriel", card.getBlueprint().getTitle());
+		assertEquals("Lady Redeemed", card.getBlueprint().getSubtitle());
+		assertTrue(card.getBlueprint().isUnique());
+		assertEquals(Side.FREE_PEOPLE, card.getBlueprint().getSide());
+		assertEquals(Culture.ELVEN, card.getBlueprint().getCulture());
+		assertEquals(CardType.COMPANION, card.getBlueprint().getCardType());
+		assertEquals(Race.ELF, card.getBlueprint().getRace());
+		assertEquals(3, card.getBlueprint().getTwilightCost());
+		assertEquals(3, card.getBlueprint().getStrength());
+		assertEquals(3, card.getBlueprint().getVitality());
+		assertEquals(6, card.getBlueprint().getResistance());
+	}
+
+	// Uncomment any @Test markers below once this is ready to be used
+	//@Test
+	public void GaladrielTest1() throws DecisionResultInvalidException, CardNotFoundException {
+		//Pre-game setup
+		var scn = GetScenario();
+
+		var card = scn.GetFreepsCard("card");
+		scn.MoveCardsToHand(card);
+		scn.MoveCompanionsToTable(card);
+		scn.MoveCardsToSupportArea(card);
+		scn.MoveCardsToDiscard(card);
+		scn.MoveCardsToTopOfDeck(card);
+
+		//var card = scn.GetShadowCard("card");
+		scn.MoveCardsToHand(card);
+		scn.MoveMinionsToTable(card);
+		scn.MoveCardsToSupportArea(card);
+		scn.MoveCardsToDiscard(card);
+		scn.MoveCardsToTopOfDeck(card);
+
+		scn.StartGame();
+		
+		assertFalse(true);
+	}
+}

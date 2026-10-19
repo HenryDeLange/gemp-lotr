@@ -15,10 +15,13 @@ import org.json.simple.JSONObject;
 
 public class ChooseHowManyBurdensToSpot implements EffectAppenderProducer {
     @Override
-    public EffectAppender createEffectAppender(JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
+    public EffectAppender createEffectAppender(boolean cost, JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
         FieldUtils.validateAllowedFields(effectObject, "memorize");
 
         final String memorize = FieldUtils.getString(effectObject.get("memorize"), "memorize");
+
+        if (memorize == null)
+            throw new InvalidCardDefinitionException("ChooseHowManyBurdensToSpot requires a field to memorize the value");
 
         return new DelayedAppender() {
             @Override

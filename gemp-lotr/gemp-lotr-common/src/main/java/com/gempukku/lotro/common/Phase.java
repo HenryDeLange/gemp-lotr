@@ -12,9 +12,9 @@ public enum Phase {
     REGROUP("Regroup", true, true),
     BETWEEN_TURNS("Between turns", false, false);
 
-    private String humanReadable;
-    private boolean realPhase;
-    private boolean cardsAffectGame;
+    private final String humanReadable;
+    private final boolean realPhase;
+    private final boolean cardsAffectGame;
 
     Phase(String humanReadable, boolean realPhase, boolean cardsAffectGame) {
         this.humanReadable = humanReadable;
@@ -32,5 +32,16 @@ public enum Phase {
 
     public boolean isCardsAffectGame() {
         return cardsAffectGame;
+    }
+
+    public static Phase findPhase(String name) {
+        String nameCaps = name.toUpperCase().trim().replace(' ', '_').replace('-', '_');
+        String nameLower = name.toLowerCase();
+
+        for (Phase phase : values()) {
+            if (phase.getHumanReadable().toLowerCase().equals(nameLower) || phase.toString().equals(nameCaps))
+                return phase;
+        }
+        return null;
     }
 }

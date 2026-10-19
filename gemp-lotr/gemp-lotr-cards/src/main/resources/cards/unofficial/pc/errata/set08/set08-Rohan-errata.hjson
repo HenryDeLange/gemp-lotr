@@ -1,0 +1,58 @@
+{
+	58_91: {
+		cardInfo: {
+			//id: 8_91.1
+			parent: 8_91
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN08E091.1.jpg
+			collInfo: 8R91
+			rarity: R
+		}
+		title: Rohirrim Army
+		unique: true
+		culture: rohan
+		twilight: 5
+		type: companion
+		race: man
+		strength: 9
+		vitality: 3
+		effects: [
+			{
+				type: toPlay
+				requires: {
+					type: CanSpot
+					filter: culture(Rohan),companion
+					count: 2
+				}
+			}
+			{
+				type: PlayedInOtherPhase
+				phase: regroup
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: played
+					filter: self
+				}
+				effect: {
+					type: discard
+					select: choose(minion)
+					count: 0-1
+				}
+			}
+		]
+		gametext: To play, spot 2 [rohan] companions. <br>You may play Rohirrim Army any time you could play a regroup event. <br> When you play Rohirrim Army, you may discard a minion.
+		lore: "'Begone, foul dwimmerlaik, lord of carrion!'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

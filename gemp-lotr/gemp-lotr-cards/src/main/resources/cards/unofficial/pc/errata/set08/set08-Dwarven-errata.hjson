@@ -1,0 +1,134 @@
+{
+
+	58_1: {
+		cardInfo: {
+			//id: 8_1.1
+			parent: 8_1
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/58_1.jpg
+			collInfo: 8C1
+			rarity: C
+		}
+		title: Aggression
+		culture: dwarven
+		twilight: 1
+		type: condition
+		keyword: support area
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: addKeyword
+					filter: dwarf
+					keyword: damage+1
+					requires: {
+						type: haveInitiative
+						side: free_people
+					}
+				}
+			}
+			{
+				type: activated
+				phase: fellowship
+				requires: {
+					type: canSpot
+					filter: dwarf
+				}
+				cost: {
+					type: discard
+					select: self
+				}
+				effect: {
+					type: drawCards
+				}
+			}
+		]
+		gametext: While you have initiative, each Dwarf is damage +1.<br>Fellowship: Spot a Dwarf and discard this condition to draw a card.
+		lore: "'Certainty of death, small chance of success....'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	58_3: {
+		cardInfo: {
+			//id: 58_3.1
+			parent: 8_3
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN08E003.1_card.jpg
+			collInfo: 8R3
+			rarity: R
+		}
+		title: Blood Runs Chill
+		unique: false
+		side: Free Peoples
+		culture: Dwarven
+		twilight: 2
+		type: Event
+		timewords: Response
+		effects: [
+			{
+				type: ResponseEvent
+				trigger: {
+					type: Moves
+				}
+				cost: [
+					{
+						type: spot
+						select: choose(dwarf,damage,CanExert,MinVitality(2))
+						memorize: exertedDwarf
+						text: Choose a Dwarf to exert
+					}
+					{
+						# X is part of the cost, so it is locked in before the exertion happens; anything responding
+						# to the exertion (e.g. Cirith Ungol Watcher hindering the Dwarf) must not change it (#1026).
+						type: memorizeNumber
+						amount: {
+							type: forEachKeywordOnCardInMemory
+							memory: exertedDwarf
+							keyword: damage
+						}
+						memory: damageBonus
+					}
+					{
+						# A memorized selection cannot be pre-evaluated as a cost, so it goes through costToEffect
+						# (the Spot above already gates playability on an eligible Dwarf existing).
+						type: costToEffect
+						effect: {
+							type: exert
+							select: memory(exertedDwarf)
+						}
+					}
+				],
+				effect: [
+					{
+						type: Hinder
+						player: shadow
+						select: choose(side(shadow))
+						count: {
+							type: fromMemory
+							memory: damageBonus
+						}
+					}
+				]
+			}
+		]
+		gametext: If the fellowship moves, spot a Dwarf who is damage +X and exert that Dwarf to make an opponent hinder X Shadow cards.
+		lore: "...the Dark Door gaped before them like the mouth of night."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

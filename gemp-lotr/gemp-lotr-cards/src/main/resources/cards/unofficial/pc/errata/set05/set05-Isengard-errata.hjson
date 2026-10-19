@@ -1,0 +1,202 @@
+{
+	
+	55_50: {
+		cardInfo: {
+			//id: 55_50.1
+			parent: 5_50
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN05E050.1_card.jpg
+			collInfo: 5R50
+			rarity: R
+		}
+		title: Foul Horde
+		unique: false
+		side: Shadow
+		culture: Isengard
+		twilight: 4
+		type: Minion
+		race: Orc
+		strength: 9
+		vitality: 3
+		site: 4
+		keywords: Warg-rider
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: addKeyword
+					filter: self,not(exhausted)
+					keyword: fierce
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: addKeyword
+					filter: self,minVitality(3)
+					keyword: ambush
+					amount: 1
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: addKeyword
+					filter: self,minVitality(4)
+					keyword: damage
+					amount: 1
+				}
+			}
+		]
+		gametext: <b>Warg-rider</b>.<br>While Foul Horde is not exhausted, it is <b>fierce</b>.<br>While Foul Horde has at least 3 vitality, it is <b>ambush</b> (1).<br>While Foul Horde has at least 4 vitality, it is <b>damage +1</b>.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	55_51: {
+		cardInfo: {
+			//id: 55_51.1
+			parent: 5_51
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN05E051.1_card.jpg
+			collInfo: 5R51
+			rarity: R
+		}
+		title: Grima
+		subtitle: Chief Counselor
+		unique: true
+		side: Shadow
+		culture: Isengard
+		twilight: 2
+		type: Minion
+		race: Man
+		strength: 4
+		vitality: 3
+		site: 3
+		effects: [
+			{
+				type: activated
+				phase: maneuver
+				cost: {
+					type: exert
+					select: self
+				}
+				effect: {
+					type: If
+					check: {
+						type: canSpotFPCultures
+						amount: 4
+					}
+					true: [
+						{
+							type: Hinder
+							select: choose(unbound,companion)
+							memorize: chosenCompanion
+						}
+						{
+							type: Hinder
+							select: all(attachedTo(memory(chosenCompanion)),side(free))
+						}
+					]
+					false: {
+						type: Hinder
+						select: choose(attachedTo(unbound,companion),condition)
+					}
+				}
+			}
+		]
+		gametext: Maneuver: Exert Grima to hinder a condition borne by an unbound companion (or hinder that companion and all Free Peoples cards they bear if you can spot 4 Free Peoples cultures).
+		lore: "'I care for you and yours as best I may.... Let others deal with these irksome guests.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	55_57: {
+		cardInfo: {
+			//id: 5_57.1
+			parent: 5_57
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN05E057.1.jpg
+			collInfo: 5U57
+			rarity: U
+		}
+		title: Scaling Ladder
+		unique: false
+		culture: isengard
+		twilight: 0
+		type: condition
+		keyword: [
+			support area
+			machine
+		]
+		effects: [
+			{
+				type: activated
+				phase: shadow
+				limitPerPhase: 2
+				cost: {
+					type: exert
+					select: choose(Uruk-hai)
+				}
+				effect: [
+					{
+						type: AddCultureTokens
+						count: 1
+						culture: isengard
+						select: self
+					}
+				]
+			}
+			{
+				type: activated
+				phase: skirmish
+				effect: [
+					{
+						type: repeat
+						times: {
+							type: ForEachCultureToken
+							filter: self
+							culture: isengard
+						}
+						effect: {
+							type: Heal
+							count: 1
+							select: choose(Uruk-hai)
+						}
+					}
+					{
+						type: discard
+						select: self
+					}
+				]
+			}
+		]
+
+		gametext: Machine.\Shadow: Exert an Uruk-hai to place an [isengard] token on this card (limit 2).\Skirmish: Discard this condition to heal an Uruk-hai for each [isengard] token on this card.
+		lore: "Hundreds of long ladders were lifted up. Many were cast down in ruin, but many more replaced them...."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

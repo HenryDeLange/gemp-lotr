@@ -17,11 +17,11 @@ import java.util.List;
 import java.util.Set;
 
 public class RemoveCardsFromDiscardDiscountEffect implements DiscountEffect {
-    private PhysicalCard _source;
-    private String _playerId;
-    private int _count;
-    private int discount;
-    private Filterable _cardFilter;
+    private final PhysicalCard _source;
+    private final String _playerId;
+    private final int _count;
+    private final int discount;
+    private final Filterable _cardFilter;
 
     private boolean _paid;
     private boolean _required;
@@ -56,12 +56,12 @@ public class RemoveCardsFromDiscardDiscountEffect implements DiscountEffect {
 
     @Override
     public boolean isPlayableInFull(LotroGame game) {
-        return Filters.filter(game.getGameState().getDiscard(_playerId), game, _cardFilter).size() >= _count;
+        return Filters.filter(game, game.getGameState().getDiscard(_playerId), _cardFilter).size() >= _count;
     }
 
     @Override
     public int getMaximumPossibleDiscount(LotroGame game) {
-        return Filters.filter(game.getGameState().getDiscard(_playerId), game, _cardFilter).size();
+        return Filters.filter(game, game.getGameState().getDiscard(_playerId), _cardFilter).size();
     }
 
     @Override
@@ -82,7 +82,7 @@ public class RemoveCardsFromDiscardDiscountEffect implements DiscountEffect {
     }
 
     private void proceedDiscount(final LotroGame game) {
-        final Collection<PhysicalCard> removableCards = Filters.filter(game.getGameState().getDiscard(_playerId), game, _cardFilter);
+        final Collection<PhysicalCard> removableCards = Filters.filter(game, game.getGameState().getDiscard(_playerId), _cardFilter);
         game.getUserFeedback().sendAwaitingDecision(_playerId,
                 new ArbitraryCardsSelectionDecision(1, "Choose cards to remove", removableCards, _count, _count) {
                     @Override
@@ -94,7 +94,7 @@ public class RemoveCardsFromDiscardDiscountEffect implements DiscountEffect {
     }
 
     private void removeCards(LotroGame game, List<PhysicalCard> cardsToRemove) {
-        Set<PhysicalCard> removedCards = new HashSet<PhysicalCard>();
+        Set<PhysicalCard> removedCards = new HashSet<>();
         for (PhysicalCard physicalCard : cardsToRemove)
             if (physicalCard.getZone() == Zone.DISCARD)
                 removedCards.add(physicalCard);
@@ -104,10 +104,13 @@ public class RemoveCardsFromDiscardDiscountEffect implements DiscountEffect {
             game.getGameState().addCardToZone(game, removedCard, Zone.REMOVED);
 
         game.getGameState().sendMessage(_playerId + " removed " + GameUtils.getAppendedNames(removedCards) + " from discard using " + GameUtils.getCardLink(_source));
+        discountPaidCallback(removedCards.size());
     }
 
     @Override
     public boolean wasCarriedOut() {
         return !_required || _paid;
     }
+
+    protected void discountPaidCallback(int paid) {  }
 }

@@ -18,7 +18,7 @@ import java.util.List;
 
 public class CancelAllAssignments implements EffectAppenderProducer {
     @Override
-    public EffectAppender createEffectAppender(JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
+    public EffectAppender createEffectAppender(boolean cost, JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
         FieldUtils.validateAllowedFields(effectObject);
 
         return new DelayedAppender() {
@@ -27,7 +27,7 @@ public class CancelAllAssignments implements EffectAppenderProducer {
                 return new UnrespondableEffect() {
                     @Override
                     protected void doPlayEffect(LotroGame game) {
-                        List<Assignment> assignments = new LinkedList<Assignment>(game.getGameState().getAssignments());
+                        List<Assignment> assignments = new LinkedList<>(game.getGameState().getAssignments());
                         for (Assignment assignment : assignments)
                             game.getGameState().removeAssignment(assignment);
 

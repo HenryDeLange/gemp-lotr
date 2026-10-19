@@ -15,13 +15,15 @@ import java.util.Collections;
 import java.util.LinkedList;
 
 public abstract class ChooseCardsFromDiscardEffect extends AbstractEffect {
-    private String _playerId;
-    private int _minimum;
-    private int _maximum;
-    private Filter _filter;
+    private final String _playerId;
+    private final String _targetPlayerDiscardId;
+    private final int _minimum;
+    private final int _maximum;
+    private final Filter _filter;
 
-    public ChooseCardsFromDiscardEffect(String playerId, int minimum, int maximum, Filterable... filters) {
+    public ChooseCardsFromDiscardEffect(String playerId, String targetPlayerDiscardId, int minimum, int maximum, Filterable... filters) {
         _playerId = playerId;
+        _targetPlayerDiscardId = targetPlayerDiscardId;
         _minimum = minimum;
         _maximum = maximum;
         _filter = Filters.and(filters);
@@ -39,25 +41,25 @@ public abstract class ChooseCardsFromDiscardEffect extends AbstractEffect {
 
     @Override
     public boolean isPlayableInFull(LotroGame game) {
-        Collection<PhysicalCard> cards = Filters.filter(game.getGameState().getDiscard(_playerId), game, _filter);
+        Collection<PhysicalCard> cards = Filters.filter(game, game.getGameState().getDiscard(_targetPlayerDiscardId), _filter);
         return cards.size() >= _minimum;
     }
 
     @Override
     protected FullEffectResult playEffectReturningResult(final LotroGame game) {
-        Collection<PhysicalCard> cards = Filters.filter(game.getGameState().getDiscard(_playerId), game, _filter);
+        Collection<PhysicalCard> cards = Filters.filter(game, game.getGameState().getDiscard(_targetPlayerDiscardId), _filter);
 
         boolean success = cards.size() >= _minimum;
 
         int minimum = Math.min(_minimum, cards.size());
 
         if (_maximum == 0) {
-            cardsSelected(game, Collections.<PhysicalCard>emptySet());
+            cardsSelected(game, Collections.emptySet());
         } else if (cards.size() == minimum) {
             cardsSelected(game, cards);
         } else {
             game.getUserFeedback().sendAwaitingDecision(_playerId,
-                    new ArbitraryCardsSelectionDecision(1, "Choose card from discard", new LinkedList<PhysicalCard>(cards), minimum, _maximum) {
+                    new ArbitraryCardsSelectionDecision(1, "Choose card from discard", new LinkedList<>(cards), minimum, _maximum) {
                         @Override
                         public void decisionMade(String result) throws DecisionResultInvalidException {
                             cardsSelected(game, getSelectedCardsByResponse(result));

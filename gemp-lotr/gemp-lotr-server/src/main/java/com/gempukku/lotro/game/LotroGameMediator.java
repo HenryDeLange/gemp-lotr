@@ -3,73 +3,134 @@ package com.gempukku.lotro.game;
 import com.gempukku.lotro.PrivateInformationException;
 import com.gempukku.lotro.SubscriptionConflictException;
 import com.gempukku.lotro.SubscriptionExpiredException;
+import com.gempukku.lotro.chat.MarkdownParser;
 import com.gempukku.lotro.common.*;
 import com.gempukku.lotro.communication.GameStateListener;
 import com.gempukku.lotro.filters.Filters;
 import com.gempukku.lotro.game.state.GameCommunicationChannel;
 import com.gempukku.lotro.game.state.GameEvent;
+import com.gempukku.lotro.game.state.GameExtraInfo;
+import com.gempukku.lotro.game.state.GameState;
+import com.gempukku.lotro.hall.GameTimer;
 import com.gempukku.lotro.logic.GameUtils;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
 import com.gempukku.lotro.logic.modifiers.Modifier;
 import com.gempukku.lotro.logic.timing.DefaultLotroGame;
 import com.gempukku.lotro.logic.timing.GameResultListener;
+import com.gempukku.lotro.packs.PackOpener;
 import com.gempukku.lotro.logic.vo.LotroDeck;
-import org.apache.log4j.Logger;
+import com.gempukku.lotro.bots.BotGameStateListener;
+import com.gempukku.lotro.bots.BotPlayer;
+import com.gempukku.lotro.bots.AssignmentLegality;
+import com.gempukku.lotro.bots.BotDecisionFallback;
+import com.gempukku.lotro.bots.BotService;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class LotroGameMediator {
-    private static final Logger LOG = Logger.getLogger(LotroGameMediator.class);
+    private static final Logger LOG = LogManager.getLogger(LotroGameMediator.class);
 
-    private Map<String, GameCommunicationChannel> _communicationChannels = Collections.synchronizedMap(new HashMap<String, GameCommunicationChannel>());
-    private DefaultUserFeedback _userFeedback;
-    private DefaultLotroGame _lotroGame;
-    private Map<String, Integer> _playerClocks = new HashMap<String, Integer>();
-    private Map<String, Long> _decisionQuerySentTimes = new HashMap<String, Long>();
-    private Set<String> _playersPlaying = new HashSet<String>();
+    private final Map<String, GameCommunicationChannel> _communicationChannels = Collections.synchronizedMap(new HashMap<>());
+    private final DefaultUserFeedback _userFeedback;
+    private final DefaultLotroGame _lotroGame;
+    private final Map<String, Integer> _playerClocks = new HashMap<>();
+    private final Map<String, Long> _decisionQuerySentTimes = new HashMap<>();
+    private final Set<String> _playersPlaying = new HashSet<>();
+    private final Map<String, LotroDeck> _playerDecks = new HashMap<>();
 
-    private String _gameId;
-    private int _maxSecondsForGamePerPlayer;
-    private int _maxSecondsPerDecision;
-    private boolean _allowSpectators;
-    private boolean _cancellable;
-    private boolean privateGame;
+    private final String _gameId;
 
-    private ReentrantReadWriteLock _lock = new ReentrantReadWriteLock(true);
-    private ReentrantReadWriteLock.ReadLock _readLock = _lock.readLock();
-    private ReentrantReadWriteLock.WriteLock _writeLock = _lock.writeLock();
+    private GameTimer _timeSettings;
+    private final boolean _allowSpectators;
+    private final boolean _cancellable;
+    private final boolean _showInGameHall;
+
+    private final boolean _soloGame;
+    private final BotPlayer _botPlayer;
+    private final LotroDeck _botDeck;
+
+    private final ReentrantReadWriteLock _lock = new ReentrantReadWriteLock(true);
+    private final ReentrantReadWriteLock.ReadLock _readLock = _lock.readLock();
+    private final ReentrantReadWriteLock.WriteLock _writeLock = _lock.writeLock();
     private int _channelNextIndex = 0;
     private volatile boolean _destroyed;
 
-    public LotroGameMediator(String gameId, LotroFormat lotroFormat, LotroGameParticipant[] participants, LotroCardBlueprintLibrary library, int maxSecondsForGamePerPlayer,
-                             int maxSecondsPerDecision, boolean allowSpectators, boolean cancellable, boolean privateGame) {
+    private int botDecisions = 0;
+
+    // Any single decision that holds the game's write lock longer than this is logged with
+    // enough context (game, player, decision, answer, phase) to find it in the replay.
+    private static final long SLOW_ACTION_THRESHOLD_MS = 1000;
+
+    public LotroGameMediator(String gameId, LotroFormat lotroFormat, LotroGameParticipant[] participants, LotroCardBlueprintLibrary library,
+                             GameTimer gameTimer, boolean allowSpectators, boolean cancellable, boolean showInGameHall,
+                             String tournamentName, MarkdownParser parser, BotService botService, boolean isSolo,
+                             GameExtraInfo extraInfo, PackOpener packOpener) {
         _gameId = gameId;
-        _maxSecondsForGamePerPlayer = maxSecondsForGamePerPlayer;
-        _maxSecondsPerDecision = maxSecondsPerDecision;
+        _timeSettings = gameTimer;
         _allowSpectators = allowSpectators;
         _cancellable = cancellable;
-        this.privateGame = privateGame;
+        this._showInGameHall = showInGameHall;
+        _soloGame = isSolo;
         if (participants.length < 1)
             throw new IllegalArgumentException("Game can't have less than one participant");
 
-        Map<String, LotroDeck> decks = new HashMap<String, LotroDeck>();
-
         for (LotroGameParticipant participant : participants) {
             String participantId = participant.getPlayerId();
-            decks.put(participantId, participant.getDeck());
+            var deck = participant.getDeck();
+            deck.setNotes(parser.renderMarkdown(deck.getNotes(), true));
+            _playerDecks.put(participantId, deck);
             _playerClocks.put(participantId, 0);
             _playersPlaying.add(participantId);
         }
 
+        if (_soloGame) {
+            if (participants.length == 1) {
+                BotService.BotWithDeck bot = botService.getBotParticipant(lotroFormat);
+                _botPlayer = bot.getBotPlayer();
+                _botDeck = bot.getLotroDeck();
+                _playerDecks.put(_botPlayer.getName(), _botDeck);
+                _playerClocks.put(_botPlayer.getName(), 0);
+                _playersPlaying.add(_botPlayer.getName());
+            } else {
+                BotPlayer tmpBot = null;
+                LotroDeck tmpDeck = null;
+                for (LotroGameParticipant participant : participants) {
+                    String participantId = participant.getPlayerId();
+                    var deck = participant.getDeck();
+                    if (participantId.equals(BotService.GENERAL_BOT_NAME)) {
+                        BotService.BotWithDeck bot = botService.getBotForDeck(deck);
+                        tmpBot = bot.getBotPlayer();
+                        tmpDeck = bot.getLotroDeck();
+                    }
+                }
+                _botPlayer = tmpBot;
+                _botDeck = tmpDeck;
+            }
+        } else {
+            _botPlayer = null;
+            _botDeck = null;
+        }
+
         _userFeedback = new DefaultUserFeedback();
-        _lotroGame = new DefaultLotroGame(lotroFormat, decks, _userFeedback, library);
+        _lotroGame = new DefaultLotroGame(lotroFormat, _playerDecks, _userFeedback, library, _timeSettings.toString(),
+                _allowSpectators, tournamentName, extraInfo);
+        if (packOpener != null) {
+            _lotroGame.setPackOpener(packOpener);
+        }
+
+        if (_botPlayer != null) {
+            _lotroGame.addGameStateListener(_botPlayer.getName(), new BotGameStateListener(_botPlayer, this, new AssignmentLegality(_lotroGame)));
+        }
+
         _userFeedback.setGame(_lotroGame);
     }
 
     public boolean isVisibleToUser(String username) {
-        return !privateGame || _playersPlaying.contains(username);
+        return !_showInGameHall || _playersPlaying.contains(username);
     }
 
     public boolean isDestroyed() {
@@ -83,6 +144,8 @@ public class LotroGameMediator {
     public String getGameId() {
         return _gameId;
     }
+
+    public DefaultLotroGame getGame() { return _lotroGame; }
 
     public boolean isAllowSpectators() {
         return _allowSpectators;
@@ -119,7 +182,7 @@ public class LotroGameMediator {
     }
 
     public List<String> getPlayersPlaying() {
-        return new LinkedList<String>(_playersPlaying);
+        return new LinkedList<>(_playersPlaying);
     }
 
     public String getGameStatus() {
@@ -144,74 +207,99 @@ public class LotroGameMediator {
             if (card == null || card.getZone() == null)
                 return null;
 
+            boolean visible = card.getZone().isPublic()
+                    || (player.getName().equals(card.getOwner()) && card.getZone().isVisibleByOwner());
+            if (!visible)
+                return null;
+
             if (card.getZone().isInPlay() || card.getZone() == Zone.HAND) {
                 StringBuilder sb = new StringBuilder();
 
                 if (card.getZone() == Zone.HAND)
                     sb.append("<b>Card is in hand - stats are only provisional</b><br><br>");
-                else if (Filters.filterActive(_lotroGame, card).size() == 0)
+                else if (!Filters.hasActive(_lotroGame, card))
                     sb.append("<b>Card is inactive - current stats may be inaccurate</b><br><br>");
 
                 sb.append("<b>Affecting card:</b>");
                 Collection<Modifier> modifiers = _lotroGame.getModifiersQuerying().getModifiersAffecting(_lotroGame, card);
                 for (Modifier modifier : modifiers) {
                     PhysicalCard source = modifier.getSource();
-                    if (source != null)
-                        sb.append("<br><b>" + GameUtils.getCardLink(source) + ":</b> " + modifier.getText(_lotroGame, card));
-                    else
-                        sb.append("<br><b><i>System</i>:</b> " + modifier.getText(_lotroGame, card));
+                    if (source != null) {
+                        sb.append("<br><b>")
+                                .append(GameUtils.getCardLink(source))
+                                .append(":</b> ")
+                                .append(modifier.getText(_lotroGame, card));
+                    }
+                    else {
+                        sb.append("<br><b><i>System</i>:</b> ")
+                                .append(modifier.getText(_lotroGame, card));
+                    }
                 }
-                if (modifiers.size() == 0)
+                if (modifiers.size() == 0) {
                     sb.append("<br><i>nothing</i>");
+                }
 
-                if (card.getZone().isInPlay() && card.getBlueprint().getCardType() == CardType.SITE)
-                    sb.append("<br><b>Owner:</b> " + card.getOwner());
+                if (card.getZone().isInPlay() && card.getBlueprint().getCardType() == CardType.SITE) {
+                    sb.append("<br><b>Owner:</b> ")
+                            .append(card.getOwner());
+                }
 
                 Map<Token, Integer> map = _lotroGame.getGameState().getTokens(card);
                 if (map != null && map.size() > 0) {
                     sb.append("<br><b>Tokens:</b>");
-                    for (Map.Entry<Token, Integer> tokenIntegerEntry : map.entrySet())
-                        sb.append("<br>" + tokenIntegerEntry.getKey().toString() + ": " + tokenIntegerEntry.getValue());
+                    for (Map.Entry<Token, Integer> tokenIntegerEntry : map.entrySet()) {
+                        sb.append("<br>")
+                                .append(tokenIntegerEntry.getKey().toString())
+                                .append(": ")
+                                .append(tokenIntegerEntry.getValue());
+                    }
                 }
 
                 List<PhysicalCard> stackedCards = _lotroGame.getGameState().getStackedCards(card);
                 if (stackedCards != null && stackedCards.size() > 0) {
-                    sb.append("<br><b>Stacked cards:</b>");
-                    sb.append("<br>" + GameUtils.getAppendedNames(stackedCards));
+                    sb.append("<br><b>Stacked cards:</b>")
+                            .append("<br>")
+                            .append(GameUtils.getAppendedNames(stackedCards));
                 }
 
                 final String extraDisplayableInformation = card.getBlueprint().getDisplayableInformation(card);
                 if (extraDisplayableInformation != null) {
-                    sb.append("<br><b>Extra information:</b>");
-                    sb.append("<br>" + extraDisplayableInformation);
+                    sb.append("<br><b>Extra information:</b>")
+                            .append("<br>")
+                            .append(extraDisplayableInformation);
                 }
 
                 sb.append("<br><br><b>Effective stats:</b>");
                 try {
                     PhysicalCard target = card.getAttachedTo();
-                    int twilightCost = _lotroGame.getModifiersQuerying().getTwilightCost(_lotroGame, card, target, 0, false);
-                    sb.append("<br><b>Twilight cost:</b> " + twilightCost);
-                } catch (UnsupportedOperationException exp) {
+                    int twilightCost = _lotroGame.getModifiersQuerying().getTwilightCostToPlay(_lotroGame, card, target, 0, false);
+                    sb.append("<br><b>Twilight cost:</b> ")
+                            .append(twilightCost);
+                } catch (UnsupportedOperationException ignored) {
                 }
                 try {
                     int strength = _lotroGame.getModifiersQuerying().getStrength(_lotroGame, card);
-                    sb.append("<br><b>Strength:</b> " + strength);
-                } catch (UnsupportedOperationException exp) {
+                    sb.append("<br><b>Strength:</b> ")
+                            .append(strength);
+                } catch (UnsupportedOperationException ignored) {
                 }
                 try {
                     int vitality = _lotroGame.getModifiersQuerying().getVitality(_lotroGame, card);
-                    sb.append("<br><b>Vitality:</b> " + vitality);
-                } catch (UnsupportedOperationException exp) {
+                    sb.append("<br><b>Vitality:</b> ")
+                            .append(vitality);
+                } catch (UnsupportedOperationException ignored) {
                 }
                 try {
                     int resistance = _lotroGame.getModifiersQuerying().getResistance(_lotroGame, card);
-                    sb.append("<br><b>Resistance:</b> " + resistance);
-                } catch (UnsupportedOperationException exp) {
+                    sb.append("<br><b>Resistance:</b> ")
+                            .append(resistance);
+                } catch (UnsupportedOperationException ignored) {
                 }
                 try {
                     int siteNumber = _lotroGame.getModifiersQuerying().getMinionSiteNumber(_lotroGame, card);
-                    sb.append("<br><b>Site number:</b> " + siteNumber);
-                } catch (UnsupportedOperationException exp) {
+                    sb.append("<br><b>Site number:</b> ")
+                            .append(siteNumber);
+                } catch (UnsupportedOperationException ignored) {
                 }
 
                 StringBuilder keywords = new StringBuilder();
@@ -220,15 +308,31 @@ public class LotroGameMediator {
                         if (keyword.isMultiples()) {
                             int count = _lotroGame.getModifiersQuerying().getKeywordCount(_lotroGame, card, keyword);
                             if (count > 0)
-                                keywords.append(keyword.getHumanReadable() + " +" + count + ", ");
+                                keywords.append(keyword.getHumanReadable())
+                                        .append(" +")
+                                        .append(count)
+                                        .append(", ");
                         } else {
                             if (_lotroGame.getModifiersQuerying().hasKeyword(_lotroGame, card, keyword))
-                                keywords.append(keyword.getHumanReadable() + ", ");
+                                keywords.append(keyword.getHumanReadable())
+                                        .append(", ");
                         }
                     }
                 }
-                if (keywords.length() > 0)
-                    sb.append("<br><b>Keywords:</b> " + keywords.substring(0, keywords.length() - 2));
+                if (keywords.length() > 0) {
+                    sb.append("<br><b>Keywords:</b> ")
+                            .append(keywords.substring(0, keywords.length() - 2));
+                }
+
+                sb.append("<br><br><b>Printed Game Text: </b><br>")
+                        .append(card.getBlueprint().getFormattedGameText());
+
+                String helpText = card.getBlueprint().getHelpText();
+                if (helpText != null && !helpText.isEmpty()) {
+                    sb.append("<br><br><b>Additional Info: </b><br>")
+                            .append(helpText);
+                }
+
                 return sb.toString();
             } else {
                 return null;
@@ -249,34 +353,43 @@ public class LotroGameMediator {
     }
 
     public void cleanup() {
-        _writeLock.lock();
+        // The cleaner runs every second. If this game is in the middle of processing a player
+        // action (which holds the write lock for the whole action), skip this pass instead of
+        // waiting for it; the next pass will pick it up.
+        if (!_writeLock.tryLock())
+            return;
         try {
             long currentTime = System.currentTimeMillis();
-            Map<String, GameCommunicationChannel> channelsCopy = new HashMap<String, GameCommunicationChannel>(_communicationChannels);
+            Map<String, GameCommunicationChannel> channelsCopy = new HashMap<>(_communicationChannels);
             for (Map.Entry<String, GameCommunicationChannel> playerChannels : channelsCopy.entrySet()) {
                 String playerId = playerChannels.getKey();
                 // Channel is stale (user no longer connected to game, to save memory, we remove the channel
                 // User can always reconnect and establish a new channel
                 GameCommunicationChannel channel = playerChannels.getValue();
-                if (currentTime > channel.getLastAccessed() + _maxSecondsPerDecision*1000) {
+                if (currentTime > channel.getLastAccessed() + _timeSettings.maxSecondsPerDecision() * 1000L) {
                     _lotroGame.removeGameStateListener(channel);
                     _communicationChannels.remove(playerId);
                 }
             }
 
             if (_lotroGame != null && _lotroGame.getWinnerPlayerId() == null) {
-                for (Map.Entry<String, Long> playerDecision : new HashMap<String, Long>(_decisionQuerySentTimes).entrySet()) {
-                    String playerId = playerDecision.getKey();
+                for (Map.Entry<String, Long> playerDecision : new HashMap<>(_decisionQuerySentTimes).entrySet()) {
+                    String player = playerDecision.getKey();
                     long decisionSent = playerDecision.getValue();
-                    if (currentTime > decisionSent + _maxSecondsPerDecision*1000) {
-                        addTimeSpentOnDecisionToUserClock(playerId);
-                        _lotroGame.playerLost(playerId, "Player decision timed-out");
+                    if (currentTime > decisionSent + _timeSettings.maxSecondsPerDecision() * 1000L) {
+                        addTimeSpentOnDecisionToUserClock(player);
+                        _lotroGame.playerLost(player, "Player decision timed-out");
+                    }
+                    // Bot player 5 secs time out
+                    if (player.startsWith("~") && (currentTime > decisionSent + 5 * 1000L)) {
+                        addTimeSpentOnDecisionToUserClock(player);
+                        _lotroGame.playerLost(player, "Bot got stuck on a decision");
                     }
                 }
 
                 for (Map.Entry<String, Integer> playerClock : _playerClocks.entrySet()) {
                     String player = playerClock.getKey();
-                    if (_maxSecondsForGamePerPlayer - playerClock.getValue() - getCurrentUserPendingTime(player) < 0) {
+                    if (_timeSettings.maxSecondsPerPlayer() - playerClock.getValue() - getCurrentUserPendingTime(player) < 0) {
                         addTimeSpentOnDecisionToUserClock(player);
                         _lotroGame.playerLost(player, "Player run out of time");
                     }
@@ -323,6 +436,9 @@ public class LotroGameMediator {
                     AwaitingDecision awaitingDecision = _userFeedback.getAwaitingDecision(playerName);
                     if (awaitingDecision != null) {
                         if (awaitingDecision.getAwaitingDecisionId() == decisionId && !_lotroGame.isFinished()) {
+                            long startedAt = System.currentTimeMillis();
+                            String decisionText = awaitingDecision.getText();
+
                             try {
                                 _userFeedback.participantDecided(playerName);
                                 awaitingDecision.decisionMade(answer);
@@ -340,6 +456,8 @@ public class LotroGameMediator {
                             } catch (RuntimeException runtimeException) {
                                 LOG.error("Error processing game decision", runtimeException);
                                 _lotroGame.cancelGame();
+                            } finally {
+                                logIfSlow("player", playerName, decisionId, decisionText, answer, startedAt);
                             }
                         }
                     }
@@ -354,9 +472,101 @@ public class LotroGameMediator {
         }
     }
 
+    public synchronized void botAnswered(String botName, int decisionId, String answer) {
+        _writeLock.lock();
+        try {
+            AwaitingDecision awaitingDecision = _userFeedback.getAwaitingDecision(botName);
+            if (awaitingDecision != null) {
+                if (awaitingDecision.getAwaitingDecisionId() == decisionId && !_lotroGame.isFinished()) {
+                    if (botDecisions > 1000) {
+                        // Bot made tons of decisions this game, probably non-trivial loop - concede
+                        System.out.println(botName + " probably in non-trivial loop, ending the game");
+
+                        addTimeSpentOnDecisionToUserClock(botName);
+                        _lotroGame.playerLost(botName, "Possible loop detected");
+                        
+                    }
+
+                    try {
+                        _userFeedback.participantDecided(botName);
+                        // A rejected (or missing) bot answer falls back to a valid default before conceding (#1097)
+                        String accepted = BotDecisionFallback.decide(_lotroGame, botName, awaitingDecision, answer);
+                        if (!accepted.equals(answer))
+                            LOG.warn("Bot " + botName + " game=" + _gameId + " decision=\"" + awaitingDecision.getText()
+                                    + "\": answer \"" + answer + "\" was rejected, used fallback \"" + accepted + "\"");
+
+                        // Decision successfully made, add the time to user clock
+                        addTimeSpentOnDecisionToUserClock(botName);
+
+                        _lotroGame.carryOutPendingActionsUntilDecisionNeeded();
+                        startClocksForUsersPendingDecision();
+                        
+                        botDecisions++;
+
+                    } catch (DecisionResultInvalidException decisionResultInvalidException) {
+                        // Bot provided wrong answer - concede to prevent loop
+                        System.out.println(botName + " wrong answer - " + decisionResultInvalidException.getWarningMessage());
+
+                        addTimeSpentOnDecisionToUserClock(botName);
+                        _lotroGame.playerLost(botName, "Invalid decision");
+                    } catch (RuntimeException runtimeException) {
+                        LOG.error("Error processing game decision", runtimeException);
+                        _lotroGame.cancelGame();
+                    }
+                }
+            }
+        } finally {
+            _writeLock.unlock();
+        }
+    }
+
+    public GameState getGameState() {
+        _readLock.lock();
+        try {
+            return _lotroGame.getGameState();
+        } finally {
+            _readLock.unlock();
+        }
+    }
+
+    public BotPlayer getBotPlayer() {
+        return _botPlayer;
+    }
+
+    public LotroDeck getBotDeck() {
+        return _botDeck;
+    }
+
+    /**
+     * Logs one line when a decision took longer than SLOW_ACTION_THRESHOLD_MS to process. The
+     * time covers everything that ran under the game's write lock as a result of the answer:
+     * the action itself, every triggered response, and for a human answer also any AI decisions
+     * that followed before the next human decision was needed (those are logged separately as
+     * kind "ai" so they can be told apart).
+     */
+    private void logIfSlow(String kind, String playerName, int decisionId, String decisionText, String answer, long startedAt) {
+        long elapsedMs = System.currentTimeMillis() - startedAt;
+        if (elapsedMs < SLOW_ACTION_THRESHOLD_MS)
+            return;
+        String phase = null;
+        String currentPlayer = null;
+        try {
+            if (_lotroGame.getGameState() != null) {
+                phase = String.valueOf(_lotroGame.getGameState().getCurrentPhase());
+                currentPlayer = _lotroGame.getGameState().getCurrentPlayerId();
+            }
+        } catch (RuntimeException ignored) {
+            // Diagnostics only; never let logging break the game.
+        }
+        LOG.warn("Slow action: took=" + elapsedMs + "ms kind=" + kind + " game=" + _gameId
+                + " player=" + playerName + " decisionId=" + decisionId
+                + " decision=\"" + decisionText + "\" answer=\"" + answer + "\""
+                + " phase=" + phase + " turnOf=" + currentPlayer);
+    }
+
     public GameCommunicationChannel getCommunicationChannel(Player player, int channelNumber) throws PrivateInformationException, SubscriptionConflictException, SubscriptionExpiredException {
         String playerName = player.getName();
-        if (!player.getType().contains("a") && !_allowSpectators && !_playersPlaying.contains(playerName))
+        if (!player.hasType(Player.Type.ADMIN) && !_allowSpectators && !_playersPlaying.contains(playerName))
             throw new PrivateInformationException();
 
         _readLock.lock();
@@ -383,20 +593,25 @@ public class LotroGameMediator {
             for (GameEvent gameEvent : communicationChannel.consumeGameEvents())
                 visitor.visitGameEvent(gameEvent);
 
-            Map<String, Integer> secondsLeft = new HashMap<String, Integer>();
+            Map<String, Integer> secondsLeft = new HashMap<>();
             for (Map.Entry<String, Integer> playerClock : _playerClocks.entrySet()) {
                 String playerClockName = playerClock.getKey();
-                secondsLeft.put(playerClockName, _maxSecondsForGamePerPlayer - playerClock.getValue() - getCurrentUserPendingTime(playerClockName));
+                secondsLeft.put(playerClockName, _timeSettings.maxSecondsPerPlayer() - playerClock.getValue() - getCurrentUserPendingTime(playerClockName));
+
+                if (_decisionQuerySentTimes.containsKey(playerClockName))
+                    secondsLeft.put("decisionClock", getCurrentUserPendingTime(playerClockName));
             }
+            // the decision time limit, so the client can show "elapsed / limit" and warn before a decision times out
+            secondsLeft.put("decisionLimit", _timeSettings.maxSecondsPerDecision());
             visitor.visitClock(secondsLeft);
         } finally {
             _readLock.unlock();
         }
     }
 
-    public void singupUserForGame(Player player, ParticipantCommunicationVisitor visitor) throws PrivateInformationException {
+    public void signupUserForGame(Player player, ParticipantCommunicationVisitor visitor) throws PrivateInformationException {
         String playerName = player.getName();
-        if (!player.getType().contains("a") && !_allowSpectators && !_playersPlaying.contains(playerName))
+        if (!player.hasType(Player.Type.ADMIN) && !_allowSpectators && !_playersPlaying.contains(playerName))
             throw new PrivateInformationException();
 
         _readLock.lock();
@@ -404,7 +619,7 @@ public class LotroGameMediator {
             int number = _channelNextIndex;
             _channelNextIndex++;
 
-            GameCommunicationChannel participantCommunicationChannel = new GameCommunicationChannel(playerName, number);
+            GameCommunicationChannel participantCommunicationChannel = new GameCommunicationChannel(playerName, number, true, _lotroGame.getFormat());
             _communicationChannels.put(playerName, participantCommunicationChannel);
 
             _lotroGame.addGameStateListener(playerName, participantCommunicationChannel);
@@ -414,11 +629,16 @@ public class LotroGameMediator {
             for (GameEvent gameEvent : participantCommunicationChannel.consumeGameEvents())
                 visitor.visitGameEvent(gameEvent);
 
-            Map<String, Integer> secondsLeft = new HashMap<String, Integer>();
+            Map<String, Integer> secondsLeft = new HashMap<>();
             for (Map.Entry<String, Integer> playerClock : _playerClocks.entrySet()) {
                 String playerId = playerClock.getKey();
-                secondsLeft.put(playerId, _maxSecondsForGamePerPlayer - playerClock.getValue() - getCurrentUserPendingTime(playerId));
+                secondsLeft.put(playerId, _timeSettings.maxSecondsPerPlayer() - playerClock.getValue() - getCurrentUserPendingTime(playerId));
+
+                if (_decisionQuerySentTimes.containsKey(playerId))
+                    secondsLeft.put("decisionClock", getCurrentUserPendingTime(playerId));
             }
+            secondsLeft.put("decisionLimit", _timeSettings.maxSecondsPerDecision());
+
             visitor.visitClock(secondsLeft);
         } finally {
             _readLock.unlock();
@@ -441,13 +661,19 @@ public class LotroGameMediator {
         }
     }
 
-    private int getCurrentUserPendingTime(String participantId) {
+    public int getCurrentUserPendingTime(String participantId) {
         if (!_decisionQuerySentTimes.containsKey(participantId))
             return 0;
         long queryTime = _decisionQuerySentTimes.get(participantId);
         long currentTime = System.currentTimeMillis();
         return (int) ((currentTime - queryTime) / 1000);
     }
+
+    public GameTimer getTimeSettings() {
+        return _timeSettings;
+    }
+
+    public Map<String, Integer> getPlayerClocks() { return Collections.unmodifiableMap(_playerClocks); }
 
     public String getPlayerPositions() {
         StringBuilder stringBuilder = new StringBuilder();

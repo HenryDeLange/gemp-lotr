@@ -1,25 +1,21 @@
 package com.gempukku.lotro.logic.effects;
 
+import com.gempukku.lotro.common.Zone;
 import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.GameUtils;
 import com.gempukku.lotro.logic.PlayOrder;
-import com.gempukku.lotro.logic.PlayerOrder;
 import com.gempukku.lotro.logic.decisions.ArbitraryCardsSelectionDecision;
-import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
 import com.gempukku.lotro.logic.timing.AbstractSuccessfulEffect;
 import com.gempukku.lotro.logic.timing.Effect;
+import com.gempukku.lotro.logic.timing.results.RevealedCardFromDeckResult;
 
 import java.util.Collection;
 import java.util.Collections;
 
 public class RevealCardEffect extends AbstractSuccessfulEffect {
-    private PhysicalCard _source;
-    private Collection<? extends PhysicalCard> _cards;
-
-    public RevealCardEffect(PhysicalCard source, PhysicalCard card) {
-        this(source, Collections.singleton(card));
-    }
+    private final PhysicalCard _source;
+    private final Collection<? extends PhysicalCard> _cards;
 
     public RevealCardEffect(PhysicalCard source, Collection<? extends PhysicalCard> cards) {
         _source = source;
@@ -38,20 +34,26 @@ public class RevealCardEffect extends AbstractSuccessfulEffect {
 
     @Override
     public void playEffect(LotroGame game) {
-        if (_cards.size() > 0) {
+        if (!_cards.isEmpty()) {
             final PlayOrder playerOrder = game.getGameState().getPlayerOrder().getCounterClockwisePlayOrder(_source.getOwner(), false);
 
             String nextPlayer;
             while ((nextPlayer = playerOrder.getNextPlayer()) != null) {
                 game.getUserFeedback().sendAwaitingDecision(nextPlayer,
-                        new ArbitraryCardsSelectionDecision(1, "Revealed card(s)", _cards, Collections.<PhysicalCard>emptySet(), 0, 0) {
+                        new ArbitraryCardsSelectionDecision(1, "Revealed card(s)", _cards, Collections.emptySet(), 0, 0) {
                             @Override
-                            public void decisionMade(String result) throws DecisionResultInvalidException {
+                            public void decisionMade(String result) {
                             }
                         });
             }
 
             game.getGameState().sendMessage(GameUtils.getCardLink(_source) + " revealed cards - " + getAppendedNames(_cards));
+
+            for (var card : _cards) {
+                if(card.getZone() == Zone.DECK) {
+                    game.getActionsEnvironment().emitEffectResult(new RevealedCardFromDeckResult(card.getOwner(), _source, card));
+                }
+            }
         }
     }
 }

@@ -1,8 +1,7 @@
 package com.gempukku.lotro.cards.unofficial.pc.errata.set03;
 
-import com.gempukku.lotro.cards.GenericCardTestHelper;
-import com.gempukku.lotro.common.Keyword;
-import com.gempukku.lotro.common.Phase;
+import com.gempukku.lotro.framework.VirtualTableScenario;
+import com.gempukku.lotro.common.*;
 import com.gempukku.lotro.game.CardNotFoundException;
 import com.gempukku.lotro.game.PhysicalCardImpl;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
@@ -10,16 +9,13 @@ import org.junit.Test;
 
 import java.util.HashMap;
 
-import static junit.framework.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class Card_03_068_ErrataTests
 {
-    protected GenericCardTestHelper GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
-        return new GenericCardTestHelper(
-                new HashMap<String, String>()
-                {{
+    protected VirtualTableScenario GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
+        return new VirtualTableScenario(
+                new HashMap<>() {{
                     put("legolas", "1_50");
                     put("tale", "1_66");
                     put("doubleshot", "1_38");
@@ -35,40 +31,42 @@ public class Card_03_068_ErrataTests
     public void SarumanStatsAndKeywordsAreCorrect() throws DecisionResultInvalidException, CardNotFoundException {
 
         /**
-         * Set: 1E
-         * Title: *Saruman
-         * Subtitle: Keeper of Isengard
-         * Side: Shadow
+         * Set: 3
+         * Title: Saruman, Keeper of Isengard
+         * Unique: True
+         * Side: SHADOW
          * Culture: Isengard
          * Twilight Cost: 4
-         * Type: Minion
+         * Type: minion
          * Subtype: Wizard
          * Strength: 8
          * Vitality: 4
-         * Home Site: 4
-         * Errata Game Text: Saruman may not take wounds during the archery phase and may not be assigned to a skirmish.
-         * Maneuver: Exert Saruman to make an Uruk-hai fierce until the regroup phase.
-         * Response: If an Uruk-hai is about to take a wound, exert Saruman to prevent that wound.
+         * Site Number: 4
+         * Game Text: Saruman may not take wounds during the archery phase and may not be assigned to a skirmish.
+         * 	Maneuver: Exert Saruman to make an Uruk-hai <b>fierce</b> until the regroup phase.
+         * 	Response: If an Uruk-hai is about to take a wound, discard (or exert) Saruman to prevent that wound.
          */
 
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        var scn = GetScenario();
 
-        PhysicalCardImpl saruman = scn.GetFreepsCard("saruman");
+        var saruman = scn.GetFreepsCard("saruman");
 
         assertTrue(saruman.getBlueprint().isUnique());
+        assertEquals(Side.SHADOW, saruman.getBlueprint().getSide());
+        assertEquals(Culture.ISENGARD, saruman.getBlueprint().getCulture());
+        assertEquals(CardType.MINION, saruman.getBlueprint().getCardType());
+        assertEquals(Race.WIZARD, saruman.getBlueprint().getRace());
         assertEquals(4, saruman.getBlueprint().getTwilightCost());
-
         assertEquals(8, saruman.getBlueprint().getStrength());
         assertEquals(4, saruman.getBlueprint().getVitality());
         assertEquals(4, saruman.getBlueprint().getSiteNumber());
-
     }
 
     @Test
     public void SarumanImmunityAndWoundBlock() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
         PhysicalCardImpl legolas = scn.GetFreepsCard("legolas");
 
@@ -77,11 +75,11 @@ public class Card_03_068_ErrataTests
         PhysicalCardImpl uruk2 = scn.GetShadowCard("uruk2");
 
 
-        scn.FreepsMoveCharToTable(legolas);
+        scn.MoveCompanionsToTable(legolas);
 
-        scn.ShadowMoveCharToTable(saruman);
-        scn.ShadowMoveCharToTable(uruk1);
-        scn.ShadowMoveCharToTable(uruk2);
+        scn.MoveMinionsToTable(saruman);
+        scn.MoveMinionsToTable(uruk1);
+        scn.MoveMinionsToTable(uruk2);
 
         scn.StartGame();
 
@@ -89,10 +87,10 @@ public class Card_03_068_ErrataTests
 
         //can't hit saruman
         scn.FreepsUseCardAction(legolas);
-        assertFalse(scn.FreepsCanChooseCharacter(saruman));
+        assertFalse(scn.FreepsHasCardChoiceAvailable(saruman));
 
         scn.FreepsChooseCard(uruk1);
-        assertTrue(scn.ShadowCardActionAvailable(saruman));
+        assertTrue(scn.ShadowActionAvailable(saruman));
 
         //saruman blocks the uruk hit
         scn.ShadowUseCardAction(saruman);
@@ -122,20 +120,20 @@ public class Card_03_068_ErrataTests
     @Test
     public void SarumanAbilityGrantsFierce() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
         PhysicalCardImpl saruman = scn.GetShadowCard("saruman");
         PhysicalCardImpl uruk1 = scn.GetShadowCard("uruk1");
 
-        scn.ShadowMoveCharToTable(saruman);
-        scn.ShadowMoveCharToTable(uruk1);
+        scn.MoveMinionsToTable(saruman);
+        scn.MoveMinionsToTable(uruk1);
 
         scn.StartGame();
 
         scn.SkipToPhase(Phase.MANEUVER);
         scn.FreepsPassCurrentPhaseAction();
 
-        assertTrue(scn.ShadowCardActionAvailable(saruman));
+        assertTrue(scn.ShadowActionAvailable(saruman));
 
         scn.ShadowUseCardAction(saruman);
 

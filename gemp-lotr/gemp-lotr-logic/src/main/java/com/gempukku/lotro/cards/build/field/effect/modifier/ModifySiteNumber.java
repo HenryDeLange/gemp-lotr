@@ -10,9 +10,9 @@ import org.json.simple.JSONObject;
 public class ModifySiteNumber implements ModifierSourceProducer {
     @Override
     public ModifierSource getModifierSource(JSONObject object, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
-        FieldUtils.validateAllowedFields(object, "filter", "condition", "amount");
+        FieldUtils.validateAllowedFields(object, "filter", "requires", "amount");
 
-        final JSONObject[] conditionArray = FieldUtils.getObjectArray(object.get("condition"), "condition");
+        final JSONObject[] conditionArray = FieldUtils.getObjectArray(object.get("requires"), "requires");
         final String filter = FieldUtils.getString(object.get("filter"), "filter");
         final ValueSource amount = ValueResolver.resolveEvaluator(object.get("amount"), environment);
 
@@ -23,7 +23,7 @@ public class ModifySiteNumber implements ModifierSourceProducer {
             final Evaluator evaluator = amount.getEvaluator(actionContext);
             return new MinionSiteNumberModifier(actionContext.getSource(),
                     filterableSource.getFilterable(actionContext),
-                    new RequirementCondition(requirements, actionContext), evaluator);
+                    RequirementCondition.createCondition(requirements, actionContext), evaluator);
         };
     }
 }

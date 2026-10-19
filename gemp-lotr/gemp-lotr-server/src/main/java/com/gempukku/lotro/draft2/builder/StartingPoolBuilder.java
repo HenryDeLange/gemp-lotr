@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Random;
 
 public class StartingPoolBuilder {
-    public CardCollectionProducer buildCardCollectionProducer(JSONObject startingPool) {
+    public static CardCollectionProducer buildCardCollectionProducer(JSONObject startingPool) {
         String cardCollectionProducerType = (String) startingPool.get("type");
         if (cardCollectionProducerType.equals("randomCardPool")) {
             return buildRandomCardPool((JSONObject) startingPool.get("data"));
@@ -22,61 +22,64 @@ public class StartingPoolBuilder {
         throw new RuntimeException("Unknown cardCollectionProducer type: " + cardCollectionProducerType);
     }
 
-    private CardCollectionProducer buildRandomCardPool(JSONObject randomCardPool) {
+    private static CardCollectionProducer buildRandomCardPool(JSONObject randomCardPool) {
         JSONArray cardPools = (JSONArray) randomCardPool.get("randomResult");
 
-        final List<CardCollection> cardCollections = new ArrayList<CardCollection>();
-        Iterator<JSONArray> iterator = cardPools.iterator();
-        while (iterator.hasNext()) {
-            JSONArray cards = iterator.next();
-
+        final List<CardCollection> cardCollections = new ArrayList<>();
+        for (JSONArray cards : (Iterable<JSONArray>) cardPools) {
             DefaultCardCollection cardCollection = new DefaultCardCollection();
-            Iterator<String> cardIterator = cards.iterator();
-            while (cardIterator.hasNext()) {
-                cardCollection.addItem(cardIterator.next(), 1);
+            for (String card : (Iterable<String>) cards) {
+                cardCollection.addItem(card, 1);
             }
             cardCollections.add(cardCollection);
         }
 
-        return new CardCollectionProducer() {
-            @Override
-            public CardCollection getCardCollection(long seed) {
-                Random rnd = new Random(seed);
-                float thisFixesARandomnessBug = rnd.nextFloat();
-                return cardCollections.get(rnd.nextInt(cardCollections.size()));
-            }
+        return seed -> {
+            Random rnd = new Random(seed);
+            float thisFixesARandomnessBug = rnd.nextFloat();
+            return cardCollections.get(rnd.nextInt(cardCollections.size()));
         };
     }
 
-    private CardCollectionProducer buildBoosterDraftRun(JSONObject boosterDraftRun) {
+    private static CardCollectionProducer buildBoosterDraftRun(JSONObject boosterDraftRun) {
         final int runLength = ((Number) boosterDraftRun.get("runLength")).intValue();
         final JSONArray coreCards = (JSONArray) boosterDraftRun.get("coreCards");
         final JSONArray freePeoplesRuns = (JSONArray) boosterDraftRun.get("freePeoplesRuns");
         final JSONArray shadowRuns = (JSONArray) boosterDraftRun.get("shadowRuns");
+        final int fpRunLength = runLength / freePeoplesRuns.size();
+        final int shadowRunLength = runLength / shadowRuns.size();
 
-        return new CardCollectionProducer() {
-            @Override
-            public CardCollection getCardCollection(long seed) {
-                Random rnd = new Random(seed);
-                List<String> freePeoplesRun = (List<String>) freePeoplesRuns.get(rnd.nextInt(freePeoplesRuns.size()));
-                List<String> shadowRun = (List<String>) shadowRuns.get(rnd.nextInt(shadowRuns.size()));
+        return seed -> {
+            Random rnd = new Random(seed);
+
+            final DefaultCardCollection startingCollection = new DefaultCardCollection();
+
+            for (String card : (List<String>) coreCards)
+                startingCollection.addItem(card, 1);
+
+            for (Object run : freePeoplesRuns) {
+                List<String> freePeoplesRun = (List<String>) run;
 
                 int freePeopleLength = freePeoplesRun.size();
                 int freePeopleStart = rnd.nextInt(freePeopleLength);
 
+                Iterable<String> freePeopleIterable = getCyclingIterable(freePeoplesRun, freePeopleStart, fpRunLength);
+                for (String card : freePeopleIterable)
+                    startingCollection.addItem(card, 1);
+            }
+
+            for (Object run : shadowRuns) {
+                List<String> shadowRun = (List<String>) run;
+
                 int shadowLength = shadowRun.size();
                 int shadowStart = rnd.nextInt(shadowLength);
 
-                Iterable<String> freePeopleIterable = getCyclingIterable(freePeoplesRun, freePeopleStart, runLength);
-                Iterable<String> shadowIterable = getCyclingIterable(shadowRun, shadowStart, runLength);
-
-                final DefaultCardCollection startingCollection = new DefaultCardCollection();
-
-                for (String card : Iterables.concat((List<String>) coreCards, freePeopleIterable, shadowIterable))
+                Iterable<String> shadowIterable = getCyclingIterable(shadowRun, shadowStart, shadowRunLength);
+                for (String card : shadowIterable)
                     startingCollection.addItem(card, 1);
-
-                return startingCollection;
             }
+
+            return startingCollection;
         };
     }
 

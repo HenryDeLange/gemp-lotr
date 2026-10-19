@@ -6,11 +6,7 @@ import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.LotroGame;
 
 public class IsAdditionalCardTypeModifier extends AbstractModifier {
-    private CardType _cardType;
-
-    public IsAdditionalCardTypeModifier(PhysicalCard source, Filterable affectFilter, CardType cardType) {
-        this(source, affectFilter, null, cardType);
-    }
+    private final CardType _cardType;
 
     public IsAdditionalCardTypeModifier(PhysicalCard source, Filterable affectFilter, Condition condition, CardType cardType) {
         super(source, "Has additional card type - " + cardType.toString(), affectFilter, condition, ModifierEffect.ADDITIONAL_CARD_TYPE);
@@ -20,5 +16,9 @@ public class IsAdditionalCardTypeModifier extends AbstractModifier {
     @Override
     public boolean isAdditionalCardTypeModifier(LotroGame game, PhysicalCard physicalCard, CardType cardType) {
         return cardType == _cardType;
+    }
+
+    public CardType getType() {
+        return _cardType;
     }
 }

@@ -2,9 +2,15 @@
         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-    <title>Gemp-LotR</title>
+    <title>GEMP: LotR-TCG - Merchant</title>
+    
+    <link rel="apple-touch-icon" sizes="180x180" href="images/icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="images/icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="images/icons/favicon-16x16.png">
+    <link rel="manifest" href="images/icons/site.webmanifest">
 
     <link rel="stylesheet" type="text/css" href="css/gemp-001/merchant.css">
+    <link rel="stylesheet" type="text/css" href="css/gemp-001/cardFilter.css">
 
     <link rel="stylesheet" type="text/css" href="css/dark-hive/jquery-ui-1.8.16.custom.css">
     <link rel="stylesheet" type="text/css" href="css/jquery.contextMenu.css">
@@ -26,10 +32,14 @@
     <script type="text/javascript" src="js/gemp-022/commonUi.js"></script>
     <script type="text/javascript" src="js/gemp-022/cardFilter.js"></script>
 
-    <script type="text/javascript" src="js/gemp-022/jCardGroup.js"></script>
+    <script type="text/javascript" src="js/gemp-022/cards/CardGroup.js"></script>
+    <script type="text/javascript" src="js/gemp-022/cards/Card.js"></script>
+    <script type="text/javascript" src="js/gemp-022/cards/CardDisplay.js"></script>
+    <script type="text/javascript" src="js/gemp-022/cards/CardInfoDialog.js"></script>
+    <script type="text/javascript" src="js/gemp-022/cards/CardImages.js"></script>
+    <script type="text/javascript" src="js/gemp-022/cards/PackImages.js"></script>
     <script type="text/javascript" src="js/gemp-022/hobbit.js"></script>
     <script type="text/javascript" src="js/gemp-022/set40.js"></script>
-    <script type="text/javascript" src="js/gemp-022/jCards.js"></script>
     <script type="text/javascript" src="js/gemp-022/PC_Cards.js"></script>
 
     <script type="text/javascript" src="js/gemp-022/hallUi.js"></script>
@@ -43,40 +53,13 @@
     <script type="text/javascript" src="js/gemp-022/gameAnimations.js"></script>
     <script type="text/javascript" src="js/gemp-022/merchantUi.js"></script>
 
-    <script type="text/javascript">
+    <link rel="stylesheet" type="text/css" href="src/Merchant/index.css">
+    <script type="text/javascript" src="src/Merchant/merchant.js"></script>
 
-        $(document).ready(
-                function () {
-                    var ui = new GempLotrMerchantUI($("#cardList"), $("#cardFilter"));
-
-                    $(window).resize(function () {
-                        layoutUi(ui);
-                    });
-
-                    layoutUi(ui);
-                });
-
-        function layoutUi(ui) {
-            var width = $(window).width();
-            var height = $(window).height();
-            if (width < 800)
-                width = 800;
-            if (height < 400)
-                height = 400;
-
-            var padding = 5;
-            var filterHeight = 160;
-
-            $("#cardFilter").css({position:"absolute", left:padding, top:padding, width:width - padding * 2, height:filterHeight});
-            $("#cardList").css({position:"absolute", left:padding, top:2 * padding + filterHeight, width:width - padding * 2, height:height - filterHeight - padding * 3});
-            ui.layoutUI();
-        }
-    </script>
 
 </head>
 <body>
-<div id="main"
-     style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; background-color: #000000; overflow: hidden">
+<div id="main">
     <div id="cardFilter"></div>
     <div id="cardList"></div>
 </div>

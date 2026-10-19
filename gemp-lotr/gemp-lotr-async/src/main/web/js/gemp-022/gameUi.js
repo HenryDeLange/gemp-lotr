@@ -1,5 +1,11 @@
 var GempLotrGameUI = Class.extend({
     padding: 5,
+    
+    initialized: false,
+    
+    pregamePanel: null,
+    
+    useOldStackingVisuals: false,
 
     bottomPlayerId: null,
     replayMode: null,
@@ -15,7 +21,7 @@ var GempLotrGameUI = Class.extend({
     alertBox: null,
     alertText: null,
     alertButtons: null,
-    infoDialog: null,
+    cardInfoDialog: null,
 
     advPathGroup: null,
     supportOpponent: null,
@@ -32,6 +38,12 @@ var GempLotrGameUI = Class.extend({
     adventureDeckGroups: null,
     deadPileDialogs: null,
     deadPileGroups: null,
+    removedPileDialogs: null,
+    removedPileGroups: null,
+    miscPileDialogs: null,
+    miscPileGroups: null,
+    revealedHandDialogs: null,
+    revealedHandGroups: null,
 
     statsDiv: null,
 
@@ -49,23 +61,49 @@ var GempLotrGameUI = Class.extend({
 
     selectionFunction: null,
 
+    // Touch-bounce guard: suppress a repeat tap on the same card within this window (ms).
+    // Prevents a finger resting on the edge of a touchscreen from registering one card twice.
+    selectionDebounceMs: 200,
+    lastSelectedCardId: null,
+    lastSelectionTime: 0,
+
     chatBoxDiv: null,
     chatBox: null,
     communication: null,
     channelNumber: null,
+    
+    previewImageBlueprintId: "0",
 
     settingsFoilPresentation: "static",
     settingsAutoPass: false,
     settingsAutoAccept: false,
+    settingsAutoDismissDeckReveal: false,
     settingsAlwaysDropDown: false,
 
     windowWidth: null,
     windowHeight: null,
 
     tabPane: null,
+    autoZoom: null,
 
     animations: null,
     replayPlay: false,
+    
+    decisionTime: 0,
+    totalTime: 0,
+    decisionLimit: 0,          // seconds a single decision may take before it times out (0 = unknown)
+    lastClockValues: {},       // last bank clock value the server sent, per participant
+    gameEnded: false,
+    countdownIntervalId: 0,
+
+    // Timer alerts (bank clock of the current user only; never for spectators or replays)
+    timerAudioMuted: false,
+    timerMuteToggle: null,
+    // Each rule: below N seconds remaining, play the alert cue every M seconds
+    timerAlertRules: [{below: 600, every: 30}, {below: 300, every: 10}, {below: 60, every: 1}],
+    timerLastTickSeconds: null,
+    
+    escFunction: null,
 
     init: function (url, replayMode) {
         this.replayMode = replayMode;
@@ -92,12 +130,30 @@ var GempLotrGameUI = Class.extend({
                     that.chatBox.appendMessage("Refresh the page (press F5) to resume the game, or press back on your browser to get back to the Game Hall.", "warningMessage");
                 }
             });
+        
+        // window.onbeforeunload = function(event) {
+        //     var e = e || window.event;
+        //     if (e) {
+        //         e.returnValue = "If you are done with this game, please go to the 'Options' tab and click the 'Concede Game' button first.";
+        //     }
+        //     return message;
+        // };
 
+        //Defines a cardId function usable by jquery to filter all .card instances by card id
         $.expr[':'].cardId = function (obj, index, meta, stack) {
             var cardIds = meta[3].split(",");
             var cardData = $(obj).data("card");
             return (cardData != null && ($.inArray(cardData.cardId, cardIds) > -1));
         };
+        
+        if(!this.replayMode) {
+            $(document).keydown(function(e) {
+                //console.log(e.keyCode);
+                if(e.keyCode == 27 && that.escFunction != null) {
+                    that.escFunction();
+                }
+            });
+        }
 
         if (this.replayMode) {
             var replayDiv = $("<div class='replay' style='position:absolute'></div>");
@@ -111,11 +167,11 @@ var GempLotrGameUI = Class.extend({
             });
             slowerBut.click(
                 function () {
-                    that.animations.replaySpeed = Math.min(2, that.animations.replaySpeed + 0.2);
+                    that.animations.replaySpeed = Math.min(16, that.animations.replaySpeed * 2);
                 });
             fasterBut.click(
                 function () {
-                    that.animations.replaySpeed = Math.max(0.2, that.animations.replaySpeed - 0.2);
+                    that.animations.replaySpeed = Math.max(0.0625, that.animations.replaySpeed / 2);
                 });
             replayDiv.append(slowerBut);
             replayDiv.append(fasterBut);
@@ -138,6 +194,15 @@ var GempLotrGameUI = Class.extend({
         this.adventureDeckGroups = {};
         this.deadPileDialogs = {};
         this.deadPileGroups = {};
+        this.removedPileDialogs = {};
+        this.removedPileGroups = {};
+        this.miscPileDialogs = {};
+        this.miscPileGroups = {};
+        this.revealedHandDialogs = {};
+        this.revealedHandGroups = {};
+
+        this.pregamePanel = $("#pregame-info");
+        this.pregamePanel.hide();
 
         this.skirmishShadowGroup = new NormalCardGroup($("#main"), function (card) {
             return card.zone == "SHADOW_CHARACTERS" && card.skirmish == true;
@@ -145,6 +210,8 @@ var GempLotrGameUI = Class.extend({
         this.skirmishFellowshipGroup = new NormalCardGroup($("#main"), function (card) {
             return (card.zone == "SUPPORT" || card.zone == "FREE_CHARACTERS") && card.skirmish == true;
         }, false);
+        
+        this.autoZoom = new AutoZoom("autoZoomInGame");
 
         this.initializeDialogs();
 
@@ -250,7 +317,7 @@ var GempLotrGameUI = Class.extend({
         this.layoutUI(false);
     },
 
-    initializeGameUI: function () {
+    initializeGameUI: function (discardPublic) {
         this.advPathGroup = new AdvPathCardGroup($("#main"));
 
         var that = this;
@@ -272,7 +339,8 @@ var GempLotrGameUI = Class.extend({
         });
         if (!this.spectatorMode) {
             this.hand = new NormalCardGroup($("#main"), function (card) {
-                return (card.zone == "HAND") || (card.zone == "EXTRA");
+                //cards with a negative card ID in the Extra zone are part of special skirmishes
+                return (card.zone == "HAND" && card.owner == that.bottomPlayerId) || (card.zone == "EXTRA" && !card.cardId.includes("-"));
             });
         }
 
@@ -285,12 +353,17 @@ var GempLotrGameUI = Class.extend({
         this.gameStateElem.css({"border-radius": "7px"});
 
         for (var i = 0; i < this.allPlayerIds.length; i++) {
-            this.gameStateElem.append("<div class='player'>" + (i + 1) + ". " + this.allPlayerIds[i] + "<div id='clock" + i + "' class='clock'></div>"
-                + "<div class='playerStats'><div id='deck" + i + "' class='deckSize'></div><div id='hand" + i + "' class='handSize'></div><div id='threats" + i + "' class='threatsSize'></div><div id='showStats" + i + "' class='showStats'></div><div id='discard" + i + "' class='discardSize'></div><div id='deadPile" + i + "' class='deadPileSize'></div><div id='adventureDeck" + i + "' class='adventureDeckSize'></div></div></div>");
+            this.gameStateElem.append("<div class='player'>" + (i + 1) + ". " + this.allPlayerIds[i] + "<div id='clock" + i + "' class='gameClock'></div>"
+                + "<div class='playerStats'><div id='deck" + i + "' class='deckSize'></div><div id='hand" + i + "' class='handSize'></div><div id='threats" + i + "' class='threatsSize'></div><div id='showStats" + i + "' class='showStats'></div><div id='discard" + i + "' class='discardSize'></div><div id='deadPile" + i + "' class='deadPileSize'></div><div id='adventureDeck" + i + "' class='adventureDeckSize'></div><div id='removedPile" + i + "' class='removedPileSize'></div></div></div>");
         }
 
         this.gameStateElem.append("<div class='twilightPool'>0</div>");
         this.gameStateElem.append("<div class='phase'></div>");
+        this.gameStateElem.append("<div id='clock-1' class='decisionClock'></div>");
+        
+        this.gameStateElem.append("<br/>");
+        this.gameStateElem.append("<div id='initiative'>Initiative: <span id='initiative-player'/></div>");
+        this.gameStateElem.append("<div id='ruleof4'>Rule of 4: <span id='ruleof4-count' /><span id='ruleof4-status' /></div>");
 
         $("#main").append(this.gameStateElem);
 
@@ -306,11 +379,13 @@ var GempLotrGameUI = Class.extend({
                                         $("#discard" + playerIndex).css({display: "none"});
                                         $("#deadPile" + playerIndex).css({display: "none"});
                                         $("#adventureDeck" + playerIndex).css({display: "none"});
+                                        $("#removedPile" + playerIndex).css({display: "none"});
                                     } else {
-                                        $(this).addClass("opened").css({width: 150 - that.padding + 126});
+                                        $(this).addClass("opened").css({width: 150 - that.padding + 168});
                                         $("#discard" + playerIndex).css({display: "table-cell"});
                                         $("#deadPile" + playerIndex).css({display: "table-cell"});
                                         $("#adventureDeck" + playerIndex).css({display: "table-cell"});
+                                        $("#removedPile" + playerIndex).css({display: "table-cell"});
                                     }
                                 }
                             });
@@ -321,27 +396,65 @@ var GempLotrGameUI = Class.extend({
         }
 
         if (!this.spectatorMode) {
-            $("#discard" + this.getPlayerIndex(this.bottomPlayerId)).addClass("clickable").click(
-                (function (index) {
-                    return function () {
-                        openSizeDialog(that.discardPileDialogs[that.bottomPlayerId]);
-                    };
-                })(i));
+            if(!discardPublic) {
+                $("#discard" + this.getPlayerIndex(this.bottomPlayerId)).addClass("clickable").click(
+                    (function (index) {
+                        return function () {
+                            var dialog = that.discardPileDialogs[index];
+                            var group = that.discardPileGroups[index];
+                            openSizeDialog(dialog);
+                            that.dialogResize(dialog, group);
+                            group.layoutCards();
+                        };
+                    })(that.bottomPlayerId));
+            }
             $("#adventureDeck" + this.getPlayerIndex(this.bottomPlayerId)).addClass("clickable").click(
                 (function (index) {
                     return function () {
-                        openSizeDialog(that.adventureDeckDialogs[that.bottomPlayerId]);
+                        var dialog = that.adventureDeckDialogs[index];
+                        var group = that.adventureDeckGroups[index];
+                        openSizeDialog(dialog);
+                        that.dialogResize(dialog, group);
+                        group.layoutCards();
                     };
-                })(i));
+                })(that.bottomPlayerId));
         }
 
         for (var i = 0; i < this.allPlayerIds.length; i++) {
             $("#deadPile" + i).addClass("clickable").click(
                 (function (index) {
                     return function () {
-                        openSizeDialog(that.deadPileDialogs[that.allPlayerIds[index]]);
+                        var dialog = that.deadPileDialogs[that.allPlayerIds[index]];
+                        var group = that.deadPileGroups[that.allPlayerIds[index]];
+                        openSizeDialog(dialog);
+                        that.dialogResize(dialog, group);
+                        group.layoutCards();
                     };
                 })(i));
+            
+            $("#removedPile" + i).addClass("clickable").click(
+                (function (index) {
+                    return function () {
+                        var dialog = that.removedPileDialogs[that.allPlayerIds[index]];
+                        var group = that.removedPileGroups[that.allPlayerIds[index]];
+                        openSizeDialog(dialog);
+                        that.dialogResize(dialog, group);
+                        group.layoutCards();
+                    };
+                })(i));
+            
+            if(discardPublic) {
+                $("#discard" + i).addClass("clickable").click(
+                    (function (index) {
+                        return function () {
+                            var dialog = that.discardPileDialogs[that.allPlayerIds[index]];
+                            var group = that.discardPileGroups[that.allPlayerIds[index]];
+                            openSizeDialog(dialog);
+                            that.dialogResize(dialog, group);
+                            group.layoutCards();
+                        };
+                    })(i));
+            }
         }
 
         this.alertBox = $("<div class='ui-widget-content'></div>");
@@ -353,7 +466,7 @@ var GempLotrGameUI = Class.extend({
             left: "0px",
             top: "0px",
             width: "100%",
-            height: "50px",
+            height: "150px",
             scroll: "auto"
         });
 
@@ -361,7 +474,7 @@ var GempLotrGameUI = Class.extend({
         this.alertButtons.css({
             position: "absolute",
             left: "0px",
-            top: "50px",
+            top: "150px",
             width: "100%",
             height: "30px",
             scroll: "auto"
@@ -385,57 +498,120 @@ var GempLotrGameUI = Class.extend({
             function (event) {
                 return that.clickCardFunction(event);
             });
+        var test = $("body");
+        $("body")[0].addEventListener("contextmenu",
+            function (event) {
+                if(!that.clickCardFunction(event))
+                {
+                    event.preventDefault();
+                    return false;
+                }
+                return true;
+            });  
+        $('body').unbind('mouseover');
+        $("body").mouseover(
+            function (event) {
+                return that.autoZoom.handleMouseOver(event, 
+                   that.dragCardId != null, that.cardInfoDialog.isOpen());
+            });
+        
+        $('body').unbind('mouseout');
+        $("body").mouseout(
+            function (event) {
+                return that.autoZoom.handleMouseOut(event.originalEvent);
+            });
+                  
+        $('body').unbind('mousedown');
         $("body").mousedown(
             function (event) {
+                that.autoZoom.handleMouseDown(event);
+
                 $("body").bind("mousemove", dragFunc);
                 return that.dragStartCardFunction(event);
             });
+        $('body').unbind('mouseup');
         $("body").mouseup(
             function (event) {
                 $("body").unbind("mousemove", dragFunc);
                 return that.dragStopCardFunction(event);
             });
+        
+        //If we ever add double-sided cards, this will be needed for
+        // the card hover.
+        
+        $('body').unbind('keydown');
+        $("body").keydown(
+            function (event) {
+                return that.autoZoom.handleKeyDown(event);
+            });
+
+        $('body').unbind('keyup');
+        $("body").keyup(
+            function (event) {
+                return that.autoZoom.handleKeyUp(event);
+            });
+
+        this.initialized = true;
+
+        this.initializeTimerUI();
+    },
+    
+    
+    processGameEnd: function() {
+        var that = this;
+        this.gameEnded = true;
+        this.stopTimerTick();
+        this.markExpiredTimers();
+        if(this.allPlayerIds == null)
+            return;
+        
+        $("#deck" + this.getPlayerIndex(this.bottomPlayerId)).addClass("clickable").click(
+            (function (index) {
+                return function () {
+                    var dialog = that.miscPileDialogs[index];
+                    var group = that.miscPileGroups[index];
+                    openSizeDialog(dialog);
+                    that.dialogResize(dialog, group);
+                    group.layoutCards();
+                };
+            })(that.bottomPlayerId));
     },
 
+    // The tab box (#bottomLeftTabs) is declared in game.html; this trims it to the mode, turns it into a tab
+    // widget and wires the settings controls to their cookies.
     addBottomLeftTabPane: function () {
         var that = this;
-        var tabsLabels = "<li><a href='#chatBox' class='slimTab'>Chat</a></li>";
-        var tabsBodies = "<div id='chatBox' class='slimPanel'></div>";
-        if (!this.replayMode) {
-            tabsLabels += "<li><a href='#settingsBox' class='slimTab'>Settings</a></li><li><a href='#gameOptionsBox' class='slimTab'>Options</a></li><li><a href='#playersInRoomBox' class='slimTab'>Players</a></li>";
-            tabsBodies += "<div id='settingsBox' class='slimPanel'></div><div id='gameOptionsBox' class='slimPanel'></div><div id='playersInRoomBox' class='slimPanel'></div>";
+
+        if (this.spectatorMode) {
+            // No Options box
+            $("#gameOptionsTab, #gameOptionsBox").remove();
+        } else if (this.replayMode) {
+            // No options or connected players boxes
+            $("#gameOptionsTab, #gameOptionsBox, #playersInRoomTab, #playersInRoomBox").remove();
         }
-        var tabsStr = "<div id='bottomLeftTabs'><ul>" + tabsLabels + "</ul>" + tabsBodies + "</div>";
 
-        this.tabPane = $(tabsStr).tabs();
+        if (this.autoZoom.isTouchDevice || this.autoZoom.autoZoomToggle == null) {
+            $("#auto-zoom-control").remove();
+        } else {
+            this.autoZoom.autoZoomToggle.appendTo("#auto-zoom-control");
+        }
 
-        $("#main").append(this.tabPane);
+        this.tabPane = $("#bottomLeftTabs").tabs().css("visibility", "visible");
 
         this.chatBoxDiv = $("#chatBox");
 
-        var foilSelection = $("<select id='foilPresentation' style='font-size: 80%;'>" +
-            "<option value='static'>Static layer</option>" +
-            "<option value='animated'>Animated layer</option>" +
-            "<option value='none'>None</option>" +
-            "</select>");
+        var foilSelection = $("#foilPresentation");
 
-        $("#settingsBox").append("Foil presentation: ");
-        $("#settingsBox").append(foilSelection);
-        $("#settingsBox").append("<br/>");
+        // Card.getFoilPresentation owns the default (static) and the cookie; the select just mirrors it
+        var foilPresentation = Card.getFoilPresentation();
+        foilSelection.val(foilPresentation);
+        this.settingsFoilPresentation = foilPresentation;
 
-        var foilPresentation = $.cookie("foilPresentation");
-        if (foilPresentation != null) {
-            foilSelection.val(foilPresentation);
-            this.settingsFoilPresentation = foilPresentation;
-        }
-
-        $("#foilPresentation").bind("change", function () {
+        foilSelection.bind("change", function () {
             var value = "" + foilSelection.val();
             that.settingsFoilPresentation = value;
             $.cookie("foilPresentation", value, {expires: 365});
         });
-
-        $("#settingsBox").append("<input id='autoAccept' type='checkbox' value='selected' /><label for='autoAccept'>Auto-accept after selecting action or card</label><br />");
 
         var autoAccept = $.cookie("autoAccept");
         if (autoAccept == "true" || autoAccept == null) {
@@ -449,7 +625,44 @@ var GempLotrGameUI = Class.extend({
             $.cookie("autoAccept", "" + selected, {expires: 365});
         });
 
-        $("#settingsBox").append("<input id='alwaysDropDown' type='checkbox' value='selected' /><label for='alwaysDropDown'>Always display drop-down in answer selection</label><br />");
+        // Searching your own deck shows the whole deck first (rules-wise you get to see it); this skips that step.
+        if (loadFromCookie("autoDismissDeckReveal", "false") === "true") {
+            $("#autoDismissDeckReveal").prop("checked", true);
+            this.settingsAutoDismissDeckReveal = true;
+        }
+
+        $("#autoDismissDeckReveal").bind("change", function () {
+            var selected = $("#autoDismissDeckReveal").prop("checked");
+            that.settingsAutoDismissDeckReveal = selected;
+            saveToCookie("autoDismissDeckReveal", "" + selected);
+        });
+
+        var useOldStack = loadFromCookie("use-old-stack", "false");
+        if (useOldStack === "true" || useOldStack == null) {
+            $("#use-old-stack-checkbox").prop("checked", true);
+            this.useOldStackingVisuals = true;
+        }
+
+        $("#use-old-stack-checkbox").bind("change", function () {
+            var selected = $("#use-old-stack-checkbox").prop("checked");
+            that.useOldStackingVisuals = selected;
+            saveToCookie("use-old-stack", selected);
+        });
+
+        var animSpeed = loadFromCookie("animation-speed", 0);
+        that.animations.replaySpeed = 2 ** (-1 * animSpeed);
+
+        $("#animation-slider").slider({
+            min:-4,
+            max:4,
+            range: "min",
+            slide: function(event, ui) {
+                let newAnimSpeed = ui.value;
+                saveToCookie("animation-speed", newAnimSpeed);
+                that.animations.replaySpeed = 2 ** (-1 * newAnimSpeed);
+            },
+            value: animSpeed
+        });
 
         var alwaysDropDown = $.cookie("alwaysDropDown");
         if (alwaysDropDown == "true") {
@@ -462,15 +675,6 @@ var GempLotrGameUI = Class.extend({
             that.settingsAlwaysDropDown = selected;
             $.cookie("alwaysDropDown", "" + selected, {expires: 365});
         });
-
-        $("#settingsBox").append("Phases when game auto-passes for you, if you have no phase actions to play<br />");
-        $("#settingsBox").append("<input id='autoPassFELLOWSHIP' type='checkbox' value='selected' /><label for='autoPassFELLOWSHIP'>Fellowship</label> ");
-        $("#settingsBox").append("<input id='autoPassSHADOW' type='checkbox' value='selected' /><label for='autoPassSHADOW'>Shadow</label> ");
-        $("#settingsBox").append("<input id='autoPassMANEUVER' type='checkbox' value='selected' /><label for='autoPassMANEUVER'>Maneuver</label> ");
-        $("#settingsBox").append("<input id='autoPassARCHERY' type='checkbox' value='selected' /><label for='autoPassARCHERY'>Archery</label> ");
-        $("#settingsBox").append("<input id='autoPassASSIGNMENT' type='checkbox' value='selected' /><label for='autoPassASSIGNMENT'>Assignment</label> ");
-        $("#settingsBox").append("<input id='autoPassSKIRMISH' type='checkbox' value='selected' /><label for='autoPassSKIRMISH'>Skirmish</label> ");
-        $("#settingsBox").append("<input id='autoPassREGROUP' type='checkbox' value='selected' /><label for='autoPassREGROUP'>Regroup</label>");
 
         var autoPassPhases = $.cookie("autoPassPhases");
         if (autoPassPhases == null)
@@ -523,16 +727,14 @@ var GempLotrGameUI = Class.extend({
         }
 
         var chatRoomName = (this.replayMode ? null : ("Game" + getUrlParam("gameId")));
-        this.chatBox = new ChatBoxUI(chatRoomName, $("#chatBox"), this.communication.url, false, playerListener, false, true, displayChatListener);
+        this.chatBox = new ChatBoxUI(chatRoomName, $("#chatBox"), this.communication.url, false, playerListener, false, displayChatListener);
         this.chatBox.chatUpdateInterval = 3000;
 
         if (!this.spectatorMode && !this.replayMode) {
-            $("#gameOptionsBox").append("<button id='concedeGame'>Concede game</button><br/>");
             $("#concedeGame").button().click(
                 function () {
                     that.communication.concede();
                 });
-            $("#gameOptionsBox").append("<button id='cancelGame'>Request game cancel</button>");
             $("#cancelGame").button().click(
                 function () {
                     that.communication.cancel();
@@ -545,14 +747,19 @@ var GempLotrGameUI = Class.extend({
 
         if (tar.hasClass("cardHint")) {
             var blueprintId = tar.attr("value");
-            var card = new Card(blueprintId, "SPECIAL", "hint", "");
-            this.displayCard(card, false);
+            var testingText = tar.attr("data-testingText");
+            var backSideTestingText = tar.attr("data-backSideTestingText");
+            var card = new Card(blueprintId, testingText, backSideTestingText, "SPECIAL", "hint", "");
+            Card.applyMetaSiteOverlay(card);
+            this.displayCardInfo(card);
             event.stopPropagation();
             return false;
         }
 
-        if (!this.successfulDrag && this.infoDialog.dialog("isOpen")) {
-            this.infoDialog.dialog("close");
+        //Only close any open dialogs if we are not mid-swipe, the dialog is open, and the mouse is not
+        // over a link in the card's info
+        if (!this.successfulDrag && this.cardInfoDialog.isOpen() && tar.get(0).tagName != "A") {
+            this.cardInfoDialog.mouseUp();
             event.stopPropagation();
             return false;
         }
@@ -562,8 +769,18 @@ var GempLotrGameUI = Class.extend({
             if (!this.successfulDrag) {
                 if (event.shiftKey || event.which > 1) {
                     this.displayCardInfo(selectedCardElem.data("card"));
-                } else if ((selectedCardElem.hasClass("selectableCard") || selectedCardElem.hasClass("actionableCard")) && !this.replayMode)
-                    this.selectionFunction(selectedCardElem.data("card").cardId, event);
+                } else if ((selectedCardElem.hasClass("selectableCard") || selectedCardElem.hasClass("actionableCard")) && !this.replayMode) {
+                    var clickedCardId = selectedCardElem.data("card").cardId;
+                    var now = Date.now();
+                    if (clickedCardId === this.lastSelectedCardId && (now - this.lastSelectionTime) < this.selectionDebounceMs) {
+                        // Same card tapped again within the debounce window: treat as a bounce, ignore.
+                        event.stopPropagation();
+                        return false;
+                    }
+                    this.lastSelectedCardId = clickedCardId;
+                    this.lastSelectionTime = now;
+                    this.selectionFunction(clickedCardId, event);
+                }
                 event.stopPropagation();
             }
             return false;
@@ -571,7 +788,7 @@ var GempLotrGameUI = Class.extend({
 
         return true;
     },
-
+    
     dragCardId: null,
     dragCardIndex: null,
     draggedCardIndex: null,
@@ -676,51 +893,19 @@ var GempLotrGameUI = Class.extend({
         return true;
     },
 
-    displayCard: function (card, extraSpace) {
-        this.infoDialog.html("");
-        this.infoDialog.html("<div style='scroll: auto'></div>");
-        var floatCardDiv = $("<div style='float: left;'></div>");
-        floatCardDiv.append(createFullCardDiv(card.imageUrl, card.foil, card.horizontal));
-        this.infoDialog.append(floatCardDiv);
-        if (extraSpace)
-            this.infoDialog.append("<div id='cardEffects'></div>");
-
-        var windowWidth = $(window).width();
-        var windowHeight = $(window).height();
-
-        var horSpace = (extraSpace ? 200 : 0) + 30;
-        var vertSpace = 45;
-
-        if (card.horizontal) {
-            // 500x360
-            this.infoDialog.dialog({
-                width: Math.min(500 + horSpace, windowWidth),
-                height: Math.min(360 + vertSpace, windowHeight)
-            });
-        } else {
-            // 360x500
-            this.infoDialog.dialog({
-                width: Math.min(360 + horSpace, windowWidth),
-                height: Math.min(500 + vertSpace, windowHeight)
-            });
-        }
-        this.infoDialog.dialog("open");
-    },
-
     displayCardInfo: function (card) {
         var showModifiers = false;
         var cardId = card.cardId;
-        if (!this.replayMode && (cardId.length < 4 || cardId.substring(0, 4) != "temp"))
+        var that = this;
+        if (!this.replayMode && cardId != "hint" && (cardId.length < 4 || cardId.substring(0, 4) != "temp"))
             showModifiers = true;
 
-        this.displayCard(card, showModifiers);
+        this.cardInfoDialog.showCard(card, showModifiers ? "<div>Retrieving data...</div>" : null);
 
         if (showModifiers)
-            this.getCardModifiersFunction(cardId, this.setCardModifiers);
-    },
-
-    setCardModifiers: function (html) {
-        $("#cardEffects").replaceWith(html);
+            this.getCardModifiersFunction(cardId, function (html) {
+                that.cardInfoDialog.setDetails(html);
+        });
     },
 
     initializeDialogs: function () {
@@ -749,34 +934,13 @@ var GempLotrGameUI = Class.extend({
         });
 
         $(".ui-dialog-titlebar-close").hide();
-
-        var width = $(window).width();
-        var height = $(window).height();
-
-        this.infoDialog = $("<div></div>")
-            .dialog({
-                autoOpen: false,
-                closeOnEscape: true,
-                resizable: false,
-                title: "Card information"
-            });
-
-        var swipeOptions = {
-            threshold: 20,
-            swipeUp: function (event) {
-                that.infoDialog.prop({scrollTop: that.infoDialog.prop("scrollHeight")});
-                return false;
-            },
-            swipeDown: function (event) {
-                that.infoDialog.prop({scrollTop: 0});
-                return false;
-            }
-        };
-        this.infoDialog.swipe(swipeOptions);
+        
+        this.cardInfoDialog = new CardInfoDialog(window.innerWidth, window.innerHeight);
     },
 
     windowResized: function () {
         this.animations.windowResized();
+        this.cardInfoDialog.updateMaxBoundaries(window.innerWidth, window.innerHeight);
     },
 
     layoutUI: function (sizeChanged) {
@@ -805,12 +969,21 @@ var GempLotrGameUI = Class.extend({
 
         var heightPerScale = (height - (padding * (heightScales.length + 1))) / scaleTotal;
 
-        var advPathWidth = Math.min(150, width * 0.1);
+        // Both left gutters are fixed: the site path no longer shrinks with the window, so the chat box below them
+        // always has its full width
+        var advPathWidth = 150;
         var specialUiWidth = 150;
+        var chatWidth = 302;
 
-        var alertHeight = 80;
+        var alertHeight = 180;
 
+        // The chat box shares the vertical band of the bottom player's hand (spectators have no hand: fixed height)
+        var minChatBoxHeight = 170;
         var chatHeight = 200;
+        if (!this.spectatorMode) {
+            var handTop = padding * 6 + yScales[5] * heightPerScale;
+            chatHeight = Math.max(minChatBoxHeight + padding, height - padding - handTop);
+        }
 
         var assignmentsCount = this.assignGroupDivs.length + ((this.skirmishGroupDiv != null) ? 1 : 0);
 
@@ -982,15 +1155,29 @@ var GempLotrGameUI = Class.extend({
             for (var playerId in this.deadPileGroups)
                 if (this.deadPileGroups.hasOwnProperty(playerId))
                     this.deadPileGroups[playerId].layoutCards();
+                
+            for (var playerId in this.removedPileGroups)
+                if (this.removedPileGroups.hasOwnProperty(playerId))
+                    this.removedPileGroups[playerId].layoutCards();
+                
+            for (var playerId in this.miscPileGroups)
+                if (this.miscPileGroups.hasOwnProperty(playerId))
+                    this.miscPileGroups[playerId].layoutCards();
+
+            for (var playerId in this.revealedHandGroups)
+                if (this.revealedHandGroups.hasOwnProperty(playerId))
+                    this.revealedHandGroups[playerId].layoutCards();
         }
         this.tabPane.css({
             position: "absolute",
             left: padding,
             top: height - padding - chatHeight,
-            width: specialUiWidth + advPathWidth - padding,
+            width: chatWidth,
             height: chatHeight - padding
         });
-        this.chatBox.setBounds(4, 4 + 25, specialUiWidth + advPathWidth - 8, chatHeight - 8 - 25);
+        // the tab strip is taller when the auto-zoom and timer controls are stacked beside the tabs
+        var tabStripHeight = this.tabPane.children("ul").outerHeight(true);
+        this.chatBox.setBounds(4, 4 + tabStripHeight, chatWidth - 8, chatHeight - 8 - tabStripHeight);
 
         if (this.replayMode) {
             $(".replay").css({
@@ -1017,6 +1204,7 @@ var GempLotrGameUI = Class.extend({
         this.communication.startGameSession(
             function (xml) {
                 that.processXml(xml, false);
+                that.chatBox.beginGameChat();
             }, this.gameErrorMap());
     },
 
@@ -1032,6 +1220,7 @@ var GempLotrGameUI = Class.extend({
     decisionFunction: function (decisionId, result) {
         var that = this;
         this.stopAnimatingTitle();
+        this.stopTimerTick();
         this.communication.gameDecisionMade(decisionId, result,
             this.channelNumber,
             function (xml) {
@@ -1091,11 +1280,7 @@ var GempLotrGameUI = Class.extend({
     },
 
     getCardModifiersFunction: function (cardId, func) {
-        var that = this;
-        this.communication.getGameCardModifiers(cardId,
-            function (html) {
-                that.setCardModifiers(html);
-            });
+        this.communication.getGameCardModifiers(cardId, func);
     },
 
     processXml: function (xml, animate) {
@@ -1165,6 +1350,8 @@ var GempLotrGameUI = Class.extend({
             this.animations.putCardInPlay(gameEvent, animate);
         } else if (eventType == "MCIP") {
             this.animations.moveCardInPlay(gameEvent, animate);
+        } else if (eventType == "FCIP") {
+            this.animations.flipCardsInPlay(gameEvent, animate);
         } else if (eventType == "P") {
             this.participant(gameEvent);
         } else if (eventType == "RCFP") {
@@ -1207,6 +1394,10 @@ var GempLotrGameUI = Class.extend({
             this.animations.cardActivated(gameEvent, animate);
         } else if (eventType == "D") {
             this.animations.processDecision(gameEvent, animate);
+        } else if (eventType == "EG") {
+            this.processGameEnd();
+        } else if (eventType == "PGS") {
+            this.preGameSetup(gameEvent);
         }
     },
 
@@ -1228,6 +1419,7 @@ var GempLotrGameUI = Class.extend({
             }
 
             if (this.allPlayerIds != null) {
+                
                 var clocksXml = element.getElementsByTagName("clocks");
                 if (clocksXml.length > 0) {
                     var clocks = clocksXml[0].getElementsByTagName("clock");
@@ -1238,18 +1430,30 @@ var GempLotrGameUI = Class.extend({
 
                         var value = parseInt(clock.childNodes[0].nodeValue);
 
-                        var sign = (value < 0) ? "-" : "";
-                        value = Math.abs(value);
-                        var hours = Math.floor(value / 3600);
-                        var minutes = Math.floor(value / 60) % 60;
-                        var seconds = value % 60;
+                        if (participantId == "decisionLimit") {
+                            this.decisionLimit = value;
+                            this.renderDecisionClock();
+                            continue;
+                        }
+                        if (participantId == "decisionClock") {
+                            this.decisionTime = value;
+                            this.renderDecisionClock();
+                            continue;
+                        }
+                        if (index == -1)
+                            continue;
 
-                        if (hours > 0)
-                            $("#clock" + index).text(sign + hours + ":" + ((minutes < 10) ? ("0" + minutes) : minutes) + ":" + ((seconds < 10) ? ("0" + seconds) : seconds));
-                        else
-                            $("#clock" + index).text(sign + minutes + ":" + ((seconds < 10) ? ("0" + seconds) : seconds));
+                        this.lastClockValues[participantId] = value;
+                        if(this.bottomPlayerId == participantId) {
+                            this.totalTime = value;
+                            this.updateTimerVisual(value);
+                        }
+
+                        $("#clock" + index).text(this.parseTime(value));
                     }
                 }
+                if (this.gameEnded)
+                    this.markExpiredTimers();
             }
 
             if (!hasDecision) {
@@ -1259,6 +1463,22 @@ var GempLotrGameUI = Class.extend({
             }
         } catch (e) {
             this.showErrorDialog("Game error", "There was an error while processing game events in your browser. Reload the game to continue", true, false, false);
+            console.log(e);
+        }
+    },
+    
+    parseTime: function(value) {
+        var sign = (value < 0) ? "-" : "";
+        value = Math.abs(value);
+        var hours = Math.floor(value / 3600);
+        var minutes = Math.floor(value / 60) % 60;
+        var seconds = value % 60;
+        
+        if(hours > 0) {
+            return sign + hours + ":" + ((minutes < 10) ? ("0" + minutes) : minutes) + ":" + ((seconds < 10) ? ("0" + seconds) : seconds);
+        }
+        else {
+            return sign + minutes + ":" + ((seconds < 10) ? ("0" + seconds) : seconds);
         }
     },
 
@@ -1326,8 +1546,11 @@ var GempLotrGameUI = Class.extend({
     },
 
     participant: function (element) {
+        this.pregamePanel.hide();
+        
         var participantId = element.getAttribute("participantId");
         this.allPlayerIds = element.getAttribute("allParticipantIds").split(",");
+        var discardPublic = element.getAttribute("discardPublic") === 'true';
 
         this.bottomPlayerId = participantId;
 
@@ -1340,78 +1563,306 @@ var GempLotrGameUI = Class.extend({
         } else {
             this.spectatorMode = false;
 
-            var discardPileDialog = $("<div></div>").dialog({
-                autoOpen: false,
-                closeOnEscape: true,
-                resizable: true,
-                title: "Discard - " + participantId,
-                minHeight: 80,
-                minWidth: 200,
-                width: 600,
-                height: 300
-            });
+            if(!discardPublic) {
+                this.createPile(participantId, "Discard Pile", "discardPileDialogs", "discardPileGroups");
+            }
 
-            this.discardPileDialogs[participantId] = discardPileDialog;
-            this.discardPileGroups[participantId] = new NormalCardGroup(discardPileDialog, function (card) {
-                return true;
-            }, false);
-
-            this.discardPileGroups[participantId].setBounds(this.padding, this.padding, 580 - 2 * (this.padding), 250 - 2 * (this.padding));
-
-            discardPileDialog.bind("dialogresize", function () {
-                that.dialogResize(discardPileDialog, that.discardPileGroups[participantId]);
-            });
-
-            var adventureDeckDialog = $("<div></div>").dialog({
-                autoOpen: false,
-                closeOnEscape: true,
-                resizable: true,
-                title: "Adventure deck - " + participantId,
-                minHeight: 80,
-                minWidth: 200,
-                width: 600,
-                height: 300
-            });
-
-            this.adventureDeckDialogs[participantId] = adventureDeckDialog;
-            this.adventureDeckGroups[participantId] = new NormalCardGroup(adventureDeckDialog, function (card) {
-                return true;
-            }, false);
-
-            this.adventureDeckGroups[participantId].setBounds(this.padding, this.padding, 580 - 2 * (this.padding), 250 - 2 * (this.padding));
-
-            adventureDeckDialog.bind("dialogresize", function () {
-                that.dialogResize(adventureDeckDialog, that.adventureDeckGroups[participantId]);
-            });
+            this.createPile(participantId, "Adventure Deck", "adventureDeckDialogs", "adventureDeckGroups");
+            this.createPile(participantId, "Draw Deck", "miscPileDialogs", "miscPileGroups");
         }
 
         for (var i = 0; i < this.allPlayerIds.length; i++) {
-            var deadPileDialog = $("<div></div>").dialog({
-                autoOpen: false,
-                closeOnEscape: true,
-                resizable: true,
-                title: "Dead pile - " + this.allPlayerIds[i],
-                minHeight: 80,
-                minWidth: 200,
-                width: 600,
-                height: 300
-            });
-            this.deadPileDialogs[this.allPlayerIds[i]] = deadPileDialog;
-            this.deadPileGroups[this.allPlayerIds[i]] = new NormalCardGroup(deadPileDialog, function (card) {
-                return true;
-            }, false);
-
-            this.deadPileGroups[this.allPlayerIds[i]].setBounds(this.padding, this.padding, 580 - 2 * (this.padding), 250 - 2 * (this.padding));
-
-            deadPileDialog.bind("dialogresize", (function (dialog, index) {
-                return function () {
-                    that.dialogResize(dialog, that.deadPileGroups[that.allPlayerIds[index]]);
-                }
-            })(deadPileDialog, i));
+            
+            participantId = this.allPlayerIds[i];
+            
+            this.createPile(participantId, "Dead Pile", "deadPileDialogs", "deadPileGroups");
+            this.createPile(participantId, "'Removed From Game' Pile", "removedPileDialogs", "removedPileGroups");
+            
+            if(discardPublic) {
+                this.createPile(participantId, "Discard Pile", "discardPileDialogs", "discardPileGroups");
+            }
         }
 
-        this.initializeGameUI();
+        this.initializeGameUI(discardPublic);
         this.layoutUI(true);
+    },
+    
+    preGameSetup: function (element) {
+        // Always build the meta-site overlay lookup, even on reconnect,
+        // so that cards recreated via PCIP events get their visual overlays.
+        var metaSites = element.getAttribute("metaSites");
+        if (metaSites != null && metaSites !== "") {
+            var playerEntries = metaSites.split(",");
+            for (var i = 0; i < playerEntries.length; i++) {
+                var colonIdx = playerEntries[i].indexOf(":");
+                var pairsStr = playerEntries[i].substring(colonIdx + 1);
+                var pairs = pairsStr.split(";");
+                for (var j = 0; j < pairs.length; j++) {
+                    var ids = pairs[j].split("|");
+                    Card.metaSiteOverlays[ids[1]] = Card.getImageUrl(ids[0]);
+                }
+            }
+        }
+
+        // Retroactively fix up any meta-site cards already rendered (PCIP can arrive before PGS on reconnect)
+        $(".card").each(function () {
+            var card = $(this).data("card");
+            if (card && Card.isMetaSiteModifier(card.bareBlueprint) && !card.overlayImageUrl) {
+                if (Card.applyMetaSiteOverlay(card)) {
+                    // Update the rendered img src to the visual card
+                    $(this).children("img").first().attr("src", card.imageUrl);
+                    // Add the modifier overlay div
+                    var overlayHeight = Card.MetaSiteOverlayHeight;
+                    var overlayDiv = $("<div class='metaSiteOverlay' style='position:absolute;bottom:0;width:100%;height:" + overlayHeight + "%;overflow:hidden;'>"
+                        + "<img src='" + card.overlayImageUrl + "' style='width:100%;height:100%;object-fit:cover;object-position:bottom;'>"
+                        + "</div>");
+                    $(this).append(overlayDiv);
+                }
+            }
+        });
+
+        if(this.initialized) {
+            this.pregamePanel.hide();
+
+            return;
+        }
+        
+        var summary = element.getAttribute("summary");
+        var allPlayerIds = element.getAttribute("allParticipantIds").split(",");
+        var participantId = element.getAttribute("participantId");
+        var notes = element.getAttribute("notes");
+        var maps = element.getAttribute("maps");
+
+        var leftPlayer;
+        var rightPlayer;
+        
+        var summaryContent = $("#pregame-general");
+        var leftContent = $("#left-pregame-content");
+        var rightContent = $("#right-pregame-content");
+        var leftTitle = $("#left-pregame-header");
+        var rightTitle = $("#right-pregame-header");
+        
+        summary += "<br><br>Please be courteous to your fellow players; we are all here to have fun. :)"
+        summary += "<br><br>If you need to leave for any reason, please remember to concede ('Options' tab → 'Concede game' button)."
+        
+        if(allPlayerIds.includes(participantId)) {
+            leftPlayer = participantId;
+            allPlayerIds.forEach((x) => {
+                if(x !== participantId) {
+                    rightPlayer = x;
+                }
+            }); 
+        }
+        else { //spectator
+            leftPlayer = allPlayerIds[0];
+            rightPlayer = allPlayerIds[1];
+        }
+        
+        summaryContent.html(summary);
+        leftTitle.html(leftPlayer);
+        
+        rightTitle.html(rightPlayer);
+        rightContent.html("");
+
+        // Collect per-player pregame cards: maps and/or RTMD meta-sites
+        var leftCards = [];
+        var rightCards = [];
+        var cardIdCounter = -1;
+
+        // Maps (e.g., PC-Movie map card)
+        if (maps != null && maps !== "") {
+            var mapEntries = maps.split(",");
+            var playerMaps = {};
+            for (var i = 0; i < mapEntries.length; i++) {
+                var parts = mapEntries[i].split(":");
+                playerMaps[parts[0]] = parts[1];
+            }
+            if (playerMaps[leftPlayer]) {
+                leftCards.push({ blueprintId: playerMaps[leftPlayer], label: "Map" });
+            }
+            if (playerMaps[rightPlayer]) {
+                rightCards.push({ blueprintId: playerMaps[rightPlayer], label: "Map" });
+            }
+        }
+
+        // RTMD meta-sites
+        var metaSites = element.getAttribute("metaSites");
+        if (metaSites != null && metaSites !== "") {
+            // Format: "player1:vis1|mod1;vis2|mod2,player2:vis1|mod1"
+            var playerEntries = metaSites.split(",");
+            var playerMetaSites = {};
+            for (var i = 0; i < playerEntries.length; i++) {
+                var colonIdx = playerEntries[i].indexOf(":");
+                var playerId = playerEntries[i].substring(0, colonIdx);
+                var pairsStr = playerEntries[i].substring(colonIdx + 1);
+                var pairs = pairsStr.split(";");
+                playerMetaSites[playerId] = pairs.map(function(p) {
+                    var ids = p.split("|");
+                    return { visual: ids[0], modifier: ids[1] };
+                });
+            }
+
+            // Build modifier→visual lookup for in-game split card rendering
+            for (var player in playerMetaSites) {
+                var sites = playerMetaSites[player];
+                for (var i = 0; i < sites.length; i++) {
+                    Card.metaSiteOverlays[sites[i].modifier] = Card.getImageUrl(sites[i].visual);
+                }
+            }
+
+            var addMetaSiteCards = function(player, targetArray) {
+                var sites = playerMetaSites[player];
+                if (!sites) return;
+                for (var i = 0; i < sites.length; i++) {
+                    targetArray.push({
+                        blueprintId: sites[i].visual,
+                        overlayBlueprintId: sites[i].modifier,
+                        label: "Meta-Site"
+                    });
+                }
+            };
+            addMetaSiteCards(leftPlayer, leftCards);
+            addMetaSiteCards(rightPlayer, rightCards);
+        }
+
+        // Render collected cards into pregame content areas
+        var self = this;
+        var renderCards = function(cards, container) {
+            if (cards.length === 0) return;
+            var wrapper = $("<div style='display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:8px;'></div>");
+            for (var i = 0; i < cards.length; i++) {
+                var cardInfo = cards[i];
+                var card = new Card(cardInfo.blueprintId, "", "", "SPECIAL", cardIdCounter--, null);
+                var cardDiv = self.createCardDiv(card);
+                cardDiv.find(".borderOverlay").remove();
+
+                // If this is a meta-site with an overlay, add the modifier overlay
+                if (cardInfo.overlayBlueprintId) {
+                    var overlayUrl = Card.getImageUrl(cardInfo.overlayBlueprintId);
+                    var overlayHeight = Card.MetaSiteOverlayHeight;
+                    var overlayDiv = $("<div class='metaSiteOverlay' style='position:absolute;bottom:0;width:100%;height:" + overlayHeight + "%;overflow:hidden;'>"
+                        + "<img src='" + overlayUrl + "' style='width:100%;height:100%;object-fit:cover;object-position:bottom;'>"
+                        + "</div>");
+                    cardDiv.css("position", "relative");
+                    cardDiv.append(overlayDiv);
+                }
+
+                wrapper.append(cardDiv);
+            }
+            container.append(wrapper);
+        };
+
+        renderCards(leftCards, leftContent);
+        renderCards(rightCards, rightContent);
+
+        if(notes != null && notes !== "") {
+            leftContent.append("<div>" + notes + "</div>");
+        }
+        
+        this.pregamePanel.show();
+    },
+    
+    createPile: function(playerId, name, dialogsName, groupsName) {
+        var dialog = $("<div></div>").dialog({
+            autoOpen: false,
+            closeOnEscape: true,
+            resizable: true,
+            title: name + " - " + playerId,
+            minHeight: 80,
+            minWidth: 200,
+            width: 600,
+            height: 300
+        });
+
+        this[dialogsName][playerId] = dialog;
+        this[groupsName][playerId] = new NormalCardGroup(dialog, function (card) {
+            return true;
+        }, false);
+
+        this[groupsName][playerId].setBounds(this.padding, this.padding, 580 - 2 * (this.padding), 250 - 2 * (this.padding));
+
+        var that = this;
+
+        dialog.bind("dialogresize", function () {
+            that.dialogResize(dialog, that[groupsName][playerId]);
+        });
+    },
+
+    ensureRevealedHandDialog: function(playerId) {
+        if (this.revealedHandDialogs[playerId])
+            return;
+
+        // Our own hand stays in the hand area; its window shows copies of it, i.e. what everyone else can see.
+        var ownHand = this.isOwnHand(playerId);
+        this.createPile(playerId, ownHand ? "Your Revealed Hand" : "Revealed Hand", "revealedHandDialogs", "revealedHandGroups");
+
+        var that = this;
+        var playerIndex = this.getPlayerIndex(playerId);
+        if (playerIndex >= 0) {
+            $("#hand" + playerIndex).addClass("clickable revealedHand")
+                .attr("title", ownHand
+                    ? "Your hand is revealed to your opponent and spectators. Click to see it as they do."
+                    : "This hand is revealed. Click to view it.")
+                .click(
+                function () {
+                    var dialog = that.revealedHandDialogs[playerId];
+                    var group = that.revealedHandGroups[playerId];
+                    if (ownHand)
+                        that.syncOwnRevealedHand(true);
+                    openSizeDialog(dialog);
+                    that.dialogResize(dialog, group);
+                    group.layoutCards();
+                });
+        }
+    },
+
+    isOwnHand: function(playerId) {
+        return !this.spectatorMode && playerId == this.bottomPlayerId;
+    },
+
+    // Called with every game-stats update: the server flags each player whose hand is revealed to everyone, so the
+    // hand link is shown to every viewer - the owner, the opponent and spectators - even while that hand is empty.
+    setRevealedHands: function(playerIds) {
+        if (this.allPlayerIds == null)
+            return;
+        for (var i = 0; i < playerIds.length; i++)
+            this.ensureRevealedHandDialog(playerIds[i]);
+        this.syncOwnRevealedHand(false);
+    },
+
+    ownRevealedHandSignature: null,
+
+    // Refreshes the copies in "Your Revealed Hand" from the cards in our hand area (only while its window is open,
+    // unless forced because it is about to open).
+    syncOwnRevealedHand: function(force) {
+        if (this.spectatorMode || this.bottomPlayerId == null)
+            return;
+        var playerId = this.bottomPlayerId;
+        var dialog = this.revealedHandDialogs[playerId];
+        if (!dialog || (!force && !dialog.dialog("isOpen")))
+            return;
+
+        var handCards = [];
+        $("#main").children(".card").each(function () {
+            var card = $(this).data("card");
+            if (card != null && card.zone == "HAND" && card.owner == playerId)
+                handCards.push(card);
+        });
+        var signature = $.map(handCards, function (card) { return card.cardId + ":" + card.blueprintId; }).join(",");
+        if (signature === this.ownRevealedHandSignature && dialog.children(".card").length == handCards.length)
+            return;
+        this.ownRevealedHandSignature = signature;
+
+        dialog.children(".card").remove();
+        for (var i = 0; i < handCards.length; i++) {
+            var original = handCards[i];
+            // "temp" ids are never looked up on the server (see displayCardInfo) and never match a real card
+            var copy = new Card(original.blueprintId, original.testingText, original.backSideTestingText, "HAND",
+                "tempRevealed" + original.cardId, playerId);
+            dialog.append(this.createCardDiv(copy));
+        }
+        if (dialog.dialog("isOpen"))
+            this.revealedHandGroups[playerId].layoutCards();
     },
 
     getDecisionParameter: function (decision, name) {
@@ -1448,8 +1899,10 @@ var GempLotrGameUI = Class.extend({
         $(".card").each(
             function () {
                 var card = $(this).data("card");
-                if (card.zone == "EXTRA")
+                //Negative IDs are handled in the assignment removal
+                if (card.zone == "EXTRA" && !card.cardId.includes("-")) {
                     $(this).remove();
+                }
             });
         if (this.hand != null)
             this.hand.layoutCards();
@@ -1509,8 +1962,7 @@ var GempLotrGameUI = Class.extend({
         var results = this.getDecisionParameters(decision, "results");
 
         var that = this;
-        this.smallDialog
-            .html(text);
+        this.smallDialog.html(text);
 
         if (results.length > 2 || this.settingsAlwaysDropDown) {
             var html = "<br /><select id='multipleChoiceDecision' selectedIndex='0'>";
@@ -1533,8 +1985,14 @@ var GempLotrGameUI = Class.extend({
             for (var i = 0; i < results.length; i++) {
                 if (i > 0)
                     this.smallDialog.append(" ");
+                
+                //Since we will be presenting the text as buttons, we don't
+                // want any card hints that will cause a click on that button
+                // to also open a card info box.
+                var content = results[i].replace("cardHint", "");
+                content = content.replace("<div", "<div style='display:inline'");
 
-                var but = $("<button></button>").html(results[i]).button();
+                var but = $("<button></button>").html(content).button();
                 if (!this.replayMode) {
                     but.click(
                         (function (ind) {
@@ -1688,7 +2146,13 @@ var GempLotrGameUI = Class.extend({
     },
 
     createCardDiv: function (card, text) {
-        var cardDiv = createCardDiv(card.imageUrl, text, card.isFoil(), true, false, card.hasErrata());
+        var cardDiv;
+        if (card.overlayImageUrl && Card.isMetaSiteModifier(card.bareBlueprint)) {
+            // card.imageUrl is already the visual card, card.overlayImageUrl is the modifier
+            cardDiv = Card.CreateSplitCardDiv(card.getVisibleFace(), card.overlayImageUrl, card.testingText, text, card.isFoil(), true, false, card.hasErrata(), card.incomplete);
+        } else {
+            cardDiv = Card.CreateCardDiv(card.getVisibleFace(), card.testingText, text, card.isFoil(), true, false, card.hasErrata(), card.incomplete);
+        }
 
         cardDiv.data("card", card);
 
@@ -1728,11 +2192,21 @@ var GempLotrGameUI = Class.extend({
         var id = decision.getAttribute("id");
         var text = decision.getAttribute("text");
 
+        // The look-through-your-deck step of a search (nothing to pick, own deck): answer it at once when the player
+        // has asked not to see it.  Reveals of an opponent's deck, and reveals that are the point of an effect, are
+        // never tagged this way and always show.
+        if (this.settingsAutoDismissDeckReveal && this.getDecisionParameter(decision, "deckInspection") == "own") {
+            this.decisionFunction(id, "");
+            return;
+        }
+
         var min = this.getDecisionParameter(decision, "min");
         var max = this.getDecisionParameter(decision, "max");
         var cardIds = this.getDecisionParameters(decision, "cardId");
         var blueprintIds = this.getDecisionParameters(decision, "blueprintId");
         var selectable = this.getDecisionParameters(decision, "selectable");
+        var testingTexts = this.getDecisionParameters(decision, "testingText");
+        var backSideTestingTexts = this.getDecisionParameters(decision, "backSideTestingText");
 
         var that = this;
 
@@ -1743,16 +2217,25 @@ var GempLotrGameUI = Class.extend({
         this.cardActionDialog
             .html("<div id='arbitraryChoice'></div>")
             .dialog("option", "title", text);
-
+            
         // Create the action cards and fill the dialog with them
         for (var i = 0; i < blueprintIds.length; i++) {
             var cardId = cardIds[i];
             var blueprintId = blueprintIds[i];
+            
+            var testingText = testingTexts[i];
+            if (testingText == "null") {
+                testingText = null;
+            }
+            var backSideTestingText = backSideTestingTexts[i];
+            if (backSideTestingText == "null") {
+                backSideTestingText = null;
+            }
 
             if (selectable[i] == "true")
                 selectableCardIds.push(cardId);
 
-            var card = new Card(blueprintId, "SPECIAL", cardId, null);
+            var card = new Card(blueprintId, testingText, backSideTestingText, "SPECIAL", cardId, null);
 
             var cardDiv = this.createCardDiv(card);
 
@@ -1760,11 +2243,18 @@ var GempLotrGameUI = Class.extend({
         }
 
         var finishChoice = function () {
+            if (selectedCardIds.length < min)
+                return;
+            
             that.cardActionDialog.dialog("close");
             $("#arbitraryChoice").html("");
             that.clearSelection();
             that.decisionFunction(id, "" + selectedCardIds);
+            
+            that.escFunction = null;
         };
+        
+        this.escFunction = finishChoice;
 
         var resetChoice = function () {
             selectedCardIds = new Array();
@@ -1831,6 +2321,8 @@ var GempLotrGameUI = Class.extend({
         var blueprintIds = this.getDecisionParameters(decision, "blueprintId");
         var actionIds = this.getDecisionParameters(decision, "actionId");
         var actionTexts = this.getDecisionParameters(decision, "actionText");
+        var testingTexts = this.getDecisionParameters(decision, "testingText");
+        var backSideTestingTexts = this.getDecisionParameters(decision, "backSideTestingText");
 
         var that = this;
 
@@ -1874,8 +2366,10 @@ var GempLotrGameUI = Class.extend({
             $(".card").each(
                 function () {
                     var card = $(this).data("card");
-                    if (card.zone == "EXTRA")
+                    //Negative IDs are handled in the assignment removal
+                    if (card.zone == "EXTRA" && !card.cardId.includes("-")) {
                         $(this).remove();
+                    }
                 });
             that.hand.layoutCards();
             that.decisionFunction(id, "" + selectedCardIds);
@@ -1896,6 +2390,15 @@ var GempLotrGameUI = Class.extend({
                 var actionId = actionIds[i];
                 var actionText = actionTexts[i];
                 var blueprintId = blueprintIds[i];
+                
+                var testingText = testingTexts[i];
+                if (testingText == "null") {
+                    testingText = null;
+                }
+                var backSideTestingText = backSideTestingTexts[i];
+                if (backSideTestingText == "null") {
+                    backSideTestingText = null;
+                }
 
                 if (blueprintId == "inPlay") {
                     var cardIdElem = $(".card:cardId(" + cardId + ")");
@@ -1907,15 +2410,10 @@ var GempLotrGameUI = Class.extend({
                     actions.push({actionId: actionId, actionText: actionText});
                 } else {
                     hasVirtual = true;
-                    cardIds[i] = "extra" + cardId;
-                    var card = new Card(blueprintId, "EXTRA", "extra" + cardId, null);
-
-                    var cardDiv = that.createCardDiv(card);
-                    $(cardDiv).css({opacity: "0.8"});
-
-                    $("#main").append(cardDiv);
-
-                    var cardIdElem = $(".card:cardId(extra" + cardId + ")");
+                    
+                    var id = that.createVirtualCard(cardId, blueprintId, testingText, backSideTestingText);
+                    cardIds[i] = id;
+                    var cardIdElem = $(".card:cardId(" + id + ")");
                     if (cardIdElem.data("action") == null) {
                         cardIdElem.data("action", new Array());
                     }
@@ -1965,12 +2463,323 @@ var GempLotrGameUI = Class.extend({
         $(':button').blur();
     },
     
+    //For creating fake cards to represent various situations such as an action
+    // on a card in the discard pile
+    createVirtualCard: function(cardId, blueprintId, testingText, backSideTestingText) {
+        var vId = "extra" + cardId;
+        var card = new Card(blueprintId, testingText, backSideTestingText, "EXTRA", vId, null);
+
+        var cardDiv = this.createCardDiv(card);
+        $(cardDiv).css({opacity: "0.7"});
+
+        $("#main").append(cardDiv);
+        
+        return vId;
+    },
+    
     PlaySound: function(soundObj) {
         var myAudio = document.getElementById(soundObj);
         if(!document.hasFocus() || document.hidden || document.msHidden || document.webkitHidden)
         {
             myAudio.play();    
         }
+    },
+
+    // Plays regardless of window focus (a timer warning is exactly for the focused-but-idle case).
+    // Browsers may reject play() before the user has interacted with the page; that is not an error.
+    PlaySoundAlways: function(soundObj) {
+        var myAudio = document.getElementById(soundObj);
+        if (myAudio == null)
+            return;
+        try {
+            myAudio.currentTime = 0;
+            var promise = myAudio.play();
+            if (promise !== undefined)
+                promise.catch(function () {});
+        } catch (e) {
+            // ignore
+        }
+    },
+
+    // ------------------------------------------------------------------------------------
+    // Timer: per-second tick of the current user's bank clock plus colour/pulse/audio cues.
+    // The server only sends clock values with each poll response (up to 5s apart), so the
+    // client ticks locally while the user has a pending decision and re-syncs on every response.
+    // ------------------------------------------------------------------------------------
+
+    timerAlertsApply: function () {
+        // spectatorMode is null until the participants event arrives; only a confirmed player gets cues
+        return this.spectatorMode === false && !this.replayMode;
+    },
+
+    // Called once the participant list is known: mute toggle in the tab bar, thresholds in Settings
+    initializeTimerUI: function () {
+        if (!this.timerAlertsApply()) {
+            $(".timer-control").remove();
+            return;
+        }
+        // Both controls are declared in game.html inside #bottomLeftTabs, hidden until the timer is known to apply
+        if (this.timerMuteToggle == null) {
+            this.initializeTimerMuteToggle();
+            this.initializeTimerAlertSettings();
+            $(".timer-control").show();
+        }
+    },
+
+    getOwnClockElem: function () {
+        if (this.allPlayerIds == null)
+            return null;
+        var index = this.getPlayerIndex(this.bottomPlayerId);
+        if (index < 0)
+            return null;
+        return $("#clock" + index);
+    },
+
+    startTimerTick: function () {
+        var that = this;
+        this.stopTimerTick();
+        if (this.gameEnded)
+            return;
+        this.timerLastTickSeconds = this.totalTime;
+        this.decisionLastRemaining = this.decisionRemaining();
+        this.countdownIntervalId = window.setInterval(function () {
+            if (that.gameEnded) {
+                that.stopTimerTick();
+                return;
+            }
+            that.totalTime -= 1;
+            that.decisionTime += 1;
+
+            if (that.allPlayerIds == null)
+                return;
+
+            // A clock that has run out has decided the game: freeze it, paint it and stop cueing rather than
+            // waiting for the server to confirm the loss.  A second of grace covers local/server drift; the
+            // server's own clock values still overwrite everything on the next response.
+            var decisionRemaining = that.decisionRemaining();
+            if (that.totalTime <= -1 || (decisionRemaining != null && decisionRemaining <= -1)) {
+                that.lastClockValues[that.bottomPlayerId] = that.totalTime;
+                that.renderDecisionClock();
+                var ownClock = that.getOwnClockElem();
+                if (ownClock != null)
+                    ownClock.text(that.parseTime(that.totalTime));
+                that.markExpiredTimers();
+                that.stopTimerTick();
+                return;
+            }
+
+            that.renderDecisionClock();
+            var clock = that.getOwnClockElem();
+            if (clock != null)
+                clock.text(that.parseTime(that.totalTime));
+
+            that.updateTimerVisual(that.totalTime);
+            that.fireTimerCues(that.timerLastTickSeconds, that.totalTime);
+            that.timerLastTickSeconds = that.totalTime;
+
+            // The tick only runs while a decision of ours is pending, so the decision clock cues are ours too
+            var remaining = that.decisionRemaining();
+            that.fireDecisionCues(that.decisionLastRemaining, remaining);
+            that.decisionLastRemaining = remaining;
+        }, 1000);
+    },
+
+    // Seconds left before the pending decision times out, or null when the limit is not known
+    decisionRemaining: function () {
+        if (!this.decisionLimit || this.decisionLimit <= 0)
+            return null;
+        return this.decisionLimit - this.decisionTime;
+    },
+
+    // "elapsed / limit" plus the same colour band as the bank clock, judged on the time left for the decision
+    renderDecisionClock: function () {
+        var clock = $("#clock-1");
+        var text = this.parseTime(this.decisionTime);
+        if (this.decisionLimit > 0)
+            text += " / " + this.parseTime(this.decisionLimit);
+        clock.text(text);
+
+        if (!this.timerAlertsApply() || this.gameEnded)
+            return;
+        var remaining = this.decisionRemaining();
+        clock.removeClass("timer-warn timer-danger");
+        if (remaining != null && remaining > 0)
+            clock.removeClass("timer-expired");
+        if (remaining != null) {
+            if (remaining < 30)
+                clock.addClass("timer-danger");
+            else if (remaining < 60 || remaining < this.decisionLimit / 4)
+                clock.addClass("timer-warn");
+        }
+    },
+
+    // Decision clock cues: at 60, 30 and 10 seconds left, then every second under 10.  Fixed points rather than the
+    // configurable bank-clock rules, since decision limits differ per game timer and are always short.
+    fireDecisionCues: function (previousRemaining, remaining) {
+        if (!this.timerAlertsApply() || previousRemaining == null || remaining == null || remaining >= previousRemaining)
+            return;
+        var cue = false;
+        for (var s = remaining; s < previousRemaining; s++) {
+            if (s == 60 || s == 30 || s == 10 || (s > 0 && s < 10)) {
+                cue = true;
+                break;
+            }
+        }
+        if (!cue)
+            return;
+        this.pulseClock($("#clock-1"));
+        if (!this.timerAudioMuted)
+            this.PlaySoundAlways("timerAlert");
+    },
+
+    // At the end of a game, a clock that ran out stays red and still: it is what decided the game
+    markExpiredTimers: function () {
+        if (this.allPlayerIds == null)
+            return;
+        for (var participantId in this.lastClockValues) {
+            if (!this.lastClockValues.hasOwnProperty(participantId))
+                continue;
+            var index = this.getPlayerIndex(participantId);
+            if (index >= 0 && this.lastClockValues[participantId] <= 0)
+                $("#clock" + index).removeClass("timer-warn timer-danger timer-pulse").addClass("timer-expired");
+        }
+        if (this.decisionLimit > 0 && this.decisionTime >= this.decisionLimit)
+            $("#clock-1").removeClass("timer-warn timer-danger timer-pulse").addClass("timer-expired");
+    },
+
+    stopTimerTick: function () {
+        if (this.countdownIntervalId) {
+            clearInterval(this.countdownIntervalId);
+            this.countdownIntervalId = 0;
+        }
+        this.timerLastTickSeconds = null;
+    },
+
+    // Background band: black normally, orange under 10 minutes, red under 5.
+    updateTimerVisual: function (secondsLeft) {
+        if (!this.timerAlertsApply())
+            return;
+        var clock = this.getOwnClockElem();
+        if (clock == null || this.gameEnded)
+            return;
+        clock.addClass("timer-own");
+        clock.removeClass("timer-warn timer-danger");
+        if (secondsLeft > 0)
+            clock.removeClass("timer-expired");   // the server disagreed with a locally expired clock
+        if (secondsLeft < 300)
+            clock.addClass("timer-danger");
+        else if (secondsLeft < 600)
+            clock.addClass("timer-warn");
+    },
+
+    pulseTimer: function () {
+        this.pulseClock(this.getOwnClockElem());
+    },
+
+    pulseClock: function (clock) {
+        if (clock == null || clock.length == 0)
+            return;
+        clock.removeClass("timer-pulse");
+        // Force a reflow so re-adding the class restarts the animation
+        void clock[0].offsetWidth;
+        clock.addClass("timer-pulse");
+    },
+
+    // Called once per local tick with the previous and current seconds remaining.
+    fireTimerCues: function (previous, current) {
+        if (!this.timerAlertsApply() || previous == null || current >= previous)
+            return;
+
+        // "Crossing a minute mark" = the clock landing on X:00 (the previous tick may be more than one
+        // second earlier after a server re-sync, hence the range check rather than an equality test)
+        var crossedMinute = false;
+        for (var s = current; s < previous; s++) {
+            if (s % 60 == 0 && s > 0) {
+                crossedMinute = true;
+                break;
+            }
+        }
+        if (crossedMinute) {
+            // visual only: the threshold cues below carry the audio
+            this.pulseTimer();
+            return;
+        }
+
+        // Most specific matching rule (smallest threshold the clock is under) wins
+        var rule = null;
+        for (var i = 0; i < this.timerAlertRules.length; i++) {
+            var candidate = this.timerAlertRules[i];
+            if (current < candidate.below && candidate.every > 0 && (rule == null || candidate.below < rule.below))
+                rule = candidate;
+        }
+        if (rule != null && current > 0 && current % rule.every == 0) {
+            this.pulseTimer();
+            if (!this.timerAudioMuted)
+                this.PlaySoundAlways("timerAlert");
+        }
+    },
+
+    initializeTimerMuteToggle: function () {
+        var that = this;
+        var onIcon = "ui-icon-volume-on";
+        var offIcon = "ui-icon-volume-off";
+
+        this.timerAudioMuted = loadFromCookie("timerAudioMuted", "false") === "true";
+
+        // Muted: the speaker icon with a red X drawn over it (#timer-mute-toggle.muted in game.css)
+        this.timerMuteToggle = $("#timer-mute-toggle").button({
+            icons: {primary: this.timerAudioMuted ? offIcon : onIcon},
+            text: false
+        }).toggleClass("muted", this.timerAudioMuted);
+        this.timerMuteToggle.click(function () {
+            that.timerAudioMuted = !that.timerAudioMuted;
+            saveToCookie("timerAudioMuted", "" + that.timerAudioMuted);
+            that.timerMuteToggle.button("option", "icons", {primary: that.timerAudioMuted ? offIcon : onIcon})
+                .toggleClass("muted", that.timerAudioMuted)
+                .attr("title", that.timerAudioMuted ? "Timer sounds are muted" : "Mute timer sounds");
+        });
+    },
+
+    // Settings tab: three "below X minutes, cue every Y seconds" rules, stored as "600:30,300:10,60:1"
+    initializeTimerAlertSettings: function () {
+        var that = this;
+        var stored = loadFromCookie("timerAlertRules", "600:30,300:10,60:1");
+        var parsed = [];
+        var parts = ("" + stored).split(",");
+        for (var i = 0; i < parts.length; i++) {
+            var pair = parts[i].split(":");
+            var below = parseInt(pair[0]);
+            var every = parseInt(pair[1]);
+            if (!isNaN(below) && !isNaN(every))
+                parsed.push({below: below, every: every});
+        }
+        if (parsed.length > 0)
+            this.timerAlertRules = parsed;
+
+        var belowInputs = $("#timerAlertSettings .timerAlertBelow");
+        var everyInputs = $("#timerAlertSettings .timerAlertEvery");
+        for (var r = 0; r < belowInputs.length; r++) {
+            var rule = this.timerAlertRules[r] || {below: 0, every: 0};
+            $(belowInputs[r]).val(Math.round(rule.below / 60));
+            $(everyInputs[r]).val(rule.every);
+        }
+
+        $("#timerAlertSettings input").bind("change", function () {
+            var rules = [];
+            var belows = $("#timerAlertSettings .timerAlertBelow");
+            var everys = $("#timerAlertSettings .timerAlertEvery");
+            for (var i = 0; i < belows.length; i++) {
+                var below = parseInt($(belows[i]).val()) * 60;
+                var every = parseInt($(everys[i]).val());
+                if (!isNaN(below) && !isNaN(every) && below > 0 && every > 0)
+                    rules.push({below: below, every: every});
+            }
+            that.timerAlertRules = rules;
+            var serialized = [];
+            for (var j = 0; j < rules.length; j++)
+                serialized.push(rules[j].below + ":" + rules[j].every);
+            saveToCookie("timerAlertRules", serialized.join(","));
+        });
     },
 
     createActionChoiceContextMenu: function (actions, event, selectActionFunction) {
@@ -2029,6 +2838,8 @@ var GempLotrGameUI = Class.extend({
         var blueprintIds = this.getDecisionParameters(decision, "blueprintId");
         var actionIds = this.getDecisionParameters(decision, "actionId");
         var actionTexts = this.getDecisionParameters(decision, "actionText");
+        var testingTexts = this.getDecisionParameters(decision, "testingText");
+        var backSideTestingTexts = this.getDecisionParameters(decision, "backSideTestingText");
 
         var that = this;
 
@@ -2042,9 +2853,17 @@ var GempLotrGameUI = Class.extend({
 
         for (var i = 0; i < blueprintIds.length; i++) {
             var blueprintId = blueprintIds[i];
+            var testingText = testingTexts[i];
+            if (testingText == "null") {
+                testingText = null;
+            }
+            var backSideTestingText = backSideTestingTexts[i];
+            if (backSideTestingText == "null") {
+                backSideTestingText = null;
+            }
 
             cardIds.push("temp" + i);
-            var card = new Card(blueprintId, "SPECIAL", "temp" + i, null);
+            var card = new Card(blueprintId, testingText, backSideTestingText, "SPECIAL", "temp" + i, null);
 
             var cardDiv = this.createCardDiv(card, actionTexts[i]);
 
@@ -2234,7 +3053,7 @@ var GempLotrGameUI = Class.extend({
 
                 that.decisionFunction(id, "" + assignmentArray);
                 
-                this.PlaySound("awaitAction");
+                that.PlaySound("awaitAction");
             });
         }
 
@@ -2242,12 +3061,15 @@ var GempLotrGameUI = Class.extend({
     },
 
     unassignMinion: function (minionId) {
-        var previousCharacterId = $(".card:cardId(" + minionId + ")").data("card").assign;
-        delete $(".card:cardId(" + minionId + ")").data("card").assign;
+        var minion = $(".card:cardId(" + minionId + ")").data("card");
+        var previousCharacterId = minion.assign;
+        delete minion.assign;
 
         var characterHasMinion = false;
         $(".card").each(function () {
-            if ($(this).data("card").assign == previousCharacterId) characterHasMinion = true;
+            if ($(this).data("card").assign == previousCharacterId) {
+                characterHasMinion = true;
+            }
         });
 
         if (!characterHasMinion) {
@@ -2256,11 +3078,19 @@ var GempLotrGameUI = Class.extend({
 
             this.assignGroupDivs[0].remove();
             this.assignGroupDivs.splice(0, 1);
+            
+            if(previousCharacterId.includes("-")) {
+                var ghost = $(".card:cardId(extra" + previousCharacterId + ")");
+                if(ghost != null && ghost.length > 0) {
+                    ghost.remove();
+                }
+            }
         }
     },
 
     assignMinion: function (minionId, characterId) {
-        if ($(".card:cardId(" + minionId + ")").data("card").assign != null)
+        var minion = $(".card:cardId(" + minionId + ")").data("card");
+        if (minion.assign != null)
             this.unassignMinion(minionId);
 
         var that = this;
@@ -2270,7 +3100,8 @@ var GempLotrGameUI = Class.extend({
                 return (card.zone == "SHADOW_CHARACTERS" && card.assign == characterId);
             }, false);
             this.freePeopleAssignGroups[characterId] = new NormalCardGroup($("#main"), function (card) {
-                return (card.cardId == characterId);
+                return (card.cardId == characterId || 
+                        (characterId.includes("-") && card.cardId.includes(characterId)) );
             }, false);
 
             var newDiv = $("<div class='ui-widget-content'></div>");
@@ -2279,7 +3110,7 @@ var GempLotrGameUI = Class.extend({
             this.assignGroupDivs.push(newDiv);
         }
 
-        $(".card:cardId(" + minionId + ")").data("card").assign = characterId;
+        minion.assign = characterId;
     },
 
     doAssignments: function (freeCharacters, minions) {

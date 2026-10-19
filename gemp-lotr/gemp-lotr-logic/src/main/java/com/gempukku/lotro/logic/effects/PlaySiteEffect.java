@@ -24,11 +24,11 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class PlaySiteEffect extends AbstractEffect {
-    private Action _action;
-    private String _playerId;
-    private SitesBlock _siteBlock;
-    private int _siteNumber;
-    private Filterable[] _extraSiteFilters;
+    private final Action _action;
+    private final String _playerId;
+    private final SitesBlock _siteBlock;
+    private final int _siteNumber;
+    private final Filterable[] _extraSiteFilters;
 
     public PlaySiteEffect(Action action, String playerId, SitesBlock siteBlock, int siteNumber) {
         this(action, playerId, siteBlock, siteNumber, Filters.any);
@@ -52,7 +52,7 @@ public class PlaySiteEffect extends AbstractEffect {
         if (siteNumber > 9 || siteNumber < 1)
             return Collections.emptySet();
 
-        if (game.getFormat().isOrderedSites()) {
+        if (!game.getGameState().usesUnorderedSites(_playerId)) {
             Filter printedSiteNumber = new Filter() {
                 @Override
                 public boolean accepts(LotroGame game, PhysicalCard physicalCard) {
@@ -60,14 +60,14 @@ public class PlaySiteEffect extends AbstractEffect {
                 }
             };
             if (_siteBlock != null)
-                return Filters.filter(game.getGameState().getAdventureDeck(_playerId), game, Filters.and(_extraSiteFilters, printedSiteNumber, Filters.siteBlock(_siteBlock)));
+                return Filters.filter(game, game.getGameState().getAdventureDeck(_playerId), Filters.and(_extraSiteFilters, printedSiteNumber, Filters.siteBlock(_siteBlock)));
             else
-                return Filters.filter(game.getGameState().getAdventureDeck(_playerId), game, Filters.and(_extraSiteFilters, printedSiteNumber));
+                return Filters.filter(game, game.getGameState().getAdventureDeck(_playerId), Filters.and(_extraSiteFilters, printedSiteNumber));
         } else {
             if (_siteBlock != null)
-                return Filters.filter(game.getGameState().getAdventureDeck(_playerId), game, Filters.and(_extraSiteFilters, Filters.siteBlock(_siteBlock)));
+                return Filters.filter(game, game.getGameState().getAdventureDeck(_playerId), Filters.and(_extraSiteFilters, Filters.siteBlock(_siteBlock)));
             else
-                return Filters.filter(game.getGameState().getAdventureDeck(_playerId), game, _extraSiteFilters);
+                return Filters.filter(game, game.getGameState().getAdventureDeck(_playerId), _extraSiteFilters);
         }
     }
 
@@ -94,7 +94,7 @@ public class PlaySiteEffect extends AbstractEffect {
 
         PhysicalCard currentSite = game.getGameState().getSite(siteNumber);
 
-        if (newSite.size() > 0 && (currentSite == null || game.getModifiersQuerying().canReplaceSite(game, _playerId, currentSite))
+        if (!newSite.isEmpty() && (currentSite == null || game.getModifiersQuerying().canReplaceSite(game, _playerId, currentSite))
                 && game.getModifiersQuerying().canPlaySite(game, _playerId)) {
             SubAction subAction = new SubAction(_action);
             subAction.appendEffect(
@@ -114,7 +114,7 @@ public class PlaySiteEffect extends AbstractEffect {
                                 controlled = oldSite.getCardController();
                                 if (controlled != null)
                                     zone = oldSite.getZone();
-                                stacked = new LinkedList<PhysicalCard>(gameState.getStackedCards(oldSite));
+                                stacked = new LinkedList<>(gameState.getStackedCards(oldSite));
 
                                 gameState.removeCardsFromZone(_playerId, Collections.singleton(oldSite));
                                 oldSite.setSiteNumber(null);
@@ -122,7 +122,7 @@ public class PlaySiteEffect extends AbstractEffect {
                                 if (gameState.getCurrentSiteNumber() == siteNumber
                                         && !_playerId.equals(gameState.getCurrentPlayerId()))
                                     game.getModifiersEnvironment().addUntilEndOfTurnModifier(
-                                            new SpecialFlagModifier(null, ModifierFlag.SHADOW_PLAYER_REPLACED_CURRENT_SITE));
+                                            new SpecialFlagModifier(null, null, ModifierFlag.SHADOW_PLAYER_REPLACED_CURRENT_SITE));
 
                                 game.getActionsEnvironment().emitEffectResult(new ReplaceSiteResult(_playerId, siteNumber));
                             }
@@ -139,7 +139,7 @@ public class PlaySiteEffect extends AbstractEffect {
                             }
 
                             sitePlayedCallback(newSite);
-                            game.getActionsEnvironment().emitEffectResult(new PlayCardResult(Zone.ADVENTURE_DECK, newSite, null, null, false));
+                            game.getActionsEnvironment().emitEffectResult(new PlayCardResult(_playerId, Zone.ADVENTURE_DECK, newSite, null, null, false));
                         }
                     });
 

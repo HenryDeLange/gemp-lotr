@@ -6,7 +6,7 @@ import com.gempukku.lotro.logic.timing.processes.GameProcess;
 
 public class CheckForCorruptionGameProcess implements GameProcess {
     private GameProcess _nextProcess;
-    private String _firstPlayer;
+    private final String _firstPlayer;
 
     public CheckForCorruptionGameProcess(String firstPlayer) {
         _firstPlayer = firstPlayer;
@@ -21,7 +21,7 @@ public class CheckForCorruptionGameProcess implements GameProcess {
             if (nextPlayer == null)
                 break;
 
-            game.getGameState().startPlayerTurn(nextPlayer);
+            game.getGameState().startPlayerTurn(nextPlayer, false);
             game.getGameState().startAffectingCardsForCurrentPlayer(game);
             int ringBearerResistance = game.getModifiersQuerying().getResistance(game, game.getGameState().getRingBearer(nextPlayer));
             if (ringBearerResistance<=0) {

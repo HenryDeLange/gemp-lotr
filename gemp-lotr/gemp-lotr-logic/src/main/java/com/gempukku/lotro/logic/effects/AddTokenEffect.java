@@ -7,18 +7,18 @@ import com.gempukku.lotro.logic.GameUtils;
 import com.gempukku.lotro.logic.modifiers.ModifierFlag;
 import com.gempukku.lotro.logic.timing.AbstractEffect;
 import com.gempukku.lotro.logic.timing.Effect;
+import com.gempukku.lotro.logic.timing.results.AddBurdenResult;
+import com.gempukku.lotro.logic.timing.results.AddCultureTokenResult;
 
 public class AddTokenEffect extends AbstractEffect {
-    private PhysicalCard _source;
-    private PhysicalCard _target;
-    private Token _token;
-    private int _count;
+    private final String _performingPlayer;
+    private final PhysicalCard _source;
+    private final PhysicalCard _target;
+    private final Token _token;
+    private final int _count;
 
-    public AddTokenEffect(PhysicalCard source, PhysicalCard target, Token token) {
-        this(source, target, token, 1);
-    }
-
-    public AddTokenEffect(PhysicalCard source, PhysicalCard target, Token token, int count) {
+    public AddTokenEffect(String performingPlayer, PhysicalCard source, PhysicalCard target, Token token, int count) {
+        _performingPlayer = performingPlayer;
         _source = source;
         _target = target;
         _token = token;
@@ -37,7 +37,10 @@ public class AddTokenEffect extends AbstractEffect {
 
     @Override
     public String getText(LotroGame game) {
-        return null;
+        if (_token != null)
+            return "Add " + _count + " " + _token.getCulture().getHumanReadable() + " token" + (_count > 1 ? "s" : "");
+        else
+            return "Add " + _count + " culture token" + (_count > 1 ? "s" : "");
     }
 
     @Override
@@ -47,6 +50,9 @@ public class AddTokenEffect extends AbstractEffect {
                 game.getGameState().addTokens(_target, _token, _count);
                 game.getGameState().sendMessage(GameUtils.getCardLink(_source) + " added " + _count + " " + _token + " token" + ((_count > 1) ? "s" : "") + " to " + GameUtils.getCardLink(_target));
             }
+
+            for (int i = 0; i < _count; i++)
+                game.getActionsEnvironment().emitEffectResult(new AddCultureTokenResult(_performingPlayer, _source, _target));
 
             return new FullEffectResult(true);
         }

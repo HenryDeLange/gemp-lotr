@@ -17,20 +17,26 @@ public class DeckSerialization {
             sb.append(deck.getSites().get(i));
         }
         sb.append("|");
-        for (int i = 0; i < deck.getAdventureCards().size(); i++) {
+        for (int i = 0; i < deck.getDrawDeckCards().size(); i++) {
             if (i > 0)
                 sb.append(",");
-            sb.append(deck.getAdventureCards().get(i));
+            sb.append(deck.getDrawDeckCards().get(i));
+        }
+        if (deck.getMap() != null) {
+            sb.append("|");
+            sb.append(deck.getMap());
         }
 
         return sb.toString();
     }
 
-    public static LotroDeck buildDeckFromContents(String deckName, String contents) {
+    public static LotroDeck buildDeckFromContents(String deckName, String contents, String targetFormat, String notes) {
         // New format
         String[] parts = contents.split("\\|");
 
         LotroDeck deck = new LotroDeck(deckName);
+        deck.setTargetFormat(targetFormat);
+        deck.setNotes(notes);
         if (parts.length > 0 && !parts[0].equals(""))
             deck.setRingBearer(parts[0]);
         if (parts.length > 1 && !parts[1].equals(""))
@@ -44,6 +50,11 @@ public class DeckSerialization {
             for (String card : parts[3].split(",")) {
                 if (!card.equals(""))
                     deck.addCard(card);
+            }
+        if (parts.length > 4)
+            for (String card : parts[4].split(",")) {
+                if (!card.equals(""))
+                    deck.setMap(card);
             }
 
         return deck;

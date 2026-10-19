@@ -1,0 +1,201 @@
+{
+	68_110: {
+		cardInfo: {
+			//id: 8_110.1
+			revision: 1
+			image: errata/LOTR-EN18E110.1.jpg
+			collInfo: 18R110
+			rarity: U
+		}
+		title: Prized Lagan
+		unique: false
+		culture: Shire
+		twilight: 0
+		type: Condition
+		keyword: [
+			Support Area
+		]
+		effects:[
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: startOfTurn
+				}
+				optional: true
+				cost: {
+					type: AddTwilight
+					amount: 2
+				}
+				effect: {
+					type: heal
+					select: choose(culture(shire),companion)
+				}
+			}
+			{
+				type: activated
+				phase: maneuver
+				cost: {
+					type: AddThreats
+					amount: 1
+				}
+				effect: [
+					{
+						type: chooseActiveCards
+						select: choose(minion)
+						memorize: chosenMinion
+						text: Choose a minion to lose fierce
+					}
+					{
+						type: preventable
+						player: ownerFromMemory(chosenMinion)
+						cost: {
+							type: removeTwilight
+							amount: 2
+						}
+						text: Remove (2) to prevent {chosenMinion} losing fierce
+						effect: {
+							type: RemoveKeyword
+							keyword: fierce
+							select: memory(chosenMinion)
+							until: start(regroup)
+						}
+					}
+				]
+			}
+		]
+		gametext: At the start of each turn, you may add (2) to heal a [shire] companion.\Maneuver: Add a threat to spot a minion. That minion loses <b>fierce</b> and cannot gain fierce until the regroup phase.  Any Shadow player may remove (2) to prevent this.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	
+	68_111: {
+		cardInfo: {
+			//id: 8_111.1
+			revision: 1
+			image: errata/LOTR-EN18E111.1.jpg
+			collInfo: 18U111
+			rarity: U
+		}
+		title: Robin Smallburrow
+		subtitle: Shirriff Cock-Robin
+		unique: true
+		culture: shire
+		twilight: 2
+		type: follower
+		resistance: 1
+		effects: [
+			{
+				type: aidCost
+				cost: {
+					type: AddTwilight
+					amount: 2
+				}
+			}
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: transferred
+					filter: self
+					to: culture(shire),companion
+				}
+				effect: [
+					{
+						type: discardFromHand
+						forced: false
+						count: 0-3
+						memorize: discardedCards
+					}
+					{
+						type: drawCards
+						count: {
+							type: forEachInMemory
+							memory: discardedCards
+						}
+					}
+				]
+			}
+		]
+		gametext: <b>Aid</b> - (2). <i>(At the start of the maneuver phase, you may add (2) to transfer this to a companion.)</i>\Each time you attach this follower to a [shire] companion, you may discard up to 3 cards from hand and draw an equal amount.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	68_112: {
+		cardInfo: {
+			//id: 8_112.1
+			revision: 1
+			image: errata/68_112.jpg
+			collInfo: 18R112
+			rarity: R
+		}
+		title: Scouring of the Shire
+		unique: true
+		culture: Shire
+		twilight: 1
+		type: Condition
+		keyword: [
+			Support Area
+			Tale
+		]
+		effects:[
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: ConstantlyCheck
+					requires: {
+						type: canSpot
+						filter: self,HasCultureTokenCount(3,shire)
+					}
+				}
+				effect: {
+					type: discard
+					select: self
+				}
+			}
+			{
+				type: Response
+				trigger: {
+					type: abouttodiscard
+					source: side(shadow)
+					filter: culture(shire),or(condition,possession)
+				}
+				cost: {
+					type: AddCultureTokens
+					count: 1
+					culture: shire
+					select: self
+				}
+				effect: {
+					type: preventdiscard
+					select: choose(culture(shire),or(condition,possession))
+				}
+			}
+		]
+		gametext: <b>Tale.</b><br>When there are 3 [shire] tokens here, discard this condition from play.<br><b>Response:</b> If a [shire] condition or [shire] possession is about to be discarded from play by a Shadow card, add a [shire] token here to prevent that.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+}

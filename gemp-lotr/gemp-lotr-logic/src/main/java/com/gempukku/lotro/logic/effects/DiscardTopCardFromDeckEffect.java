@@ -13,14 +13,10 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class DiscardTopCardFromDeckEffect extends AbstractEffect {
-    private PhysicalCard _source;
-    private String _playerId;
-    private int _count;
-    private boolean _forced;
-
-    public DiscardTopCardFromDeckEffect(PhysicalCard source, String playerId, boolean forced) {
-        this(source, playerId, 1, forced);
-    }
+    private final PhysicalCard _source;
+    private final String _playerId;
+    private final int _count;
+    private final boolean _forced;
 
     public DiscardTopCardFromDeckEffect(PhysicalCard source, String playerId, int count, boolean forced) {
         _source = source;
@@ -49,7 +45,7 @@ public class DiscardTopCardFromDeckEffect extends AbstractEffect {
     protected FullEffectResult playEffectReturningResult(LotroGame game) {
         if (!_forced || game.getModifiersQuerying().canDiscardCardsFromTopOfDeck(game, _playerId, _source)) {
             GameState gameState = game.getGameState();
-            List<PhysicalCard> cardsDiscarded = new LinkedList<PhysicalCard>();
+            List<PhysicalCard> cardsDiscarded = new LinkedList<>();
             for (int i = 0; i < _count; i++) {
                 PhysicalCard card = gameState.removeTopDeckCard(_playerId);
                 if (card != null) {
@@ -62,8 +58,9 @@ public class DiscardTopCardFromDeckEffect extends AbstractEffect {
                 cardsDiscardedCallback(cardsDiscarded);
             }
 
-            for (PhysicalCard discardedCard : cardsDiscarded)//PhysicalCard source, PhysicalCard card, String handPlayerId, boolean forced
+            for (PhysicalCard discardedCard : cardsDiscarded) {
                 game.getActionsEnvironment().emitEffectResult(new DiscardCardFromDeckResult(_source, discardedCard, _forced));
+            }
 
             return new FullEffectResult(_count == cardsDiscarded.size());
         }

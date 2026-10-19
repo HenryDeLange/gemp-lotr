@@ -11,21 +11,18 @@ import org.json.simple.JSONObject;
 public class ModifyArcheryTotal implements ModifierSourceProducer {
     @Override
     public ModifierSource getModifierSource(JSONObject object, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
-        FieldUtils.validateAllowedFields(object, "side", "condition", "amount");
+        FieldUtils.validateAllowedFields(object, "side", "requires", "amount");
 
         final ValueSource valueSource = ValueResolver.resolveEvaluator(object.get("amount"), environment);
-        final JSONObject[] conditionArray = FieldUtils.getObjectArray(object.get("condition"), "condition");
-        final Side side = FieldUtils.getEnum(Side.class, object.get("side"), "side");
-
-        if (side == null)
-            throw new InvalidCardDefinitionException("This modifier requires a side");
+        final JSONObject[] conditionArray = FieldUtils.getObjectArray(object.get("requires"), "requires");
+        final Side side = FieldUtils.getSide(object.get("side"), "side");
 
         final Requirement[] requirements = environment.getRequirementFactory().getRequirements(conditionArray, environment);
 
         return (actionContext) -> {
             final Evaluator evaluator = valueSource.getEvaluator(actionContext);
             return new ArcheryTotalModifier(actionContext.getSource(), side,
-                    new RequirementCondition(requirements, actionContext), evaluator);
+                    RequirementCondition.createCondition(requirements, actionContext), evaluator);
         };
     }
 }

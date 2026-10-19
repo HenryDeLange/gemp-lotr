@@ -1,7 +1,7 @@
 package com.gempukku.lotro.cards.unofficial.pc.errata.set01;
 
-import com.gempukku.lotro.cards.GenericCardTestHelper;
-import com.gempukku.lotro.common.Keyword;
+import com.gempukku.lotro.framework.VirtualTableScenario;
+import com.gempukku.lotro.common.*;
 import com.gempukku.lotro.game.CardNotFoundException;
 import com.gempukku.lotro.game.PhysicalCardImpl;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
@@ -9,16 +9,14 @@ import org.junit.Test;
 
 import java.util.HashMap;
 
-import static junit.framework.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class Card_01_108_ErrataTests
 {
-    protected GenericCardTestHelper GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
-        return new GenericCardTestHelper(
-                new HashMap<String, String>()
-                {{
+    protected VirtualTableScenario GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
+        return new VirtualTableScenario(
+                new HashMap<>() {{
                     put("aragorn", "1_89");
                     put("arwen", "1_30");
                     put("boromir", "1_97");
@@ -44,11 +42,14 @@ public class Card_01_108_ErrataTests
          */
 
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
         PhysicalCardImpl nostranger = scn.GetFreepsCard("nostranger");
 
         assertTrue(nostranger.getBlueprint().isUnique());
+        assertEquals(Side.FREE_PEOPLE, nostranger.getBlueprint().getSide());
+        assertEquals(Culture.GONDOR, nostranger.getBlueprint().getCulture());
+        assertEquals(CardType.CONDITION, nostranger.getBlueprint().getCardType());
         assertEquals(0, nostranger.getBlueprint().getTwilightCost());
         assertTrue(scn.HasKeyword(nostranger, Keyword.STEALTH));
     }
@@ -56,21 +57,21 @@ public class Card_01_108_ErrataTests
     @Test
     public void NoStrangerCanOnlyPlayOnRanger() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
         PhysicalCardImpl aragorn = scn.GetFreepsCard("aragorn");
         PhysicalCardImpl arwen = scn.GetFreepsCard("arwen");
         PhysicalCardImpl boromir = scn.GetFreepsCard("boromir");
         PhysicalCardImpl nostranger = scn.GetFreepsCard("nostranger");
 
-        scn.FreepsMoveCharToTable(aragorn);
-        scn.FreepsMoveCharToTable(arwen);
-        scn.FreepsMoveCharToTable(boromir);
-        scn.FreepsMoveCardToHand(nostranger);
+        scn.MoveCompanionsToTable(aragorn);
+        scn.MoveCompanionsToTable(arwen);
+        scn.MoveCompanionsToTable(boromir);
+        scn.MoveCardsToHand(nostranger);
 
         scn.StartGame();
 
-        assertTrue(scn.FreepsCardPlayAvailable(nostranger));
+        assertTrue(scn.FreepsPlayAvailable(nostranger));
 
         scn.FreepsPlayCard(nostranger);
 
@@ -82,13 +83,13 @@ public class Card_01_108_ErrataTests
     @Test
     public void NoStrangerReducesTwilight() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
         PhysicalCardImpl aragorn = scn.GetFreepsCard("aragorn");
         PhysicalCardImpl nostranger = scn.GetFreepsCard("nostranger");
 
-        scn.FreepsMoveCharToTable(aragorn);
-        scn.FreepsMoveCardToHand(nostranger);
+        scn.MoveCompanionsToTable(aragorn);
+        scn.MoveCardsToHand(nostranger);
 
         scn.StartGame();
 

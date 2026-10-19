@@ -1,27 +1,25 @@
 package com.gempukku.lotro.cards.unofficial.pc.errata.set02;
 
-import com.gempukku.lotro.cards.GenericCardTestHelper;
+import com.gempukku.lotro.framework.VirtualTableScenario;
 import com.gempukku.lotro.common.Keyword;
 import com.gempukku.lotro.common.Signet;
 import com.gempukku.lotro.filters.Filters;
 import com.gempukku.lotro.game.CardNotFoundException;
 import com.gempukku.lotro.game.PhysicalCardImpl;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
-import com.gempukku.lotro.logic.modifiers.KeywordModifier;
+import com.gempukku.lotro.logic.modifiers.AddKeywordModifier;
 import org.junit.Test;
 
 import java.util.HashMap;
 
-import static junit.framework.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class Card_02_121_ErrataTests
 {
-    protected GenericCardTestHelper GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
-        return new GenericCardTestHelper(
-                new HashMap<String, String>()
-                {{
+    protected VirtualTableScenario GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
+        return new VirtualTableScenario(
+                new HashMap<>() {{
                     put("gimli", "52_121");
                 }}
         );
@@ -46,7 +44,7 @@ public class Card_02_121_ErrataTests
          */
 
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
         PhysicalCardImpl gimli = scn.GetFreepsCard("gimli");
 
@@ -64,14 +62,14 @@ public class Card_02_121_ErrataTests
     @Test
     public void GimliRemovesTwilightWhenUnderground() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
         PhysicalCardImpl gimli = scn.GetFreepsCard("gimli");
-        scn.FreepsMoveCharToTable(gimli);
+        scn.MoveCompanionsToTable(gimli);
 
         scn.StartGame();
 
-        scn.ApplyAdHocModifier(new KeywordModifier(null, Filters.siteNumber(2), Keyword.UNDERGROUND));
+        scn.ApplyAdHocModifier(new AddKeywordModifier(null, Filters.siteNumber(2), null, Keyword.UNDERGROUND));
 
         scn.FreepsPassCurrentPhaseAction();
 
@@ -82,10 +80,10 @@ public class Card_02_121_ErrataTests
     @Test
     public void GimliDoesNotRemoveTwilightWhenNotUnderground() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
         PhysicalCardImpl gimli = scn.GetFreepsCard("gimli");
-        scn.FreepsMoveCharToTable(gimli);
+        scn.MoveCompanionsToTable(gimli);
 
         scn.StartGame();
 
@@ -93,6 +91,25 @@ public class Card_02_121_ErrataTests
 
         // 2 for Frodo/Gimli, 1 for the site
         assertEquals(3, scn.GetTwilight());
+    }
+
+    @Test
+    public void GimliIsStrengthPlus1WhenUnderground() throws DecisionResultInvalidException, CardNotFoundException {
+        //Pre-game setup
+        VirtualTableScenario scn = GetScenario();
+
+        PhysicalCardImpl gimli = scn.GetFreepsCard("gimli");
+        scn.MoveCompanionsToTable(gimli);
+
+        scn.StartGame();
+
+        assertEquals(6, scn.GetStrength(gimli));
+
+        scn.ApplyAdHocModifier(new AddKeywordModifier(null, Filters.siteNumber(2), null, Keyword.UNDERGROUND));
+
+        scn.FreepsPassCurrentPhaseAction();
+
+        assertEquals(7, scn.GetStrength(gimli));
     }
 
 

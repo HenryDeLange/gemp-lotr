@@ -1,34 +1,32 @@
 package com.gempukku.lotro.async;
 
-import com.gempukku.lotro.async.handler.RootUriRequestHandler;
-import com.gempukku.lotro.async.handler.UriRequestHandler;
 import com.gempukku.lotro.builder.DaoBuilder;
-import com.gempukku.lotro.builder.PacksStorageBuilder;
 import com.gempukku.lotro.builder.ServerBuilder;
-import com.gempukku.lotro.game.CardSets;
-import com.gempukku.lotro.packs.PacksStorage;
-import com.gempukku.lotro.service.LoggedUserHolder;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 
 public class GempukkuServer {
-    private Map<Type, Object> context;
+    private final Map<Type, Object> context;
 
     public GempukkuServer() {
-        Map<Type, Object> objects = new HashMap<Type, Object>();
-        final CardSets cardSets = new CardSets();
+        Map<Type, Object> objects = new HashMap<>();
 
-        LoggedUserHolder loggedUserHolder = new LoggedUserHolder();
-        loggedUserHolder.start();
-        objects.put(LoggedUserHolder.class, loggedUserHolder);
+        var logger = LogManager.getLogger(GempukkuServer.class);
 
-        objects.put(CardSets.class, cardSets);
-        objects.put(PacksStorage.class, PacksStorageBuilder.createPacksStorage(cardSets));
-        DaoBuilder.fillObjectMap(objects);
-        ServerBuilder.fillObjectMap(objects);
-        ServerBuilder.constructObjects(objects);
+        //Libraries and other important prereq managers that are used by lots of other managers
+        logger.info("GempukkuServer loading prerequisites...");
+        ServerBuilder.CreatePrerequisites(objects);
+        //Now bulk initialize various managers
+        logger.info("GempukkuServer loading DAOs...");
+        DaoBuilder.CreateDatabaseAccessObjects(objects);
+        logger.info("GempukkuServer loading services...");
+        ServerBuilder.CreateServices(objects);
+        logger.info("GempukkuServer starting servers...");
+        ServerBuilder.StartServers(objects);
+        logger.info("GempukkuServer startup complete.");
 
         context = objects;
     }

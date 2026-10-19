@@ -1,0 +1,55 @@
+{
+
+	60_2: {
+		cardInfo: {
+			//id: 0_2.1
+			revision: 1
+			image: errata/60_2.jpg
+			collInfo: 10U2
+			rarity: U
+		}
+		title: Memories of Darkness
+		unique: true
+		culture: dwarven
+		twilight: 1
+		type: condition
+		keyword: support area
+		effects: [
+			{
+				type: toPlay
+				requires: {
+					type: canSpot
+					filter: dwarf
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: losesInitiative
+					side: free people
+				}
+				requires: {
+					type: not
+					requires: {
+						type: phase
+						phase: fellowship
+					}
+				}
+				effect: {
+					type: PlayCardFromHand
+					select: choose(culture(dwarven),or(condition,possession))
+				}
+			}
+		]
+		gametext: To play, spot a Dwarf.<br>Each time you lose initiative (except during the fellowship phase), you may play a [Dwarven] condition or [Dwarven] possession from hand.
+		lore: "'Had I known what was before me, I think that not for any friendship would I have taken the Paths of the Dead.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

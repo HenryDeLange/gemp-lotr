@@ -1,0 +1,56 @@
+{
+
+	63_188: {
+		cardInfo: {
+			//id: 3_188.1
+			revision: 1
+			image: errata/63_188.jpg
+			collInfo: 13U188
+			rarity: U
+		}
+		title: Courtyard Parapet
+		type: site
+		block: Shadows
+		twilight: 0
+		keyword: Dwelling
+		direction: left
+		effects: [
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: movesTo
+					filter: self
+				}
+				requires: {
+					type: location
+					filter: regionNumber(2)
+				}
+				effect: {
+					type: optional
+					player: shadow
+					text: Would you like to discard 2 cards from hand to add a burden?
+					cost: {
+						type: discardFromHand
+						hand: shadowPlayer
+						player: shadowPlayer
+						forced: false
+						count: 2
+					}
+					effect: {
+						type: addBurdens
+					}
+				}
+			}
+		]
+		gametext: <b>Dwelling.</b>When the fellowship moves to this site in region 2, the <br>first Shadow player may discard 2 cards from hand to add a burden.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

@@ -1,0 +1,86 @@
+<script type="text/javascript">
+	$("infoMain").ready(
+		function () {
+			$("#infoMain").tabs().addClass("ui-tabs-vertical ui-helper-clearfix");
+			$("#info-tabs > ol > li").removeClass("ui-corner-top").addClass("ui-corner-left");
+			
+			var ui = new StatsUI("/gemp-lotr-server", $("#statsParameters"), $("#stats"));
+			$(".getStats").click();
+			// coming back to Server Stats after a while re-fetches the stats last displayed (GempHallTabs.onReturn,
+			// GameHall.js); the date / period fields keep whatever the viewer has typed
+			if (window.GempHallTabs)
+				GempHallTabs.onReturn($("#server-stats"), function () { ui.refresh(); });
+		});
+	
+</script>
+
+<div id="infoMain" class="hall-tab flex-horiz">
+	<div id="info-tabs" class="sub-tabs">
+		<ol>
+			<li><a href="#server-stats">Server Stats</a></li>
+			<li><a href="includes/info/patchNotes.html">Patch Notes</a></li>
+			<li><a href="includes/info/contribute.html">Contribute</a></li>
+			<li><a href="#about">About</a></li>
+		</ol>
+	</div>	
+	<div id="server-stats">
+		All dates are server time (UTC).
+		<div id="statsParameters">
+			<span>
+				Start date: <input class='startDay' type='text' value="">
+			</span>	
+			<span>
+				period: 
+				<select class='period'>
+					<option value='month'>month</option>
+					<option value='week'>week</option>
+					<option value='day'>day</option>
+				</select>  
+			</span>
+			<input class='getStats' type='button' value='Display Stats'>
+		</div>
+		<div id="stats">
+			<div class='period'>Stats for <span id="startDateSpan"></span> - <span id="endDateSpan"></span> </div>
+			<div class='activePlayers'>Active players: <span id="activePlayersStat"></span></div>
+			<div class='gamesCount'>All games count: <span id="gamesCountStat"></span></div>
+			<div class='botGamesCount'>Bot games count: <span id="botGamesCountStat"></span> (Not counted in the below stats)</div>
+			<h2 class="stats-caption">Competitive Games by Format</h2>
+			<div id="competitiveStatsTable" class="stats-table"></div>
+			<br>
+			<h2 class="stats-caption">Casual Games by Format</h2>
+			<div id="casualStatsTable" class="stats-table"></div>
+		</div>
+		<br><br><br>
+	</div>
+	
+	<div id="about" >
+		<div class="article">
+			<h1>About</h1>
+			<p>
+				GEMP is a general-purpose game engine focused on trading card games. There are currently only two instances of GEMP, one for the Lord of the Rings Trading Card Game (which is the one you're on), and another <a href="https://gemp.starwarsccg.org/gemp-swccg/">for the Star Wars CCG here</a>.
+			</p>
+			<p>
+				GEMP was originally built to emulate Legend of the Five Rings, which is where the name comes from. <i>Gempukku</i>, meaning a coming-of-age ceremony in Japanese, was intended to mirror the famous Apprentice platform for Magic: the Gathering.
+			</p>
+			<p>
+				MarcinS was the original creator, who started up the project in August 2011.  It was soon after released in beta, and soon overtook other digital platforms as the premier experience for the Lord of the Rings TCG.  
+			</p>
+			<p>
+				In 2021, the <a href="https://lotrtcgpc.net/">Player's Council</a> took over maintenance of GEMP and soon afterwards took over operation as it was migrated to PC servers, where it runs to this day.  Ketura is the current head maintainer.
+			</p>
+			<p> 
+				GEMP is written with a Java and MySQL back-end and a frameworkless Javascript on the front. It runs in a single Docker container (tho in the future we hope to expand that to multiple parallel containers). <a href="https://github.com/PlayersCouncil/gemp-lotr">You can find the code on GitHub here.</a> 
+			</p>
+			<p>
+				Here is a list of all people who have contributed code to GEMP's code base:
+				<ul>
+					<li>MarcinS</li>
+					<li>TBiesty</li>
+					<li>ketura</li>
+					<li>PhallenCassidy</li>
+					<li>dmaz</li>
+				</ul>
+			</p>
+		</div>
+	</div>
+</div>

@@ -19,7 +19,7 @@ import org.json.simple.JSONObject;
 
 public class PlayNextSite implements EffectAppenderProducer {
     @Override
-    public EffectAppender createEffectAppender(JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
+    public EffectAppender createEffectAppender(boolean cost, JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
         FieldUtils.validateAllowedFields(effectObject, "filter", "memorize");
         final String filter = FieldUtils.getString(effectObject.get("filter"), "filter", "any");
         final String memorize = FieldUtils.getString(effectObject.get("memorize"), "memorize");
@@ -41,16 +41,16 @@ public class PlayNextSite implements EffectAppenderProducer {
                 if (nextSite != null && !game.getModifiersQuerying().canReplaceSite(game, actionContext.getPerformingPlayer(), nextSite))
                     return false;
 
-                if (game.getFormat().isOrderedSites()) {
+                if (!game.getGameState().usesUnorderedSites(playerId)) {
                     Filter printedSiteNumber = new Filter() {
                         @Override
                         public boolean accepts(LotroGame game, PhysicalCard physicalCard) {
                             return physicalCard.getBlueprint().getSiteNumber() == nextSiteNumber;
                         }
                     };
-                    return Filters.filter(game.getGameState().getAdventureDeck(playerId), game, Filters.and(filterable, printedSiteNumber)).size() > 0;
+                    return Filters.acceptsAny(game, game.getGameState().getAdventureDeck(playerId), Filters.and(filterable, printedSiteNumber));
                 } else {
-                    return Filters.filter(game.getGameState().getAdventureDeck(playerId), game, filterable).size() > 0;
+                    return Filters.acceptsAny(game, game.getGameState().getAdventureDeck(playerId), filterable);
                 }
             }
 

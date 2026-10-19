@@ -1,5 +1,6 @@
 package com.gempukku.lotro.logic.actions;
 
+import com.gempukku.lotro.common.Zone;
 import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.GameUtils;
@@ -7,21 +8,29 @@ import com.gempukku.lotro.logic.effects.ActivateCardEffect;
 import com.gempukku.lotro.logic.timing.Effect;
 
 public class ActivateCardAction extends AbstractCostToEffectAction {
-    private PhysicalCard _physicalCard;
+    protected final PhysicalCard _physicalCard;
+    protected final String _player;
 
-    private ActivateCardEffect _activateCardEffect;
+    protected ActivateCardEffect _activateCardEffect;
 
-    private String _message;
+    protected final String _message;
 
-    private boolean _sentMessage;
-    private boolean _activated;
+    protected boolean _sentMessage;
+    protected boolean _activated;
 
-    private boolean _prevented;
+    protected boolean _prevented;
+    protected Zone _originalZone;
 
-    public ActivateCardAction(PhysicalCard physicalCard) {
+    public ActivateCardAction(PhysicalCard physicalCard, String performingPlayer) {
         _physicalCard = physicalCard;
+        _player = performingPlayer;
         setText("Use " + GameUtils.getFullName(_physicalCard));
         _message = GameUtils.getCardLink(_physicalCard) + " is used";
+        _originalZone = physicalCard.getZone();
+    }
+
+    public String getPerformingPlayer() {
+        return _player;
     }
 
     @Override
@@ -60,7 +69,7 @@ public class ActivateCardAction extends AbstractCostToEffectAction {
 
             if (!_activated) {
                 _activated = true;
-                _activateCardEffect = new ActivateCardEffect(_physicalCard, getActionTimeword());
+                generateCardEffect();
                 return _activateCardEffect;
             }
 
@@ -71,5 +80,9 @@ public class ActivateCardAction extends AbstractCostToEffectAction {
             }
         }
         return null;
+    }
+
+    protected void generateCardEffect() {
+        _activateCardEffect = new ActivateCardEffect(_physicalCard, _player, getActionTimeword(), _originalZone);
     }
 }

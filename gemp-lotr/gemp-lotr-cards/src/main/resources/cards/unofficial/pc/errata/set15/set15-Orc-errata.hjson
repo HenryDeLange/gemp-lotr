@@ -1,0 +1,80 @@
+{
+
+	65_112: {
+		cardInfo: {
+			//id: 5_112.1
+			revision: 1
+			image: errata/65_112.jpg
+			collInfo: 15R112
+			rarity: R
+		}
+		title: Mountain-troll
+		unique: false
+		side: Shadow
+		culture: Orc
+		twilight: 8
+		type: Minion
+		race: Troll
+		strength: 13
+		vitality: 4
+		site: 5
+		effects: [
+			{
+				type: Trigger
+				optional: true,
+				trigger: {
+					type: played
+					filter: self
+				},
+				cost: {
+					type: discard
+					count: 5
+					select: choose(culture(orc), minion, another)
+				}
+				effect: [
+					{
+						type: addKeyword
+						keyword: fierce
+						select: self
+						until: endofturn
+					}
+					{
+						type: modifystrength
+						amount: 10
+						select: self
+						until: endofturn
+					}
+				]
+			}
+			{
+				type: activated
+				phase: shadow
+				cost: {
+					type: removeTwilight
+					amount: 2
+				}
+				effect: [
+					{
+						type: playCardFromDiscard
+						removedTwilight: 2
+						select: choose(culture(orc), orc)
+						memorize: PlayedOrc
+					}
+					{
+						type: exhaust
+						select: memory(PlayedOrc)
+					}
+				]
+			}
+		]
+		gametext: When you play this minion, you may discard 5 [orc] minions from play to make it strength +10 and <b>fierce</b> until the regroup phase. <br>Shadow: Remove (2) to play an [orc] Orc from your discard pile. It comes into play exhausted.
+		lore: "Suddenly on the last stroke the Gate of Gondor broke."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

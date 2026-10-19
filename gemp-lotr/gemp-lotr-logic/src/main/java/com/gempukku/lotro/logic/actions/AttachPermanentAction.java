@@ -12,11 +12,11 @@ import com.gempukku.lotro.logic.timing.Effect;
 import java.util.Collections;
 
 public class AttachPermanentAction extends AbstractCostToEffectAction {
-    private PhysicalCard _cardToAttach;
+    private final PhysicalCard _cardToAttach;
 
     private boolean _cardRemoved;
 
-    private ChooseActiveCardEffect _chooseTargetEffect;
+    private final ChooseActiveCardEffect _chooseTargetEffect;
     private boolean _targetChosen;
 
     private Effect _playCardEffect;
@@ -30,7 +30,7 @@ public class AttachPermanentAction extends AbstractCostToEffectAction {
     private boolean _discountApplied;
 
     private int _twilightModifier;
-    private Zone _playedFrom;
+    private final Zone _playedFrom;
     private PhysicalCard _target;
 
     public AttachPermanentAction(final LotroGame game, final PhysicalCard card, Filter filter, final int twilightModifier) {
@@ -102,7 +102,7 @@ public class AttachPermanentAction extends AbstractCostToEffectAction {
             final DiscountEffect discount = getNextPotentialDiscount();
             if (discount != null) {
                 if (_cardToAttach.getBlueprint().getSide() == Side.SHADOW) {
-                    int twilightCost = game.getModifiersQuerying().getTwilightCost(game, _cardToAttach, _target, _twilightModifier, false);
+                    int twilightCost = game.getModifiersQuerying().getTwilightCostToPlay(game, _cardToAttach, _target, _twilightModifier, false);
                     int requiredDiscount = Math.max(0, twilightCost - game.getGameState().getTwilightPool() - getProcessedDiscount() - getPotentialDiscount(game));
                     discount.setMinimalRequiredDiscount(requiredDiscount);
                 }
@@ -126,7 +126,7 @@ public class AttachPermanentAction extends AbstractCostToEffectAction {
 
                 if (!_cardPlayed) {
                     _cardPlayed = true;
-                    _playCardEffect = new PlayCardEffect(_playedFrom, _cardToAttach, _target, null, isPaidToil());
+                    _playCardEffect = new PlayCardEffect(_cardToAttach.getOwner(), _playedFrom, _cardToAttach, _target, null, isPaidToil());
 
                     return _playCardEffect;
                 }

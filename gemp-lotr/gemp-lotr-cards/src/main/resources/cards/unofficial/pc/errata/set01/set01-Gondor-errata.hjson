@@ -1,0 +1,279 @@
+{
+	51_92: {
+		cardInfo: {
+			//id: 1_92.1
+			parent: 1_92
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN01E092.1_card.jpg
+			collInfo: 1C92
+			rarity: C
+		}
+		title: Armor
+		unique: false
+		side: Free Peoples
+		culture: Gondor
+		twilight: 1
+		type: Possession
+		itemclass: Armor
+		target: or(man,and(culture(gondor),companion))
+		effects: {
+			type: modifier
+			modifier: {
+				type: cantTakeMoreWoundsThan
+				amount: 1
+				filter: bearer
+				phase: skirmish
+			}
+		}
+		gametext: Bearer must be a Man or [gondor] companion. <br>Bearer takes no more than 1 wound during each skirmish phase.
+		lore: "Then Elendil the Tall and his mighty sons, Isildur and Anárion, became great lords; and the North-realm they made in Arnor, and the South-realm in Gondor...."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_98: {
+		cardInfo: {
+			//id: 1_98.1
+			parent: 1_98
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN01E098.1_card.jpg
+			collInfo: 1U98
+			rarity: U
+		}
+		title: Boromir's Cloak
+		unique: true
+		side: Free Peoples
+		culture: Gondor
+		twilight: 1
+		type: Possession
+		itemclass: Cloak
+		target: name(Boromir)
+		effects: [
+			{
+				type: Response
+				trigger: {
+					type: usesSpecialAbility
+					phase: skirmish
+					player: shadow
+				}
+				requires: {
+					type: CanSpot
+					filter: name(Boromir), InSkirmish
+				}
+				cost: {
+					type: discard
+					select: self
+				}
+				effect: {
+					type: cancelSpecialAbility
+				}
+			}
+			{
+				type: Response
+				trigger: {
+					type: played
+					filter: timeword(skirmish),event
+				}
+				requires: {
+					type: CanSpot
+					filter: name(Boromir), InSkirmish
+				}
+				cost: {
+					type: discard
+					select: self
+				}
+				effect: {
+					type: cancelEvent
+				}
+			}
+			{
+				type: activated
+				phase: maneuver
+				cost: {
+					type: exert
+					select: bearer
+				}
+				effect: {
+					type: discard
+					select: choose(weather,condition)
+				}
+			}
+		]
+		gametext: Bearer must be Boromir.<br><b>Maneuver:</b> Exert Boromir to discard a weather condition.\Response: If a skirmish event or special ability is used during a skirmish involving Boromir, discard this to prevent that.
+		lore: He was cloaked and booted as if for a journey on horseback; and indeed though his garments were rich, and his cloak was lined with fur, they were stained with 'long travel.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_101: {
+		cardInfo: {
+			//id: 1_101.1
+			parent: 1_101
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN01E101.1_card.jpg
+			collInfo: 1C101
+			rarity: C
+		}
+		title: Coat of Mail
+		unique: false
+		side: Free Peoples
+		culture: Gondor
+		twilight: 1
+		type: Possession
+		itemclass: Armor
+		target: or(man,and(culture(gondor),companion))
+		effects: {
+			type: modifier
+			modifier: {
+				type: cantBeOverwhelmedMultiplier
+				filter: bearer
+			}
+		}
+		gametext: Bearer must be a Man or [gondor] companion. <br>Bearer may not be overwhelmed unless his or her strength is tripled.
+		lore: Soldiers of the White Tower have long appreciated the craftsmanship of the Gondorian metalsmiths.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_107: {
+		cardInfo: {
+			//id: 1_107.1
+			parent: 1_107
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN01E107.1_card.jpg
+			collInfo: 1C107
+			rarity: C
+		}
+		title: Great Shield
+		unique: false
+		side: Free Peoples
+		culture: Gondor
+		twilight: 1
+		type: Possession
+		itemclass: Shield
+		target: or(man,and(culture(gondor),companion))
+		effects: {
+			type: modifier
+			modifier: {
+				type: modifyArcheryTotal
+				side: shadow
+				amount: -1
+			}
+		}
+		gametext: Bearer must be a Man or [gondor] companion. <br>The minion archery total is -1.
+		lore: The Kingdom of Gondor has smiths much practiced in creating strong tools of war.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	
+	51_108: {
+		cardInfo: {
+			//id: 1_108.1
+			parent: 1_108
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/51_108.jpg
+			collInfo: 1U108
+			rarity: U
+		}
+		title: No Stranger to the Shadows
+		unique: true
+		culture: gondor
+		twilight: 0
+		type: condition
+		keyword: [
+			stealth
+		]
+		target: ranger
+		effects: {
+			type: modifier
+			modifier: {
+				type: modifyCost
+				filter: site
+				amount: -1
+			}
+		}
+		gametext: Stealth. Bearer must be a ranger.<br>Each site's Shadow number is -1.
+		lore: "'Ah, but you had not got me with you then,' laughed Strider. 'My cuts, short or long, don't go wrong.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_115: {
+		cardInfo: {
+			//id: 1_115.1
+			parent: 1_115
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN01E115.1_card.jpg
+			collInfo: 1R115
+			rarity: R
+		}
+		title: Strength of Kings
+		unique: false
+		side: Free Peoples
+		culture: Gondor
+		twilight: 0
+		type: Event
+		timeword: response
+		effects: {
+			type: responseEvent
+			requires: {
+				type: canSpot
+				filter: culture(gondor),companion,inSkirmish
+			}
+			trigger: {
+				type: played
+				filter: timeword(skirmish),event
+			}
+			effect: {
+				type: cancelEvent
+			}
+		}
+		gametext: If a skirmish event is played during a skirmish involving a [gondor] companion, cancel that event.
+		lore: "'Believe not that in the land of Gondor the blood of Númenor is spent, nor all its pride and dignity forgotten.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

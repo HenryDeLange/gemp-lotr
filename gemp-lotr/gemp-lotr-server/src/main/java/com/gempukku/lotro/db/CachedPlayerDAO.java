@@ -1,16 +1,17 @@
 package com.gempukku.lotro.db;
 
 import com.gempukku.lotro.cache.Cached;
+import com.gempukku.lotro.common.DBDefs;
 import com.gempukku.lotro.game.Player;
-import org.apache.commons.collections.map.LRUMap;
+import org.apache.commons.collections4.map.LRUMap;
 
 import java.sql.SQLException;
 import java.util.*;
 
 public class CachedPlayerDAO implements PlayerDAO, Cached {
-    private PlayerDAO _delegate;
-    private Map<Integer, Player> _playerById = Collections.synchronizedMap(new LRUMap(500));
-    private Map<String, Player> _playerByName = Collections.synchronizedMap(new LRUMap(500));
+    private final PlayerDAO _delegate;
+    private final Map<Integer, Player> _playerById = Collections.synchronizedMap(new LRUMap(500));
+    private final Map<String, Player> _playerByName = Collections.synchronizedMap(new LRUMap(500));
     private Set<String> _bannedUsernames = new HashSet<>();
 
     public CachedPlayerDAO(PlayerDAO delegate) {
@@ -27,6 +28,14 @@ public class CachedPlayerDAO implements PlayerDAO, Cached {
     @Override
     public int getItemCount() {
         return _playerById.size() + _playerByName.size();
+    }
+
+    @Override
+    public boolean resetUserPassword(String login) throws SQLException {
+        final boolean success = _delegate.resetUserPassword(login);
+        if (success)
+            clearCache();
+        return success;
     }
 
     @Override
@@ -54,7 +63,7 @@ public class CachedPlayerDAO implements PlayerDAO, Cached {
     }
 
     @Override
-    public boolean addPlayerFlag(String login, String flag) throws SQLException {
+    public boolean addPlayerFlag(String login, Player.Type flag) throws SQLException {
         final boolean success = _delegate.addPlayerFlag(login, flag);
         if (success)
             clearCache();
@@ -62,7 +71,7 @@ public class CachedPlayerDAO implements PlayerDAO, Cached {
     }
 
     @Override
-    public boolean removePlayerFlag(String login, String flag) throws SQLException {
+    public boolean removePlayerFlag(String login, Player.Type flag) throws SQLException {
         final boolean success = _delegate.removePlayerFlag(login, flag);
         if (success)
             clearCache();
@@ -121,6 +130,14 @@ public class CachedPlayerDAO implements PlayerDAO, Cached {
     }
 
     @Override
+    public boolean registerBot(String login) throws LoginInvalidException {
+        boolean registered = _delegate.registerBot(login);
+        if (registered)
+            _playerByName.remove(login);
+        return registered;
+    }
+
+    @Override
     public void setLastReward(Player player, int currentReward) throws SQLException {
         _delegate.setLastReward(player, currentReward);
         _playerById.remove(player.getId());
@@ -130,6 +147,16 @@ public class CachedPlayerDAO implements PlayerDAO, Cached {
     @Override
     public void updateLastLoginIp(String login, String remoteAddr) throws SQLException {
         _delegate.updateLastLoginIp(login, remoteAddr);
+    }
+
+    @Override
+    public List<DBDefs.Player> getAllPlayers() {
+        return _delegate.getAllPlayers();
+    }
+
+    @Override
+    public List<String> findPlayerNames(String fragment, int limit) {
+        return _delegate.findPlayerNames(fragment, limit);
     }
 
     @Override

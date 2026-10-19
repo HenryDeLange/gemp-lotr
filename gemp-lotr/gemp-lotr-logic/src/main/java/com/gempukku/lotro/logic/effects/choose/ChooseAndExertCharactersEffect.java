@@ -1,6 +1,7 @@
 package com.gempukku.lotro.logic.effects.choose;
 
 import com.gempukku.lotro.common.Filterable;
+import com.gempukku.lotro.common.SpotOverride;
 import com.gempukku.lotro.filters.Filter;
 import com.gempukku.lotro.filters.Filters;
 import com.gempukku.lotro.game.PhysicalCard;
@@ -14,11 +15,10 @@ import com.gempukku.lotro.logic.timing.Action;
 import java.util.Collection;
 
 public class ChooseAndExertCharactersEffect extends ChooseActiveCardsEffect {
-    private Action _action;
-    private int _times;
-    private Filterable[] _filters;
+    private final Action _action;
+    private final int _times;
+    private final Filterable[] _filters;
     private CostToEffectAction _resultSubAction;
-    private int _intToRemember;
     private boolean _forToil;
 
     public ChooseAndExertCharactersEffect(Action action, String playerId, int minimum, int maximum, Filterable... filters) {
@@ -26,18 +26,10 @@ public class ChooseAndExertCharactersEffect extends ChooseActiveCardsEffect {
     }
 
     public ChooseAndExertCharactersEffect(Action action, String playerId, int minimum, int maximum, int times, Filterable... filters) {
-        super(action.getActionSource(), playerId, "Choose characters to exert", minimum, maximum, filters);
+        super(action.getActionSource(), playerId, "Choose characters to exert", minimum, maximum, SpotOverride.NONE, filters);
         _action = action;
         _times = times;
         _filters = filters;
-    }
-
-    public void setIntToRemember(int intToRemember) {
-        _intToRemember = intToRemember;
-    }
-
-    public int getIntToRemember() {
-        return _intToRemember;
     }
 
     public void setForToil(boolean forToil) {

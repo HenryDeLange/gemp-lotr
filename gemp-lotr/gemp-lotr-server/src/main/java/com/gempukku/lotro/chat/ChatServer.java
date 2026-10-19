@@ -5,24 +5,30 @@ import com.gempukku.lotro.PrivateInformationException;
 import com.gempukku.lotro.db.IgnoreDAO;
 import com.gempukku.lotro.db.PlayerDAO;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ChatServer extends AbstractServer {
-    private IgnoreDAO ignoreDAO;
-    private PlayerDAO playerDAO;
-    private Map<String, ChatRoomMediator> _chatRooms = new ConcurrentHashMap<String, ChatRoomMediator>();
+    private final IgnoreDAO _ignoreDAO;
+    private final PlayerDAO _playerDAO;
+    private final Map<String, ChatRoomMediator> _chatRooms = new ConcurrentHashMap<>();
 
     public ChatServer(IgnoreDAO ignoreDAO, PlayerDAO playerDAO) {
-        this.ignoreDAO = ignoreDAO;
-        this.playerDAO = playerDAO;
+        _ignoreDAO = ignoreDAO;
+        _playerDAO = playerDAO;
     }
 
-    public ChatRoomMediator createChatRoom(String name, boolean muteJoinPartMessages, int secondsTimeoutPeriod, boolean allowIncognito, String welcomeMessage) {
-        ChatRoomMediator chatRoom = new ChatRoomMediator(ignoreDAO, playerDAO, name, muteJoinPartMessages, secondsTimeoutPeriod, allowIncognito, welcomeMessage);
+    public ChatRoomMediator createChatRoom(String name, boolean muteJoinPartMessages, int secondsTimeoutPeriod,
+            boolean allowIncognito, String welcomeMessage, String startMessage) {
+        ChatRoomMediator chatRoom = new ChatRoomMediator(_ignoreDAO, _playerDAO, name, muteJoinPartMessages, secondsTimeoutPeriod, allowIncognito, welcomeMessage);
         try {
-            chatRoom.sendMessage("System", "Welcome to room: " + name, true);
+            if (startMessage == null) {
+                chatRoom.sendMessage("System", "Welcome to room: " + name, true);
+            } else {
+                chatRoom.sendMessage("System", startMessage, true);
+            }
         } catch (PrivateInformationException exp) {
             // Ignore, sent as admin
         } catch (ChatCommandErrorException e) {
@@ -33,7 +39,7 @@ public class ChatServer extends AbstractServer {
     }
 
     public ChatRoomMediator createPrivateChatRoom(String name, boolean muteJoinPartMessages, Set<String> allowedUsers, int secondsTimeoutPeriod) {
-        ChatRoomMediator chatRoom = new ChatRoomMediator(ignoreDAO, playerDAO, name, muteJoinPartMessages, secondsTimeoutPeriod, allowedUsers, false);
+        ChatRoomMediator chatRoom = new ChatRoomMediator(_ignoreDAO, _playerDAO, name, muteJoinPartMessages, secondsTimeoutPeriod, allowedUsers, false);
         try {
             chatRoom.sendMessage("System", "Welcome to private room: " + name, true);
         } catch (PrivateInformationException exp) {
@@ -47,8 +53,10 @@ public class ChatServer extends AbstractServer {
 
     public void sendSystemMessageToAllChatRooms(String message) {
         try {
-            for (ChatRoomMediator chatRoomMediator : _chatRooms.values())
+            for (ChatRoomMediator chatRoomMediator : _chatRooms.values()) {
                 chatRoomMediator.sendMessage("System", message, true);
+            }
+            cleanup();
         } catch (PrivateInformationException exp) {
             // Ignore, sent as admin
         } catch (ChatCommandErrorException e) {
@@ -65,6 +73,20 @@ public class ChatServer extends AbstractServer {
     }
 
     protected void cleanup() {
+        // remove draft chat rooms if they are unused
+        Set<String> toRemove = new HashSet<>();
+        _chatRooms.forEach((roomName, chatRoomMediator) -> {
+            if (roomName.startsWith("Draft-")
+                    && chatRoomMediator.getUsersInRoom(true).size() == 0
+                    && chatRoomMediator.getSecsSinceLastMessage() > 5 * 60) {
+
+                // empty draft chat room without any messages sends in last 45 minutes
+                toRemove.add(roomName);
+            }
+        });
+
+        toRemove.forEach(this::destroyChatRoom);
+
         for (ChatRoomMediator chatRoomMediator : _chatRooms.values())
             chatRoomMediator.cleanup();
     }

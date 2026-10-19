@@ -1,0 +1,147 @@
+{
+	31_44: {
+		cardInfo: {
+			image: hobbit/HDG3144.jpg
+			collInfo: 31_44
+			rarity: _
+		}
+		title: Beorn's House
+		type: site
+		block: hobbit
+		site: 4
+		twilight: 4
+		effects: {
+			type: activated
+			phase: fellowship
+			cost: {
+				type: choice
+				texts: [
+					Spot a GANDALF staff
+					Play a GANDALF staff from your draw deck
+				]
+				effects: [
+					{
+						type: spot
+						filter: culture(gandalf),staff
+					}
+					{
+						type: playCardFromDrawDeck
+						select: choose(culture(gandalf),staff)
+						showAll: true
+						shuffle: true
+					}
+				]
+			}
+			effect: [
+				{
+					type: spot
+					text: Choose a Gandalf
+					select: choose(name(Gandalf))
+					memorize: chosenGandalf
+				}
+				{
+					type: addModifier
+					modifier: {
+						type: cantBeDiscarded
+						filter: memory(chosenGandalf)
+					}
+					until: endOfTurn
+				}
+			]
+		}
+	}
+	31_45: {
+		cardInfo: {
+			image: hobbit/HDG3145.jpg
+			collInfo: 31_45
+			rarity: _
+		}
+		title: Underground Lake
+		twilight: 2
+		type: site
+		block: hobbit
+		site: 4
+		keyword: [
+			underground
+			river
+		]
+		effects: {
+			type: activated
+			phase: maneuver
+			requires: {
+				type: perPhaseLimit
+				limit: 1
+				perPlayer: true
+			}
+			cost: {
+				type: incrementPerPhaseLimit
+				limit: 1
+				perPlayer: true
+			}
+			effect: {
+				type: playCardFromDrawDeck
+				select: choose(or(and(side(shadow),condition),name(The One Ring)))
+				showAll: true
+				shuffle: true
+			}
+		}
+	}
+	31_46: {
+		cardInfo: {
+			image: hobbit/HDG3146.jpg
+			collInfo: 31_46
+			rarity: _
+		}
+		title: Forest River
+		type: site
+		block: hobbit
+		site: 5
+		twilight: 7
+		keyword: [
+			forest
+			river
+		]
+		effects: {
+			type: activated
+			phase: assignment
+			cost: {
+				type: exert
+				select: choose(your,orc)
+			}
+			effect: [
+				{
+					type: disableSkirmishAssignment
+					select: choose(or(name(Gandalf),and(culture(elven),ally)))
+				}
+			]
+		}
+	}
+	31_47: {
+		cardInfo: {
+			image: hobbit/HDG3147.jpg
+			collInfo: 31_47
+			rarity: _
+		}
+		title: Thrór's Throne
+		type: site
+		block: hobbit
+		site: 9
+		twilight: 9
+		keyword: [
+			mountain
+			underground
+		]
+		effects: {
+			type: modifier
+			modifier: {
+				type: modifyCost
+				filter: minion
+				requires: {
+					type: cantSpot
+					filter: culture(dwarven),name(The Arkenstone)
+				}
+				amount: -1
+			}
+		}
+	}
+}

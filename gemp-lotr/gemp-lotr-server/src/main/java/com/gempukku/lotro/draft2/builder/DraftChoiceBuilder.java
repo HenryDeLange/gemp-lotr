@@ -8,7 +8,6 @@ import com.gempukku.lotro.game.DefaultCardCollection;
 import com.gempukku.lotro.game.LotroCardBlueprintLibrary;
 import com.gempukku.lotro.game.SortAndFilterCards;
 import com.gempukku.lotro.game.formats.LotroFormatLibrary;
-import com.gempukku.lotro.game.packs.SetDefinition;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -16,18 +15,16 @@ import java.util.*;
 
 public class DraftChoiceBuilder {
     public static final int HIGH_ENOUGH_PRIME_NUMBER = 9497;
-    private CollectionsManager _collectionsManager;
-    private LotroCardBlueprintLibrary _cardLibrary;
-    private LotroFormatLibrary _formatLibrary;
-    private Map<String, SetDefinition> _rarities;
-    private SortAndFilterCards _sortAndFilterCards;
+    private final CollectionsManager _collectionsManager;
+    private final LotroCardBlueprintLibrary _cardLibrary;
+    private final LotroFormatLibrary _formatLibrary;
+    private final SortAndFilterCards _sortAndFilterCards;
 
     public DraftChoiceBuilder(CollectionsManager collectionsManager, LotroCardBlueprintLibrary cardLibrary,
-                              LotroFormatLibrary formatLibrary, Map<String, SetDefinition> rarities) {
+                              LotroFormatLibrary formatLibrary) {
         _collectionsManager = collectionsManager;
         _cardLibrary = cardLibrary;
         _formatLibrary = formatLibrary;
-        _rarities = rarities;
         _sortAndFilterCards = new SortAndFilterCards();
     }
 
@@ -38,38 +35,58 @@ public class DraftChoiceBuilder {
     private DraftChoiceDefinition constructDraftChoiceDefinition(JSONObject choiceDefinition) {
         String choiceDefinitionType = (String) choiceDefinition.get("type");
         JSONObject data = (JSONObject) choiceDefinition.get("data");
-        if (choiceDefinitionType.equals("singleCollectionPick"))
-            return buildSingleCollectionPickDraftChoiceDefinition(data);
-        else if (choiceDefinitionType.equals("weightedSwitch"))
-            return buildWeightedSwitchDraftChoiceDefinition(data);
-        else if (choiceDefinitionType.equals("multipleCardPick"))
-            return buildMultipleCardPickDraftChoiceDefinition(data);
-        else if (choiceDefinitionType.equals("randomSwitch"))
-            return buildRandomSwitchDraftChoiceDefinition(data);
-        else if (choiceDefinitionType.equals("filterPick"))
-            return buildFilterPickDraftChoiceDefinition(data);
-        else if (choiceDefinitionType.equals("draftPoolFilterPick"))
-            return buildDraftPoolFilterPickDraftChoiceDefinition(data);
-        else if (choiceDefinitionType.equals("draftPoolFilterPluck"))
-            return buildDraftPoolFilterPluckDraftChoiceDefinition(data);
-        else
-            throw new RuntimeException("Unknown choiceDefinitionType: " + choiceDefinitionType);
+        return switch (choiceDefinitionType) {
+            case "singleCollectionPick" -> buildSingleCollectionPickDraftChoiceDefinition(data);
+            case "weightedSwitch" -> buildWeightedSwitchDraftChoiceDefinition(data);
+            case "multipleCardPick" -> buildMultipleCardPickDraftChoiceDefinition(data);
+            case "randomSwitch" -> buildRandomSwitchDraftChoiceDefinition(data);
+            case "filterPick" -> buildFilterPickDraftChoiceDefinition(data);
+            case "draftPoolFilterPick" -> buildDraftPoolFilterPickDraftChoiceDefinition(data);
+            case "draftPoolFilterPluck" -> buildDraftPoolFilterPluckDraftChoiceDefinition(data);
+            default -> throw new RuntimeException("Unknown choiceDefinitionType: " + choiceDefinitionType);
+        };
     }
 
     private DraftChoiceDefinition buildFilterPickDraftChoiceDefinition(JSONObject data) {
         final int optionCount = ((Number) data.get("optionCount")).intValue();
         String filter = (String) data.get("filter");
 
-        Iterable<CardCollection.Item> items = _collectionsManager.getDefaultCollection().getAll();
+        Iterable<CardCollection.Item> items = _collectionsManager.getCompleteCardCollection().getAll();
 
-        final List<CardCollection.Item> possibleCards = _sortAndFilterCards.process(filter, items, _cardLibrary, _formatLibrary, _rarities);
+        final List<CardCollection.Item> possibleCards = _sortAndFilterCards.process(filter, items, _cardLibrary, _formatLibrary);
+
+        // Possible cards can contain duplicates, same name from different sets are considered legal by the filter
+        // Different art would not be a problem, but it multiplies the odds of seeing the card
+        boolean filterContainsSet = filter.contains("set:");
+        List<String> sets = new ArrayList<>();
+        if (filterContainsSet) {
+            String[] filterParts = filter.split(" ");
+            for (String part : filterParts) {
+                if (part.startsWith("set:")) {
+                    String setPart = part.substring(4);
+                    String[] setNumbers = setPart.split(",");
+                    Collections.addAll(sets, setNumbers);
+                }
+            }
+        }
+        possibleCards.removeIf(item -> {
+            if (!filterContainsSet) {
+                return false;
+            }
+            for (String set : sets) {
+                if (item.getBlueprintId().startsWith(set + "_")) {
+                    return false;
+                }
+            }
+            return true;
+        });
 
         return new DraftChoiceDefinition() {
             @Override
             public Iterable<SoloDraft.DraftChoice> getDraftChoice(long seed, int stage, DefaultCardCollection draftPool) {
                 final List<CardCollection.Item> cards = getCards(seed, stage);
 
-                List<SoloDraft.DraftChoice> draftChoices = new ArrayList<SoloDraft.DraftChoice>(optionCount);
+                List<SoloDraft.DraftChoice> draftChoices = new ArrayList<>(optionCount);
                 for (int i = 0; i < Math.min(optionCount, possibleCards.size()); i++) {
                     final int finalI = i;
                     draftChoices.add(
@@ -104,7 +121,7 @@ public class DraftChoiceBuilder {
                 Random rnd = getRandom(seed, stage);
                 // Fixing some weird issue with Random
                 float thisFixesRandomnessForSomeReason = rnd.nextInt();
-                final List<CardCollection.Item> cards = new ArrayList<CardCollection.Item>(possibleCards);
+                final List<CardCollection.Item> cards = new ArrayList<>(possibleCards);
                 Collections.shuffle(cards, rnd);
                 return cards;
             }
@@ -114,15 +131,15 @@ public class DraftChoiceBuilder {
     private DraftChoiceDefinition buildSingleCollectionPickDraftChoiceDefinition(JSONObject data) {
         JSONArray switchResult = (JSONArray) data.get("possiblePicks");
 
-        final Map<String, List<String>> cardsMap = new HashMap<String, List<String>>();
-        final List<SoloDraft.DraftChoice> draftChoices = new ArrayList<SoloDraft.DraftChoice>();
+        final Map<String, List<String>> cardsMap = new HashMap<>();
+        final List<SoloDraft.DraftChoice> draftChoices = new ArrayList<>();
 
         for (JSONObject pickDefinition : (Iterable<JSONObject>) switchResult) {
             final String choiceId = (String) pickDefinition.get("choiceId");
             final String url = (String) pickDefinition.get("url");
             JSONArray cards = (JSONArray) pickDefinition.get("cards");
 
-            List<String> cardIds = new ArrayList<String>();
+            List<String> cardIds = new ArrayList<>();
             for (String card : (Iterable<String>) cards)
                 cardIds.add(card);
 
@@ -169,7 +186,7 @@ public class DraftChoiceBuilder {
         final int count = ((Number) data.get("count")).intValue();
         JSONArray availableCards = (JSONArray) data.get("availableCards");
 
-        final List<String> cards = new ArrayList<String>();
+        final List<String> cards = new ArrayList<>();
         for (String availableCard : (Iterable<String>) availableCards)
             cards.add(availableCard);
 
@@ -178,7 +195,7 @@ public class DraftChoiceBuilder {
             public Iterable<SoloDraft.DraftChoice> getDraftChoice(long seed, int stage, DefaultCardCollection draftPool) {
                 final List<String> shuffledCards = getShuffledCards(seed, stage);
 
-                List<SoloDraft.DraftChoice> draftableCards = new ArrayList<SoloDraft.DraftChoice>(count);
+                List<SoloDraft.DraftChoice> draftableCards = new ArrayList<>(count);
                 for (int i = 0; i < count; i++) {
                     final int finalI = i;
                     draftableCards.add(
@@ -221,7 +238,7 @@ public class DraftChoiceBuilder {
                 Random rnd = getRandom(seed, stage);
                 // Fixing some weird issue with Random
                 float thisFixesRandomnessForSomeReason = rnd.nextFloat();
-                final List<String> shuffledCards = new ArrayList<String>(cards);
+                final List<String> shuffledCards = new ArrayList<>(cards);
                 Collections.shuffle(shuffledCards, rnd);
                 return shuffledCards;
             }
@@ -236,11 +253,11 @@ public class DraftChoiceBuilder {
             @Override
             public Iterable<SoloDraft.DraftChoice> getDraftChoice(long seed, int stage, DefaultCardCollection draftPool) {
                 
-                List<CardCollection.Item> possibleCards = _sortAndFilterCards.process(filter, draftPool.getAll(), _cardLibrary, _formatLibrary, _rarities);
+                List<CardCollection.Item> possibleCards = _sortAndFilterCards.process(filter, draftPool.getAll(), _cardLibrary, _formatLibrary);
 
                 final List<CardCollection.Item> cards = getCards(seed, stage, possibleCards);
 
-                List<SoloDraft.DraftChoice> draftChoices = new ArrayList<SoloDraft.DraftChoice>(optionCount);
+                List<SoloDraft.DraftChoice> draftChoices = new ArrayList<>(optionCount);
                 for (int i = 0; i < Math.min(optionCount, possibleCards.size()); i++) {
                     final int finalI = i;
                     draftChoices.add(
@@ -289,16 +306,16 @@ public class DraftChoiceBuilder {
         return new DraftChoiceDefinition() {
             @Override
             public Iterable<SoloDraft.DraftChoice> getDraftChoice(long seed, int stage, DefaultCardCollection draftPool) {
-                List<CardCollection.Item> fullDraftPool = new ArrayList<CardCollection.Item>();
+                List<CardCollection.Item> fullDraftPool = new ArrayList<>();
                 for (CardCollection.Item item : draftPool.getAll())
                     for (int i = 0; i < draftPool.getItemCount(item.getBlueprintId()); i++)
                         fullDraftPool.add(item);
 
-                List<CardCollection.Item> possibleCards = _sortAndFilterCards.process(filter, fullDraftPool, _cardLibrary, _formatLibrary, _rarities);
+                List<CardCollection.Item> possibleCards = _sortAndFilterCards.process(filter, fullDraftPool, _cardLibrary, _formatLibrary);
 
                 final List<CardCollection.Item> cards = getCards(seed, stage, possibleCards);
 
-                List<SoloDraft.DraftChoice> draftChoices = new ArrayList<SoloDraft.DraftChoice>(optionCount);
+                List<SoloDraft.DraftChoice> draftChoices = new ArrayList<>(optionCount);
                 for (int i = 0; i < Math.min(optionCount, possibleCards.size()); i++) {
                     draftPool.removeItem(cards.get(i).getBlueprintId(),1);
                     final int finalI = i;
@@ -344,7 +361,7 @@ public class DraftChoiceBuilder {
     private DraftChoiceDefinition buildRandomSwitchDraftChoiceDefinition(JSONObject data) {
         JSONArray switchResult = (JSONArray) data.get("switchResult");
 
-        final List<DraftChoiceDefinition> draftChoiceDefinitionList = new ArrayList<DraftChoiceDefinition>();
+        final List<DraftChoiceDefinition> draftChoiceDefinitionList = new ArrayList<>();
         for (JSONObject switchResultObject : (Iterable<JSONObject>) switchResult)
             draftChoiceDefinitionList.add(constructDraftChoiceDefinition(switchResultObject));
 
@@ -370,7 +387,7 @@ public class DraftChoiceBuilder {
     private DraftChoiceDefinition buildWeightedSwitchDraftChoiceDefinition(JSONObject data) {
         JSONArray switchResult = (JSONArray) data.get("switchResult");
 
-        final Map<Float, DraftChoiceDefinition> draftChoiceDefinitionMap = new LinkedHashMap<Float, DraftChoiceDefinition>();
+        final Map<Float, DraftChoiceDefinition> draftChoiceDefinitionMap = new LinkedHashMap<>();
         float weightTotal = 0;
         for (JSONObject switchResultObject : (Iterable<JSONObject>) switchResult) {
             float weight = ((Number) switchResultObject.get("weight")).floatValue();

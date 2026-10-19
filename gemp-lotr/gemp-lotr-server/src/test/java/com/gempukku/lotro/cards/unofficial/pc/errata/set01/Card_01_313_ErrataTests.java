@@ -1,26 +1,22 @@
 package com.gempukku.lotro.cards.unofficial.pc.errata.set01;
 
-import com.gempukku.lotro.cards.GenericCardTestHelper;
-import com.gempukku.lotro.common.Phase;
-import com.gempukku.lotro.common.Zone;
+import com.gempukku.lotro.framework.VirtualTableScenario;
+import com.gempukku.lotro.common.*;
 import com.gempukku.lotro.game.CardNotFoundException;
-import com.gempukku.lotro.game.PhysicalCardImpl;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
-import junit.framework.Assert;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.HashMap;
 
-import static junit.framework.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class Card_01_313_ErrataTests
 {
-    protected GenericCardTestHelper GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
-        return new GenericCardTestHelper(
-                new HashMap<String, String>()
-                {{
+    protected VirtualTableScenario GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
+        return new VirtualTableScenario(
+                new HashMap<>() {{
                     put("sting", "51_313");
                     put("sam", "1_311");
                     put("merry", "1_302");
@@ -52,11 +48,15 @@ public class Card_01_313_ErrataTests
          */
 
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
-        PhysicalCardImpl sting = scn.GetFreepsCard("sting");
+        var sting = scn.GetFreepsCard("sting");
 
         assertTrue(sting.getBlueprint().isUnique());
+        assertEquals(Side.FREE_PEOPLE, sting.getBlueprint().getSide());
+        assertEquals(Culture.SHIRE, sting.getBlueprint().getCulture());
+        assertEquals(CardType.POSSESSION, sting.getBlueprint().getCardType());
+        assertTrue(sting.getBlueprint().getPossessionClasses().contains(PossessionClass.HAND_WEAPON));
         assertEquals(1, sting.getBlueprint().getTwilightCost());
         assertEquals(2, sting.getBlueprint().getStrength());
     }
@@ -65,14 +65,14 @@ public class Card_01_313_ErrataTests
     @Test
     public void StingCanOnlyBeBorneByFrodo() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
-        PhysicalCardImpl frodo = scn.GetRingBearer();
-        PhysicalCardImpl sam = scn.GetFreepsCard("sam");
-        PhysicalCardImpl sting = scn.GetFreepsCard("sting");
+        var frodo = scn.GetRingBearer();
+        var sam = scn.GetFreepsCard("sam");
+        var sting = scn.GetFreepsCard("sting");
 
-        scn.FreepsMoveCharToTable(sam);
-        scn.FreepsMoveCardToHand(sting);
+        scn.MoveCompanionsToTable(sam);
+        scn.MoveCardsToHand(sting);
 
         scn.StartGame();
 
@@ -86,37 +86,37 @@ public class Card_01_313_ErrataTests
     @Test
     public void StingAbilityAvailableInBothFellowshipAndRegroup() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
-        PhysicalCardImpl frodo = scn.GetRingBearer();
-        PhysicalCardImpl sting = scn.GetFreepsCard("sting");
+        var frodo = scn.GetRingBearer();
+        var sting = scn.GetFreepsCard("sting");
 
         scn.AttachCardsTo(frodo, sting);
 
         scn.StartGame();
 
-        assertTrue(scn.FreepsCardActionAvailable(sting));
+        assertTrue(scn.FreepsActionAvailable(sting));
 
         scn.SkipToPhase(Phase.REGROUP);
 
-        assertTrue(scn.FreepsCardActionAvailable(sting));
+        assertTrue(scn.FreepsActionAvailable(sting));
     }
 
     @Test
     public void StingAbilityExertsFrodoAndRevealsFourCards() throws DecisionResultInvalidException, CardNotFoundException {
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
-        PhysicalCardImpl frodo = scn.GetRingBearer();
-        PhysicalCardImpl sting = scn.GetFreepsCard("sting");
+        var frodo = scn.GetRingBearer();
+        var sting = scn.GetFreepsCard("sting");
 
-        PhysicalCardImpl orc1 = scn.GetShadowCard("orc1");
-        PhysicalCardImpl orc2 = scn.GetShadowCard("orc2");
-        PhysicalCardImpl orc3 = scn.GetShadowCard("orc3");
-        PhysicalCardImpl scimitar1 = scn.GetShadowCard("scimitar1");
+        var orc1 = scn.GetShadowCard("orc1");
+        var orc2 = scn.GetShadowCard("orc2");
+        var orc3 = scn.GetShadowCard("orc3");
+        var scimitar1 = scn.GetShadowCard("scimitar1");
 
         scn.AttachCardsTo(frodo, sting);
 
-        scn.ShadowMoveCardToHand(orc1, orc2, orc3, scimitar1);
+        scn.MoveCardsToHand(orc1, orc2, orc3, scimitar1);
 
         scn.StartGame();
 
@@ -129,19 +129,19 @@ public class Card_01_313_ErrataTests
 
     @Test
     public void StingAbilityRemovesTwilight() throws DecisionResultInvalidException, CardNotFoundException {
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
-        PhysicalCardImpl frodo = scn.GetRingBearer();
-        PhysicalCardImpl sting = scn.GetFreepsCard("sting");
-        PhysicalCardImpl sam = scn.GetFreepsCard("sam");
-        PhysicalCardImpl merry = scn.GetFreepsCard("merry");
+        var frodo = scn.GetRingBearer();
+        var sting = scn.GetFreepsCard("sting");
+        var sam = scn.GetFreepsCard("sam");
+        var merry = scn.GetFreepsCard("merry");
 
-        PhysicalCardImpl orc1 = scn.GetShadowCard("orc1");
+        var orc1 = scn.GetShadowCard("orc1");
 
-        scn.FreepsMoveCharToTable(sam, merry);
+        scn.MoveCompanionsToTable(sam, merry);
         scn.AttachCardsTo(frodo, sting);
 
-        scn.ShadowMoveCardToHand(orc1);
+        scn.MoveCardsToHand(orc1);
 
         scn.StartGame();
 
@@ -149,21 +149,21 @@ public class Card_01_313_ErrataTests
 
         scn.FreepsUseCardAction(sting);
         //Both players need to dismiss the card reveal dialog.
-        scn.FreepsPassCurrentPhaseAction();
-        scn.ShadowPassCurrentPhaseAction();
+        scn.FreepsDismissRevealedCards();
+        scn.ShadowDismissRevealedCards();
 
         // 10 twilight - 1 orc in the hand = 9 twilight
         assertEquals(9, scn.GetTwilight());
 
         scn.FreepsUseCardAction(sting);
-        scn.FreepsPassCurrentPhaseAction();
-        scn.ShadowPassCurrentPhaseAction();
+        scn.FreepsDismissRevealedCards();
+        scn.ShadowDismissRevealedCards();
         // 9 twilight - 1 orc in the hand = 8 twilight
         assertEquals(8, scn.GetTwilight());
 
         scn.FreepsUseCardAction(sting);
-        scn.FreepsPassCurrentPhaseAction();
-        scn.ShadowPassCurrentPhaseAction();
+        scn.FreepsDismissRevealedCards();
+        scn.ShadowDismissRevealedCards();
         // limit of 2 should have been hit, so no twilight should be removed
         assertEquals(8, scn.GetTwilight());
 

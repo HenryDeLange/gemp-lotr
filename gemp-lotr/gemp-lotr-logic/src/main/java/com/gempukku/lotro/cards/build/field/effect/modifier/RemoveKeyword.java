@@ -10,12 +10,15 @@ import org.json.simple.JSONObject;
 public class RemoveKeyword implements ModifierSourceProducer {
     @Override
     public ModifierSource getModifierSource(JSONObject object, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
-        FieldUtils.validateAllowedFields(object, "filter", "condition", "keyword");
+        FieldUtils.validateAllowedFields(object, "filter", "requires", "keyword");
 
-        final JSONObject[] conditionArray = FieldUtils.getObjectArray(object.get("condition"), "condition");
+        final JSONObject[] conditionArray = FieldUtils.getObjectArray(object.get("requires"), "requires");
         final String filter = FieldUtils.getString(object.get("filter"), "filter");
 
-        Keyword keyword = FieldUtils.getEnum(Keyword.class, object.get("keyword"), "keyword");
+        var keywords = FieldUtils.getEnumArray(Keyword.class, object.get("keyword"), "keyword");
+
+        if (keywords.isEmpty())
+            throw new InvalidCardDefinitionException("'keyword' is required for RemoveKeyword modifier.");
 
         final FilterableSource filterableSource = environment.getFilterFactory().generateFilter(filter, environment);
         final Requirement[] requirements = environment.getRequirementFactory().getRequirements(conditionArray, environment);
@@ -25,7 +28,7 @@ public class RemoveKeyword implements ModifierSourceProducer {
             public Modifier getModifier(ActionContext actionContext) {
                 return new RemoveKeywordModifier(actionContext.getSource(),
                         filterableSource.getFilterable(actionContext),
-                        new RequirementCondition(requirements, actionContext), keyword);
+                        RequirementCondition.createCondition(requirements, actionContext), keywords);
             }
         };
     }

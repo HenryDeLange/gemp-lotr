@@ -1,38 +1,68 @@
 package com.gempukku.lotro.tournament;
 
-import com.gempukku.lotro.collection.CollectionsManager;
 import com.gempukku.lotro.db.vo.CollectionType;
 import com.gempukku.lotro.game.Player;
+import com.gempukku.lotro.hall.HallException;
 import com.gempukku.lotro.logic.vo.LotroDeck;
 
+import java.io.IOException;
+import java.sql.SQLException;
+
 public interface TournamentQueue {
-    public int getCost();
+    String getID();
+    int getCost();
 
-    public String getFormat();
+    String getFormatCode();
 
-    public CollectionType getCollectionType();
+    CollectionType getCollectionType();
+    TournamentInfo getInfo();
 
-    public String getTournamentQueueName();
+    String getTournamentQueueName();
 
-    public String getPrizesDescription();
+    String getPrizesDescription();
 
-    public String getPairingDescription();
+    String getPairingDescription();
 
-    public String getStartCondition();
+    String getStartCondition();
 
-    public boolean isRequiresDeck();
+    boolean isRequiresDeck();
 
-    public boolean process(TournamentQueueCallback tournamentQueueCallback, CollectionsManager collectionsManager);
+    boolean process() throws SQLException, IOException ;
 
-    public void joinPlayer(CollectionsManager collectionsManager, Player player, LotroDeck deck);
+    /**
+     * Signs the player up (taking the entry cost).
+     * @throws HallException with a message for the player when they were not signed up: already in the queue, sign-up
+     * not open, queue full, not enough currency...
+     */
+    void joinPlayer(Player player, LotroDeck deck) throws SQLException, IOException, HallException;
 
-    public void leavePlayer(CollectionsManager collectionsManager, Player player);
+    /** As {@link #joinPlayer(Player, LotroDeck)}, for queues that do not take a deck at sign-up. */
+    void joinPlayer(Player player) throws SQLException, IOException, HallException;
 
-    public void leaveAllPlayers(CollectionsManager collectionsManager);
+    void leavePlayer(Player player) throws SQLException, IOException;
 
-    public int getPlayerCount();
+    void leaveAllPlayers() throws SQLException, IOException;
 
-    public boolean isPlayerSignedUp(String player);
+    int getPlayerCount();
+    String getPlayerList();
 
-    public boolean isJoinable();
+    boolean isPlayerSignedUp(String player);
+
+    boolean isJoinable();
+
+    boolean isStartable(String byWhom);
+
+    boolean requestStart(String byWhom);
+
+    int getSecondsRemainingForReadyCheck();
+
+    boolean confirmReadyCheck(String player);
+
+    boolean hasConfirmedReadyCheck(String player);
+
+    boolean isWC();
+
+    String getDraftCode();
+
+    boolean shouldBeDisplayedAsWaiting();
 }

@@ -1,28 +1,68 @@
 package com.gempukku.lotro.db.vo;
 
+import com.gempukku.lotro.common.DBDefs;
 import com.gempukku.lotro.draft2.SoloDraftDefinitions;
-import com.gempukku.lotro.game.CardSets;
-import com.gempukku.lotro.league.LeagueData;
-
-import java.lang.reflect.Constructor;
+import com.gempukku.lotro.game.formats.LotroFormatLibrary;
+import com.gempukku.lotro.league.*;
+import com.gempukku.lotro.packs.ProductLibrary;
 
 public class League {
-    private int _cost;
-    private String _name;
-    private String _type;
-    private String _clazz;
-    private String _parameters;
-    private int _status;
+
+    private final String _name;
+    private final int _cost;
+    private final long _code;
+
+    public enum LeagueType {
+        CONSTRUCTED,
+        SEALED,
+        SOLODRAFT,
+        RTMD;
+
+        public static LeagueType parse(String name) {
+            String nameCaps = name.toUpperCase().trim().replace(' ', '_').replace('-', '_');
+
+            for (LeagueType type : values()) {
+                if (type.toString().equals(nameCaps))
+                    return type;
+            }
+            return null;
+        }
+    }
+
+    private final LeagueType _type;
+    private final int _status;
+    private final Integer _scheduleId;
+    private final String _unparsedParams;
     private LeagueData _leagueData;
 
-    public League(int cost, String name, String type, String clazz, String parameters, int status) {
-        _cost = cost;
-        _name = name;
-        _type = type;
-        _clazz = clazz;
-        _parameters = parameters;
-        _status = status;
+    public League(DBDefs.League row) {
+        this(row.name, row.cost, row.code, LeagueType.parse(row.type), row.parameters, row.status, row.schedule_id);
     }
+
+    public League(String name, int cost, long code, LeagueType type, String parameters, int status) {
+        this(name, cost, code, type, parameters, status, null);
+    }
+
+    public League(String name, int cost, long code, LeagueType type, String parameters, int status, Integer scheduleId) {
+        _name = name;
+        _cost = cost;
+        _code = code;
+        _type = type;
+        _unparsedParams = parameters;
+        _status = status;
+        _scheduleId = scheduleId;
+    }
+
+    /**
+     * @return the id of the league schedule that created this league, or null if an admin created it by hand
+     */
+    public Integer getScheduleId() { return _scheduleId; }
+
+    public boolean inviteOnly() { return _leagueData.getParameters().inviteOnly; }
+
+    public String getDescription() { return _leagueData.getParameters().description; }
+
+    public LeagueType getType() { return _type; }
 
     public int getCost() {
         return _cost;
@@ -32,16 +72,29 @@ public class League {
         return _name;
     }
 
-    public String getType() {
-        return _type;
+    public long getCode() {
+        return _code;
     }
 
-    public synchronized LeagueData getLeagueData(CardSets cardSets, SoloDraftDefinitions soloDraftDefinitions) {
+    public String getCodeStr() {
+        return String.valueOf(_code);
+    }
+
+    public synchronized LeagueData getLeagueData(ProductLibrary productLibrary, LotroFormatLibrary formatLibrary, SoloDraftDefinitions soloDraftDefinitions) {
         if (_leagueData == null) {
             try {
-                Class<?> aClass = Class.forName(_clazz);
-                Constructor<?> constructor = aClass.getConstructor(CardSets.class, SoloDraftDefinitions.class, String.class);
-                _leagueData = (LeagueData) constructor.newInstance(cardSets, soloDraftDefinitions, _parameters);
+                switch (_type) {
+                    case CONSTRUCTED ->
+                            _leagueData = ConstructedLeague.fromRawParameters(productLibrary, formatLibrary, _unparsedParams);
+                    case SEALED ->
+                            _leagueData = SealedLeague.fromRawParameters(productLibrary, formatLibrary, _unparsedParams);
+                    case SOLODRAFT ->
+                            _leagueData = SoloDraftLeague.fromRawParameters(productLibrary,  formatLibrary, soloDraftDefinitions, _unparsedParams);
+                    case RTMD ->
+                            _leagueData = RTMDLeague.fromRawParameters(productLibrary, formatLibrary, _unparsedParams);
+                    default ->
+                            throw new IllegalArgumentException("Unrecognized league type '" + _type + "'.");
+                }
             } catch (Exception exp) {
                 throw new RuntimeException("Unable to create LeagueData", exp);
             }
@@ -55,18 +108,19 @@ public class League {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+
+        if (o == null || getClass() != o.getClass())
+            return false;
 
         League league = (League) o;
 
-        if (_type != null ? !_type.equals(league._type) : league._type != null) return false;
-
-        return true;
+        return _code == league._code;
     }
 
     @Override
     public int hashCode() {
-        return _type != null ? _type.hashCode() : 0;
+        return Long.hashCode(_code);
     }
 }

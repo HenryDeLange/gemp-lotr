@@ -1,0 +1,78 @@
+{
+
+	57_190: {
+		cardInfo: {
+			//id: 7_190.1
+			parent: 7_190
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN07E190.1_card.jpg
+			collInfo: 7U190
+			rarity: U
+		}
+		title: Morgul Destroyer
+		unique: false
+		side: Shadow
+		culture: Wraith
+		twilight: 3
+		type: Minion
+		race: Orc
+		strength: 6
+		vitality: 2
+		site: 4
+		effects: [
+			{
+				type: Trigger
+				optional: true
+				text: Would you like to spot a Nazgul to add 1 threat?
+				requires: {
+					type: CanSpot
+					filter: nazgul
+				}
+				trigger: {
+					type: played
+					filter: self
+				}
+				effect: 
+				{
+					type: preventable
+					player: freeps
+					cost: {
+						type: wound
+						player: shadow
+						times: 1
+						select: choose(companion)
+					}
+					text: Make the Shadow player wound a companion to prevent adding a threat?
+					effect: {
+						type: AddThreats
+						amount: 1
+					}
+				}
+			}
+			{
+				type: activated
+				phase: Skirmish
+				cost: {
+					type: RemoveThreats
+					amount: 1
+				}
+				effect: {
+					type: ModifyStrength
+					select: self
+					amount: 3
+				}
+			}
+		]
+		gametext: When you play this minion, you may spot a Nazgûl to add a threat. The<br>Free Peoples player may make you wound a companion to prevent this. <br><b>Skirmish:</b> Remove a threat to make this minion strength +4.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

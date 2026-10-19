@@ -9,11 +9,7 @@ import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.LotroGame;
 
 public class AllyParticipatesInSkirmishesModifier extends AbstractModifier {
-    private PhysicalCard _source;
-
-    public AllyParticipatesInSkirmishesModifier(PhysicalCard source, Filterable... affectFilters) {
-        this(source, null, affectFilters);
-    }
+    private final PhysicalCard _source;
 
     public AllyParticipatesInSkirmishesModifier(PhysicalCard source, Condition condition, Filterable... affectFilters) {
         super(source, "Can participate in skirmishes", Filters.and(affectFilters), condition, ModifierEffect.PRESENCE_MODIFIER);
@@ -24,6 +20,6 @@ public class AllyParticipatesInSkirmishesModifier extends AbstractModifier {
     public boolean isAllyParticipateInSkirmishes(LotroGame game, Side sidePlayer, PhysicalCard card) {
         boolean unhasty = game.getModifiersQuerying().hasKeyword(game, card, Keyword.UNHASTY);
         return sidePlayer == Side.SHADOW
-                || !unhasty || _source.getBlueprint().getCulture() == Culture.GANDALF;
+                || !unhasty || game.getModifiersQuerying().isCulture(game, _source, Culture.GANDALF);
     }
 }

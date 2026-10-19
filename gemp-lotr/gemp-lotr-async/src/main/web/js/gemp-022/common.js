@@ -51,3 +51,44 @@ function getMapSize(map) {
         if (map.hasOwnProperty(key)) size++;
     return size;
 }
+
+function replaceIncludes($) {
+    
+    var includes = $('[data-include]');
+    $.each(includes, function () {
+        var file = 'includes/' + $(this).data('include') + '.html'
+        $(this).load(file)
+        //alert( "Loaded " + file );
+    })
+  
+  // var $window = $(window);
+  
+  // window.setTimeout(function() {
+  //       $body.removeClass('is-preload');
+  //   }, 100);
+
+  // $window.on('load', function() {
+  //   window.setTimeout(function() {
+  //       $body.removeClass('is-preload');
+  //   }, 100);
+  // });
+
+}
+
+function loadFromCookie(cookieName, defaultValue) {
+    let cookie = $.cookie(cookieName);
+    if (cookie === undefined || cookie === null){
+        saveToCookie(cookieName, defaultValue);
+        return defaultValue;
+    } else {
+        return cookie;
+    }
+}
+
+function saveToCookie(cookieName, value) {
+    $.cookie(cookieName, value, { expires: 365 });
+}
+
+function onTouchDevice() {
+    return 'ontouchstart' in document.documentElement;
+}

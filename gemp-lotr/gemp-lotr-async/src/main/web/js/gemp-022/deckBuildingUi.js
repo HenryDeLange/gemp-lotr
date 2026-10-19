@@ -1,976 +1,1568 @@
 var GempLotrDeckBuildingUI = Class.extend({
-    comm:null,
+	comm:null,
 
-    deckDiv:null,
+	deckDiv:null,
 
-    manageDecksDiv:null,
+	manageDecksDiv:null,
 
-    ringBearerDiv:null,
-    ringBearerGroup:null,
+	ringBearerDiv:null,
+	ringBearerGroup:null,
 
-    ringDiv:null,
-    ringGroup:null,
+	ringDiv:null,
+	ringGroup:null,
+	
+	mapDiv:null,
+	mapGroup:null,
+	showMap:false,
 
-    siteDiv:null,
-    siteGroup:null,
+	raceDiv:null,
+	raceGroup:null,
+	showRace:false,
+	rtmdLeagues:null,
 
-    collectionDiv:null,
+	siteDiv:null,
+	siteGroup:null,
 
-    normalCollectionDiv:null,
-    normalCollectionGroup:null,
+	collectionDiv:null,
+	formatSelect:null,
+	currentFormat:null,
+	notes:null,
 
-    selectionFunc:null,
-    drawDeckDiv:null,
+	normalCollectionDiv:null,
+	normalCollectionGroup:null,
 
-    fpDeckGroup:null,
-    shadowDeckGroup:null,
+	selectionFunc:null,
+	drawDeckDiv:null,
 
-    start:0,
-    count:18,
-    filter:null,
+	fpDeckGroup:null,
+	shadowDeckGroup:null,
 
-    deckName:null,
+	start:0,
+	count:18,
+	filter:null,
 
-    filterDirty:false,
-    deckDirty:false,
+	deckName:null,
 
-    checkDirtyInterval:1000,
+	filterDirty:false,
+	deckValidationDirty:true,
+	deckContentsDirty:false,
 
-    deckListDialog:null,
-    selectionDialog:null,
-    selectionGroup:null,
-    packSelectionId:null,
-    deckImportDialog:null,
+	checkDirtyInterval:500,
 
-    cardFilter:null,
+	deckListDialog:null,
+	selectionDialog:null,
+	selectionGroup:null,
+	packSelectionId:null,
+	deckImportDialog:null,
+	notesDialog:null,
 
-    collectionType:null,
+	cardFilter:null,
 
-    specialSelection:false,
+	collectionType:null,
 
-    init:function () {
-        var that = this;
+	defaultSelection:"cardType:-THE_ONE_RING",
+	
+	autoZoom: null,
+	cardInfoDialog: null,
+	
+	formats: null,
+	formatsInitialized:false,
+	lastCardId: 0,
 
-        this.comm = new GempLotrCommunication("/gemp-lotr-server", that.processError);
+	init:function () {
+		var that = this;
 
-        this.cardFilter = new CardFilter($("#collectionDiv"), $("#collectionDiv"),
-                function (filter, start, count, callback) {
-                    if (!that.specialSelection) {
-                        filter = filter + " cardType:-THE_ONE_RING";
-                    }
-                    that.comm.getCollection(that.collectionType, filter, start, count, function (xml) {
-                        callback(xml);
-                    }, {
-                        "404":function () {
-                            alert("You don't have collection of that type.");
-                        }
-                    });
-                },
-                function () {
-                    that.clearCollection();
-                },
-                function (elem, type, blueprintId, count) {
-                    that.addCardToCollection(type, blueprintId, count, elem.getAttribute("side"), elem.getAttribute("contents"));
-                },
-                function () {
-                    that.finishCollection();
-                });
-        this.collectionType = "default";
+		this.comm = new GempLotrCommunication("/gemp-lotr-server", that.processError);
 
-        this.deckDiv = $("#deckDiv");
-
-        this.manageDecksDiv = $("<div id='manageDecks'></div>");
-
-        var collectionSelect = $("<select id='collectionSelect'></select>");
-        collectionSelect.css({"float":"right", width:"180px"});
-        collectionSelect.append("<option value='default'>All cards</option>");
-        collectionSelect.append("<option value='permanent'>My cards</option>");
-        collectionSelect.append("<option value='trophy'>Trophies</option>");
-        this.manageDecksDiv.append(collectionSelect);
-
-        var newDeckBut = $("<button title='New deck'><span class='ui-icon ui-icon-document'></span></button>").button();
-        this.manageDecksDiv.append(newDeckBut);
-
-        var saveDeckBut = $("<button title='Save deck'><span class='ui-icon ui-icon-disk'></span></button>").button();
-        this.manageDecksDiv.append(saveDeckBut);
-
-        var renameDeckBut = $("<button title='Rename deck'><span class='ui-icon ui-icon-tag'></span></button>").button();
-        this.manageDecksDiv.append(renameDeckBut);
-
-        var copyDeckBut = $("<button title='Copy deck to new'><span class='ui-icon ui-icon-copy'></span></button>").button();
-        this.manageDecksDiv.append(copyDeckBut);
-        
-        var importDeckBut = $("<button title='Import Deck'><span class='ui-icon ui-icon-arrowthickstop-1-s'></span></button>").button();
-        this.manageDecksDiv.append(importDeckBut);
-
-        var deckListBut = $("<button title='Deck list'><span class='ui-icon ui-icon-suitcase'></span></button>").button();
-        this.manageDecksDiv.append(deckListBut);
-
-        this.manageDecksDiv.append("<span id='editingDeck'>New deck</span>");
-
-        this.deckDiv.append(this.manageDecksDiv);
-
-        newDeckBut.click(
-                function () {
-                    that.deckName = null;
-                    $("#editingDeck").text("New deck");
-                    that.clearDeck();
-                });
-
-        saveDeckBut.click(
-                function () {
-                    if (that.deckName == null) {
-                        var newDeckName = prompt("Enter the name of the deck", "");
-                        if (newDeckName == null)
-                            return;
-                        if (newDeckName.length < 3 || newDeckName.length > 40)
-                            alert("Deck name has to have at least 3 characters and at most 40 characters.");
-                        else {
-                            that.deckName = newDeckName;
-                            $("#editingDeck").text(newDeckName);
-                            that.saveDeck(true);
-                        }
-                    } else {
-                        that.saveDeck(false);
-                    }
-                });
-
-        renameDeckBut.click(
-                function () {
-                    if (that.deckName == null) {
-                        alert("You can't rename this deck, since it's not named (saved) yet.");
-                        return;
-                    }
-                    var newDeckName = prompt("Enter new name for the deck", "");
-                    if (newDeckName == null)
-                        return;
-                    if (newDeckName.length < 3 || newDeckName.length > 40)
-                        alert("Deck name has to have at least 3 characters and at most 40 characters.");
-                    else {
-                        var oldDeckName = that.deckName;
-                        that.deckName = newDeckName;
-                        $("#editingDeck").text(newDeckName);
-                        that.comm.renameDeck(oldDeckName, newDeckName,
-                                function () {
-                                    if (confirm("Do you wish to save this deck?"))
-                                        that.saveDeck(false);
-                                }, {
-                            "404":function () {
-                                alert("Couldn't find the deck to rename on the server.");
-                            }
-                        });
-                    }
-                });
-
-        copyDeckBut.click(
-                function () {
-                    that.deckName = null;
-                    $("#editingDeck").text("New deck");
-                });
-
-        deckListBut.click(
-                function () {
-                    that.loadDeckList();
-                });
-
-        importDeckBut.click(
-                function () {
-                    that.deckName = null;
-                    that.importDecklist();
-                });
-
-        this.collectionDiv = $("#collectionDiv");
-
-        $("#collectionSelect").change(
-                function () {
-                    that.collectionType = that.getCollectionType();
-                    that.cardFilter.getCollection();
-                });
-
-        this.normalCollectionDiv = $("<div></div>");
-        this.normalCollectionGroup = new NormalCardGroup(this.normalCollectionDiv, function (card) {
-            return true;
-        });
-        this.normalCollectionGroup.maxCardHeight = 200;
-        this.collectionDiv.append(this.normalCollectionDiv);
-
-        this.ringBearerDiv = $("<div>Ring Bearer</div>");
-        this.ringBearerDiv.click(
-                function () {
-                    if ($(".card", that.ringBearerDiv).length == 0) {
-                        that.showPredefinedFilter("keyword:CAN_START_WITH_RING type:card", that.ringBearerDiv);
-                    }
-                });
-        this.ringBearerGroup = new NormalCardGroup(this.ringBearerDiv, function (card) {
-            return true;
-        });
-        this.deckDiv.append(this.ringBearerDiv);
-
-        this.ringDiv = $("<div>Ring</div>");
-        this.ringDiv.click(
-                function () {
-                    if ($(".card", that.ringDiv).length == 0)
-                        that.showPredefinedFilter("cardType:THE_ONE_RING type:card", that.ringDiv);
-                });
-        this.ringGroup = new NormalCardGroup(this.ringDiv, function (card) {
-            return true;
-        });
-        this.deckDiv.append(this.ringDiv);
-
-        this.siteDiv = $("<div>Sites</div>");
-        this.deckDiv.append(this.siteDiv);
-        this.siteGroup = new VerticalBarGroup(this.siteDiv, function (card) {
-            return true;
-        }, true);
-
-        this.drawDeckDiv = $("<div></div>");
-        this.fpDeckGroup = new NormalCardGroup(this.drawDeckDiv, function (card) {
-            return (card.zone == "FREE_PEOPLE");
-        });
-        this.fpDeckGroup.maxCardHeight = 200;
-        this.shadowDeckGroup = new NormalCardGroup(this.drawDeckDiv, function (card) {
-            return (card.zone == "SHADOW");
-        });
-        this.shadowDeckGroup.maxCardHeight = 200;
-
-        this.bottomBarDiv = $("<div></div>");
-        this.bottomBarDiv.css({overflow:"auto"});
-        this.bottomBarDiv.append("<div id='deckStats'></div>")
-        this.deckDiv.append(this.bottomBarDiv);
-
-        this.deckDiv.append(this.drawDeckDiv);
-
-        this.selectionFunc = this.addCardToDeckAndLayout;
-
-        $("body").click(
-                function (event) {
-                    return that.clickCardFunction(event);
-                });
-        $("body").mousedown(
-                function (event) {
-                    return that.dragStartCardFunction(event);
-                });
-        $("body").mouseup(
-                function (event) {
-                    return that.dragStopCardFunction(event);
-                });
-
-        var width = $(window).width();
-        var height = $(window).height();
-
-        this.infoDialog = $("<div></div>")
-                .dialog({
-            autoOpen:false,
-            closeOnEscape:true,
-            resizable:false,
-            title:"Card information"
-        });
-
-        var swipeOptions = {
-            threshold:20,
-            swipeUp:function (event) {
-                that.infoDialog.prop({ scrollTop:that.infoDialog.prop("scrollHeight") });
-                return false;
-            },
-            swipeDown:function (event) {
-                that.infoDialog.prop({ scrollTop:0 });
-                return false;
-            }
+		this.collectionType = "default";
+		
+		$.expr[':'].cardId = function (obj, index, meta, stack) {
+            var cardIds = meta[3].split(",");
+            var cardData = $(obj).data("card");
+            return (cardData != null && ($.inArray(cardData.cardId, cardIds) > -1));
         };
-        this.infoDialog.swipe(swipeOptions);
-
-        this.getCollectionTypes();
-
-        this.cardFilter.setFilter("");
-        this.cardFilter.getCollection();
-
-        this.checkDeckStatsDirty();
-    },
-
-    getCollectionType:function () {
-        return $("#collectionSelect option:selected").prop("value");
-    },
-
-    getCollectionTypes:function () {
-        var that = this;
-        this.comm.getCollectionTypes(
-                function (xml) {
-                    var root = xml.documentElement;
-                    if (root.tagName == "collections") {
-                        var collections = root.getElementsByTagName("collection");
-                        for (var i = 0; i < collections.length; i++) {
-                            var collection = collections[i];
-                            $("#collectionSelect").append("<option value='" + collection.getAttribute("type") + "'>" + collection.getAttribute("name") + "</option>");
-                        }
-                    }
+		
+		this.cardFilter = new CardFilter($("#collectionDiv"),
+				function (filter, start, count, callback) {
+					that.comm.getCollection(that.collectionType, filter, start, count, function (xml) {
+						callback(xml);
+					}, {
+						"404":function () {
+							alert("You don't have collection of that type.");
+						}
+					});
+				},
+				function () {
+					that.clearCollection();
+				},
+				function (elem, type, blueprintId, count) {
+					that.addCardToCollection(type, blueprintId, count, elem.getAttribute("side"), elem.getAttribute("contents"));
+				},
+				function () {
+					that.finishCollection();
+				},
+                function () {
+                    return that.getCardsInDeck();
                 });
-    },
-    
-    importDecklist:function () {
-        var that = this;
-        if (that.deckImportDialog == null) {
-            that.deckImportDialog = $('<div></div>').dialog({
-                closeOnEscape:true,
-                resizable:true,
-                title:"Import deck"
-            });
-        }
-        that.deckImportDialog.html("");
-        var deckImport = $("<textarea rows='5' cols='30' id='deckImport' decklist='decklist'></textarea>");
-        var getDecklistTextBut = $("<button title='Import'>Import</button>").button();
+		
+		//this.cardFilter.setFilterOverride(this.defaultSelection);
 
-        var importDialogDiv = $("<div></div>");
-        importDialogDiv.append(deckImport);
-        importDialogDiv.append(getDecklistTextBut);
-        that.deckImportDialog.append(importDialogDiv);
+		this.deckDiv = $("#deckDiv");
 
-        getDecklistTextBut.click(
-             function () {
-                var decklist = $('textarea[decklist="decklist"]').val()
-                that.parseDecklist(decklist);
-            }
-        );
-        that.deckImportDialog.dialog("open");
-    },
-    
-    parseDecklist:function(rawText) {
-        this.clearDeck();
-        var that = this;
-        var rawTextList = rawText.split("\n");
-        var formattedText = "";
-        for (var i = 0; i < rawTextList.length; i++) {
-            if (rawTextList[i] != "") {
-                var line = that.removeNotes(rawTextList[i]).toLowerCase();
-                line = line.replace(/[\*•]/g,"").replace(/’/g,"'")
-                        .replace(/starting|start|ring-bearer:|ring:/g,"")
-                formattedText = formattedText + line.trim() + "~";
-            }
-        }
-                
-        this.importDeckCollection(formattedText, function (xml) {
-            var cards = xml.documentElement.getElementsByTagName("card");
-            for (var i = 0; i < cards.length; i++) {
-                var cardElem = cards[i];
-                var blueprintId = cardElem.getAttribute("blueprintId");
-                var side = cardElem.getAttribute("side");
-                var group = cardElem.getAttribute("group");
-                var cardCount = parseInt(cardElem.getAttribute("count"));
-                for (var j = 0; j < cardCount; j++) {
-                    if (group == "ringBearer") {
-                        that.addCardToContainer(blueprintId, "special", that.ringBearerDiv, false).addClass("cardInDeck");
-                    } else if (group == "ring") {
-                        that.addCardToContainer(blueprintId, "special", that.ringDiv, false).addClass("cardInDeck");
-                    } else {
-                        that.addCardToDeckDontLayout(blueprintId, side);
-                    }
-                }
-            }
-            that.deckModified(true);
-            that.layoutDeck();
-            $("#editingDeck").text("Imported Deck (unsaved)");
+		this.manageDecksDiv = $("#manageDecks");
+		
+		this.formatSelect = $("#formatSelect");
+		$("#formatSelect").change(
+				function () {
+					if(that.deckName != null) {
+						that.deckModified(true);
+					}
+					
+					let effectiveFormat = that.getEffectiveFormatCode();
+					let val = that.formatSelect.val();
+
+					// Map visibility: based on effective format code
+					if(effectiveFormat == "pc_movie" || effectiveFormat == "test_pc_movie") {
+						that.setMapVisibility(true);
+					}
+					else {
+						that.setMapVisibility(false);
+					}
+
+					// Race visibility: based on whether this is an RTMD league
+					if (that.rtmdLeagues && that.rtmdLeagues[val]) {
+						that.setRaceVisibility(true, that.rtmdLeagues[val].metaSites);
+					} else {
+						that.setRaceVisibility(false, null);
+					}
+					
+					//PC format or Anything Goes (if chosen, not when being default when page loads)
+					if((effectiveFormat.includes("pc") || effectiveFormat == "rev_tow_sta") && that.formatsInitialized) {
+						$("#convertErrataBut").button("option", "disabled", false);
+					}
+					else {
+						$("#convertErrataBut").button("option", "disabled", true);
+					}
+
+					that.cardFilter.updateFormat(effectiveFormat, that.formats[effectiveFormat].blockFilters);
+				});
+		
+		this.autoZoom = new AutoZoom("autoZoomInDeckbuilder");
+
+		var collectionSelect = $("#collectionSelect");
+
+		var newDeckBut = $("#newDeckBut").button();
+
+		var saveDeckBut = $("#saveDeckBut").button();
+
+		var renameDeckBut = $("#renameDeckBut").button();
+
+		var copyDeckBut = $("#copyDeckBut").button();
+		
+		var importDeckBut = $("#importDeckBut").button();
+		
+		var libraryListBut = $("#libraryListBut").button();
+
+		var deckListBut = $("#deckListBut").button();
+		
+		var convertErrataBut = $("#convertErrataBut").button();
+		
+		var notesBut = $("#notesBut").button();
+		
+		if(this.autoZoom.autoZoomToggle != null) {
+			this.autoZoom.autoZoomToggle.appendTo(this.manageDecksDiv);
+		}
+
+		this.deckNameSpan = ("#editingDeck");
+
+		newDeckBut.click(
+				function () {
+					if(that.savePromptOnNew()) {
+						that.deckName = null;
+						$("#editingDeck").text("New deck");
+						that.clearDeck();
+					}
+				});
+
+		saveDeckBut.click(
+				function () {
+					that.saveCurrentDeck();
+				});
+
+		renameDeckBut.click(
+				function () {
+					if (that.deckName == null) {
+						that.saveCurrentDeck();
+					}
+					else {
+						that.renameCurrentDeck();	
+					}
+				});
+
+		copyDeckBut.click(
+				function () {
+					that.deckName = null;
+					that.deckModified(true);
+				});
+
+		deckListBut.click(
+				function () {
+					that.savePrompt();
+					that.loadDeckList();
+				});
+		
+		convertErrataBut.click(
+				function () {
+					that.convertErrata();
+				});
+		
+		libraryListBut.click(
+				function () {
+					that.savePrompt();
+					that.loadLibraryList();
+				});
+
+		importDeckBut.click(
+				function () {
+					that.savePrompt();
+					that.importDecklist();
+				});
+		
+		notesBut.click(
+			   function () {
+					that.editNotes();
+			   });
+
+		this.collectionDiv = $("#collectionDiv");
+
+		$("#collectionSelect").change(
+				function () {
+					that.collectionType = that.getCollectionType();
+					that.cardFilter.getCollection();
+				});
+
+		this.normalCollectionDiv = $("#collection-display");
+		this.normalCollectionGroup = new NormalCardGroup(this.normalCollectionDiv, function (card) {
+			return true;
+		});
+		this.normalCollectionGroup.maxCardHeight = 200;
+
+		this.ringBearerDiv = $("#ringBearerDiv");
+		this.ringBearerDiv.click(
+				function () {
+					if ($(".card", that.ringBearerDiv).length == 0) {
+						that.showPredefinedFilter("canStartWithRing:true product:card", that.ringBearerDiv);
+					}
+				});
+		this.ringBearerGroup = new NormalCardGroup(this.ringBearerDiv, function (card) {
+			return true;
+		}, false, $("#rb-content"));
+
+		this.ringDiv = $("#ringDiv");
+		this.ringDiv.click(
+				function () {
+					if ($(".card", that.ringDiv).length == 0)
+						that.showPredefinedFilter("cardType:THE_ONE_RING product:card", that.ringDiv);
+				});
+		this.ringGroup = new NormalCardGroup(this.ringDiv, function (card) {
+			return true;
+		}, false, $("#ring-content"));
+		
+		this.mapDiv = $("#map-div");
+		this.mapDiv.click(
+				function () {
+					if ($(".card", that.mapDiv).length == 0)
+						that.showPredefinedFilter("cardType:MAP product:card", that.mapDiv);
+				});
+		this.mapGroup = new NormalCardGroup(this.mapDiv, function (card) {
+			return true;
+		}, false, $("#map-content"));
+
+		// Race quadrant: display-only (not clickable for selection)
+		this.raceDiv = $("#raceDiv");
+		this.raceGroup = new NormalCardGroup(this.raceDiv, function (card) {
+			return true;
+		}, false, $("#race-content"));
+
+		this.siteDiv = $("#sitesDiv");
+		this.siteDiv.click(
+				function () {
+					$("#cardTypeSelect").val('SITE').trigger('change');
+					$("#sortSelect").val('siteNumber,name').trigger('change');
+				});
+		this.siteGroup = new VerticalBarGroup(this.siteDiv, function (card) {
+			return true;
+		}, false, $("#sites-content"));
+
+		this.drawDeckDiv = $("#decksRegion");
+		this.fpDeckGroup = new NormalCardGroup(this.drawDeckDiv, function (card) {
+			return (card.zone == "FREE_PEOPLE");
+		});
+		this.fpDeckGroup.maxCardHeight = 200;
+		this.shadowDeckGroup = new NormalCardGroup(this.drawDeckDiv, function (card) {
+			return (card.zone == "SHADOW");
+		});
+		this.shadowDeckGroup.maxCardHeight = 200;
+
+		this.bottomBarDiv = $("#statsDiv");
+
+		this.selectionFunc = this.addCardToDeckAndLayout;
+
+		$("body").click(
+				function (event) {
+					return that.clickCardFunction(event);
+				});
+		$("body")[0].addEventListener("contextmenu",
+			function (event) {
+				if(!that.clickCardFunction(event))
+				{
+					event.preventDefault();
+					return false;
+				}
+				return true;
+			});
+		$('body').unbind('mouseover');
+		$("body").mouseover(
+			function (event) {
+				return that.autoZoom.handleMouseOver(event.originalEvent, 
+				   that.dragCardId != null, that.cardInfoDialog.isOpen());
+			});
+
+		$('body').unbind('mouseout');
+		$("body").mouseout(
+			function (event) {
+				return that.autoZoom.handleMouseOut(event.originalEvent);
+			});
+
+		$("body").mousedown(
+				function (event) {
+					that.autoZoom.handleMouseDown(event.originalEvent);
+					
+					return that.dragStartCardFunction(event);
+				});
+		$("body").mouseup(
+				function (event) {
+					return that.dragStopCardFunction(event);
+				});
+		
+		//If we ever add double-sided cards, this will be needed for
+		// the card hover.
+		
+		$('body').unbind('keydown');
+		$("body").keydown(
+			function (event) {
+				return that.autoZoom.handleKeyDown(event.originalEvent);
+			});
+
+		$('body').unbind('keyup');
+		$("body").keyup(
+			function (event) {
+				return that.autoZoom.handleKeyUp(event);
+			});
+
+		this.cardInfoDialog = new CardInfoDialog(window.innerWidth, window.innerHeight);
+
+		setInterval(() => {
+			if (that.deckValidationDirty) {
+				that.deckValidationDirty = false;
+				that.updateDeckStats();
+			}
+		}, this.checkDirtyInterval);
+
+		$("#formatSelect").change(function () {
+				that.deckValidationDirty = true;
         });
-    },
+		
+		this.updateFormatOptions();
+		this.comm.forcePackDelivery();
+	},
+	
+	setMapVisibility:function(value) {
+		this.showMap = value;
+		this.layoutUI(true);
+	},
+	
+	setRaceVisibility:function(value, metaSites) {
+		this.showRace = value;
+		this.currentMetaSites = metaSites || null;
 
-    removeNotes:function(line) {
-        var processedLine = line;
-        var hasNotes = false;
-        var start = line.indexOf("(");
-        var end = line.indexOf(")", start);
-        if (start < 0 && end < 0) {
-            start = line.indexOf("[");
-            end = line.indexOf("]", start);
-        }
-        if (start > 0) {
-            processedLine = line.slice(0,start)
-            if (end > 0) {
-                processedLine = processedLine + line.slice(end+1);
+		// Check if any meta-site has siteOverride and pass to CardFilter
+		var hasSiteOverride = metaSites && metaSites.some(function(s) { return s.siteOverride; });
+		this.cardFilter.siteOverride = hasSiteOverride || false;
+
+		// Clear previous race card display
+		$(".card", this.raceDiv).remove();
+
+		if (value && metaSites && metaSites.length > 0) {
+			var current = metaSites[metaSites.length - 1];
+
+			// Use the visual position card as the base image
+			var baseId = current.visual || current.modifier;
+			var cardDiv = this.addCardToContainer(baseId, "deck", this.raceDiv, false);
+
+			// Overlay the modifier's bottom portion (game text area) on top
+			if (current.visual && current.modifier) {
+				var modifierCard = new Card(current.modifier, null, null, "deck", 0, "player");
+				var overlayDiv = $("<div class='metaSiteOverlay' style='position:absolute;bottom:0;width:100%;height:" + Card.MetaSiteOverlayHeight + "%;overflow:hidden;pointer-events:none;'>"
+					+ "<img src='" + modifierCard.imageUrl + "' style='width:100%;height:100%;object-fit:cover;object-position:bottom;'>"
+					+ "</div>");
+				cardDiv.append(overlayDiv);
+
+				// Stash overlay URL on card data so the hover preview can use it
+				var card = cardDiv.data("card");
+				if (card) {
+					card.overlayImageUrl = modifierCard.imageUrl;
+				}
+			}
+		}
+
+		this.layoutUI(true);
+	},
+	
+	// Returns the real format code for server calls (validation, filtering, etc).
+	// For RTMD league entries, resolves to the league's underlying format code.
+	// For normal entries, returns the dropdown value directly.
+	getEffectiveFormatCode:function() {
+		var val = this.formatSelect.val();
+		if (this.rtmdLeagues && this.rtmdLeagues[val]) {
+			return this.rtmdLeagues[val].formatCode;
+		}
+		return val;
+	},
+
+	// Returns true if the currently selected format is an RTMD league entry.
+	isRtmdFormat:function() {
+		var val = this.formatSelect.val();
+		return this.rtmdLeagues != null && this.rtmdLeagues[val] != null;
+	},
+	
+	savePrompt:function() {
+		return !this.deckContentsDirty || (confirm("Your deck has been modified.  Would you like to save your deck before proceeding?") && this.saveCurrentDeck())
+	},
+	
+	savePromptOnNew:function() {
+		if(!this.deckContentsDirty)
+			return true;
+		
+		if(confirm("Your deck has been modified.  Click 'OK' to save, or 'Cancel' to discard your changes without saving.")) {
+			//If this fails, then the user hit cancel while naming the deck, and in that case
+			// we actually do want to abort.
+			return this.saveCurrentDeck();
+		}
+		else {
+			//The user clicked "cancel", which according to the prompt means they wish to discard
+			// their changes.
+			return true;
+		}
+	},
+
+	saveCurrentDeck:function() {
+		var that = this;
+		var saved = false;
+
+		if (that.deckName == null) {
+			var newDeckName = prompt("Enter the name of the deck", "");
+			if (newDeckName == null)
+				return saved;
+			if (newDeckName.length < 3 || newDeckName.length > 100) {
+				alert("Deck name has to have at least 3 characters and at most 100 characters.");
+			}
+			else {
+				that.deckName = newDeckName;
+				$("#editingDeck").text(newDeckName);
+				that.saveDeck(true);
+				saved = true;
+			}
+		} 
+		else {
+			that.saveDeck(false);
+			saved = true;
+		}
+
+		return saved;
+	},
+
+	renameCurrentDeck:function() {
+		var that = this;
+		that.renameDeck(that.deckName, function (newDeckName) {
+			
+			if (that.deckContentsDirty && confirm("Do you wish to save this deck?"))
+			{
+				that.saveDeck(false);
+			}
+			that.deckName = newDeckName;
+			that.deckModified(that.deckContentsDirty);
+		});
+	},
+	
+	renameDeck:function(oldName, callback) {
+		var that = this;
+		
+		var newDeckName = prompt("Enter new name for the deck", oldName);
+		if (newDeckName == null)
+			return;
+		
+		if (newDeckName.length < 3 || newDeckName.length > 100) {
+			alert("Deck name has to have at least 3 characters and at most 100 characters.");
+		}
+		else {
+			that.comm.renameDeck(oldName, newDeckName, () => callback(newDeckName), 
+				{
+					"404":function () {
+						alert("Couldn't find the deck to rename on the server.");
+					}
+				});
+		}
+	},
+	
+	convertErrata:function() {		
+		var that = this;
+		var deckContents = this.getDeckContents();
+		this.comm.convertErrata(that.getEffectiveFormatCode(), deckContents, function (xml) {
+				that.setupDeck(xml, that.deckName);
+				that.deckModified(true);
+				$("#convertErrataBut").button("option", "disabled", true);
+			}, {
+				"400":function () {
+					$("#convertErrataBut").button("option", "disabled", false);
+					alert("Error processing errata conversion.");
+				}
+			});
+		//target format, current decklist, function that takes new decklist and replaces it
+	},
+
+	getCollectionType:function () {
+		return $("#collectionSelect option:selected").prop("value");
+	},
+
+	getCollectionTypes:function () {
+		var that = this;
+		this.comm.getCollectionTypes(
+				function (xml) {
+					var root = xml.documentElement;
+					if (root.tagName != "collections") 
+						return;
+					
+					var collections = root.getElementsByTagName("collection");
+					$("#formatSelect").append("<option disabled>---Limited---</option>");
+					for (var i = 0; i < collections.length; i++) {
+						var collection = collections[i];
+						$("#collectionSelect").append("<option value='" + collection.getAttribute("type") + "'>" + collection.getAttribute("name") + "</option>");
+						$("#formatSelect").append(
+                          "<option value='" + collection.getAttribute("format") + "' data-type='" + collection.getAttribute("type") + "'>" +
+                          collection.getAttribute("name") + "</option>"
+                        );
+					}
+					
+					$("#collectionSelect").val("default");
+					that.deckModified(false);
+					
+					// After collections are loaded, fetch RTMD leagues
+					that.getRtmdLeagues();
+				});
+	},
+	
+	// Fetches active leagues and appends RTMD entries to the format dropdown.
+	// The league code (a numeric string) is used directly as the option value,
+	// which is also what gets stored in the DB as the deck's target format.
+	getRtmdLeagues:function () {
+		var that = this;
+		this.comm.getLeagues(function (xml) {
+			var root = xml.documentElement;
+			if (root.tagName != "leagues")
+				return;
+
+			var leagues = root.getElementsByTagName("league");
+			var hasRtmd = false;
+			that.rtmdLeagues = {};
+
+			for (var i = 0; i < leagues.length; i++) {
+				var league = leagues[i];
+				if (league.getAttribute("type") !== "RTMD") continue;
+				if (league.getAttribute("member") !== "true") continue;
+
+				if (!hasRtmd) {
+					$("#formatSelect").append("<option disabled>---Race to Mount Doom---</option>");
+					hasRtmd = true;
+				}
+
+				var leagueCode = league.getAttribute("code");
+				var formatCode = league.getAttribute("formatCode");
+				var racePosition = league.getAttribute("playerPosition") || "1";
+				var racePathLength = league.getAttribute("pathLength") || "0";
+
+				// Parse metaSite child elements into paired arrays
+				var metaSiteElems = league.getElementsByTagName("metaSite");
+				var metaSites = [];
+				for (var j = 0; j < metaSiteElems.length; j++) {
+					var site = metaSiteElems[j];
+					metaSites.push({
+						position: parseInt(site.getAttribute("position")),
+						modifier: site.getAttribute("blueprintId"),
+						visual: site.getAttribute("visualBlueprintId"),
+						siteOverride: site.getAttribute("siteOverride") === "true"
+					});
+				}
+
+				// Store league data keyed by league code
+				that.rtmdLeagues[leagueCode] = {
+					leagueCode: leagueCode,
+					formatCode: formatCode,
+					metaSites: metaSites,
+					racePosition: parseInt(racePosition),
+					racePathLength: parseInt(racePathLength)
+				};
+
+				var displayName = league.getAttribute("name") +
+					" (pos " + racePosition + "/" + racePathLength + ")";
+
+				var option = $("<option/>")
+					.attr("value", leagueCode)
+					.attr("data-rtmd", "true")
+					.text(displayName);
+
+				$("#formatSelect").append(option);
+			}
+		});
+	},
+	
+	importDecklist:function () {
+		var that = this;
+		if (that.deckImportDialog == null) {
+			that.deckImportDialog = $('<div></div>').dialog({
+				closeOnEscape:true,
+				resizable:true,
+				title:"Import deck"
+			});
+		}
+		that.deckImportDialog.html("");
+		var deckImport = $("<textarea rows='5' cols='30' id='deckImport' decklist='decklist'></textarea>");
+		var getDecklistTextBut = $("<button title='Import'>Import</button>").button();
+
+		var importDialogDiv = $("<div></div>");
+		importDialogDiv.append(deckImport);
+		importDialogDiv.append(getDecklistTextBut);
+		that.deckImportDialog.append(importDialogDiv);
+
+		getDecklistTextBut.click(
+			 function () {
+			 	that.deckName = null;
+				var decklist = $('textarea[decklist="decklist"]').val()
+				that.parseDecklist(decklist);
+			}
+		);
+		that.deckImportDialog.dialog("open");
+	},
+	
+	parseDecklist:function(rawText) {
+		this.clearDeck();
+		var that = this;
+		var rawTextList = rawText.split("\n");
+		var formattedText = "";
+		for (var i = 0; i < rawTextList.length; i++) {
+			if (rawTextList[i] != "") {
+				var line = that.removeNotes(rawTextList[i]).toLowerCase();
+				line = line.replace(/[\*•]/g,"").replace(/'/g,"'")
+						.replace(/starting|start|map:|ring-bearer:|ring:/g,"")
+				formattedText = formattedText + line.trim() + "~";
+			}
+		}
+				
+		this.importDeckCollection(formattedText, function (xml) {
+			var cards = xml.documentElement.getElementsByTagName("card");
+			for (var i = 0; i < cards.length; i++) {
+				var cardElem = cards[i];
+				var blueprintId = cardElem.getAttribute("blueprintId");
+				var side = cardElem.getAttribute("side");
+				var group = cardElem.getAttribute("group");
+				var cardCount = parseInt(cardElem.getAttribute("count"));
+				for (var j = 0; j < cardCount; j++) {
+					if (group == "ringBearer") {
+						that.addCardToContainer(blueprintId, "special", that.ringBearerDiv, false).addClass("cardInDeck");
+					} else if (group == "ring") {
+						that.addCardToContainer(blueprintId, "special", that.ringDiv, false).addClass("cardInDeck");
+					} else if (group == "map") {
+						that.addCardToContainer(blueprintId, "special", that.mapDiv, false).addClass("cardInDeck");
+					} else {
+						that.addCardToDeckDontLayout(blueprintId, side);
+					}
+				}
+			}
+			that.deckModified(true);
+			that.layoutDeck();
+			$("#editingDeck").text("Imported Deck (unsaved)");
+		});
+	},
+
+	removeNotes:function(line) {
+		var processedLine = line;
+		var hasNotes = false;
+		var start = line.indexOf("(");
+		var end = line.indexOf(")", start);
+		if (start < 0 && end < 0) {
+			start = line.indexOf("[");
+			end = line.indexOf("]", start);
+		}
+		if (start > 0) {
+			processedLine = line.slice(0,start)
+			if (end > 0) {
+				processedLine = processedLine + line.slice(end+1);
+			}
+		}
+		else if (end > 0) {
+			processedLine = line.slice(end+1);
+		}
+		if (processedLine.indexOf("(") > -1 || processedLine.indexOf(")") > -1 ||
+			processedLine.indexOf("[") > -1 || processedLine.indexOf("]") > -1) {
+				return this.removeNotes(processedLine);
+			}
+		return processedLine;
+	},
+
+	importDeckCollection:function (decklist, callback) {
+		this.comm.importCollection(decklist, function (xml) {
+			callback(xml);
+		}, {
+			"414":function () {
+				alert("Deck too large to import.");
+			}
+		});
+	},
+	
+	editNotes:function() {
+		var that = this;
+		that.notesDialog = $('<div class="notesDialog"></div>')
+			.dialog({
+				title:"Edit Deck Notes",
+				autoOpen:false,
+				closeOnEscape:true,
+				resizable:true,
+				width:700,
+				height:400,
+				modal:true
+			});
+			
+		var notesElem = $("<textarea class='notesText'></textarea>");
+			
+		notesElem.val(that.notes);
+		that.notesDialog.append(notesElem);
+		
+		notesElem.change(function() {
+			that.notes = notesElem.val();
+			that.deckModified(true);
+		});
+		
+		that.notesDialog.dialog("open");
+	},
+
+	loadDeckList:function () {
+		var that = this;
+		this.comm.getDecks(function (xml) {
+			if (that.deckListDialog == null) {
+				that.deckListDialog = $("<div></div>")
+						.dialog({
+					title:"Your Saved Decks",
+					autoOpen:false,
+					closeOnEscape:true,
+					resizable:true,
+					width:700,
+					height:400,
+					modal:true
+				});
+			}
+			that.deckListDialog.html("");
+			
+			function formatDeckName(formatName, deckName)
+			{
+				return "<b>[" + formatName + "]</b> - " + deckName;
+			}
+
+			var root = xml.documentElement;
+			if (root.tagName == "decks") {
+				var decks = root.getElementsByTagName("deck");
+				var deckNames = [];
+				for (var i = 0; i < decks.length; i++) {
+					var deck = decks[i];
+					var deckName = deck.childNodes[0].nodeValue;
+					deckNames[i] = deckName;
+					var formatName = deck.getAttribute("targetFormat");
+					var openDeckBut = $("<button title='Open deck'><span class='ui-icon ui-icon-folder-open'></span></button>").button();
+					var renameDeckBut = $("<button title='Rename deck'><span class='ui-icon ui-icon-pencil'></span></button>").button();
+					var deckListBut = $("<button title='Share deck list'><span class='ui-icon ui-icon-extlink'></span></button>").button();
+					var deleteDeckBut = $("<button title='Delete deck'><span class='ui-icon ui-icon-trash'></span></button>").button();
+
+					var deckElem = $("<div class='deckItem'></div>");
+					deckElem.append(openDeckBut);
+					deckElem.append(renameDeckBut);
+					deckElem.append(deckListBut);
+					deckElem.append(deleteDeckBut);
+					var deckNameDiv = $("<span/>").html(formatDeckName(formatName, deckName));
+					deckElem.append(deckNameDiv);
+
+					that.deckListDialog.append(deckElem);
+
+					openDeckBut.click(
+							(function (i) {
+								return function () {
+									that.comm.getDeck(deckNames[i],
+											function (xml) {
+												that.setupDeck(xml, deckNames[i]);
+											});
+								};
+							})(i));
+
+
+					deckListBut.click(
+							(function (i) {
+								return function () {
+									that.comm.shareDeck(deckNames[i],
+										function(html) {
+											window.open(html, "_blank");
+										});
+								};
+							})(i));
+					
+					renameDeckBut.click(
+							(function (i, formatName, deckNameDiv) {
+								return function () {
+									that.renameDeck(deckNames[i], function (newDeckName) {
+										deckNameDiv.html(formatDeckName(formatName, newDeckName));
+										
+										if (that.deckName == deckNames[i]) 
+										{
+											that.deckName = newDeckName;
+											that.deckModified(that.deckContentsDirty);
+										}
+										deckNames[i] = newDeckName;
+									})
+								};
+							})(i, formatName, deckNameDiv));
+
+					deleteDeckBut.click(
+							(function (i) {
+								return function () {
+									if (confirm("Are you sure you want to delete this deck?")) {
+										that.comm.deleteDeck(deckNames[i],
+												function () {
+													if (that.deckName == deckNames[i]) {
+														that.deckName = null;
+														$("#editingDeck").text("New deck");
+														that.clearDeck();
+													}
+
+													that.loadDeckList();
+												});
+									}
+								};
+							})(i));
+				}
+			}
+
+			that.deckListDialog.dialog("open");
+		});
+	},
+	
+	loadLibraryList:function () {
+		var that = this;
+		this.comm.getLibraryDecks(function (xml) {
+			if (that.deckListDialog == null) {
+				that.deckListDialog = $("<div></div>")
+						.dialog({
+					title:"Library Decks",
+					autoOpen:false,
+					closeOnEscape:true,
+					resizable:true,
+					width:700,
+					height:400,
+					modal:true
+				});
+			}
+			that.deckListDialog.html("");
+			
+			function formatDeckName(formatName, deckName)
+			{
+				return "<b>[" + formatName + "]</b> - " + deckName;
+			}
+
+			var root = xml.documentElement;
+			if (root.tagName == "decks") {
+				var decks = root.getElementsByTagName("deck");
+				var deckNames = [];
+				for (var i = 0; i < decks.length; i++) {
+					var deck = decks[i];
+					var deckName = deck.childNodes[0].nodeValue;
+					deckNames[i] = deckName;
+					var formatName = deck.getAttribute("targetFormat");
+					var openDeckBut = $("<button title='Open deck'><span class='ui-icon ui-icon-folder-open'></span></button>").button();
+					var deckListBut = $("<button title='Deck list'><span class='ui-icon ui-icon-clipboard'></span></button>").button();
+
+					var deckElem = $("<div class='deckItem'></div>");
+					deckElem.append(openDeckBut);
+					deckElem.append(deckListBut);
+					var deckNameDiv = $("<span/>").html(formatDeckName(formatName, deckName));
+					deckElem.append(deckNameDiv);
+
+					that.deckListDialog.append(deckElem);
+
+					openDeckBut.click(
+							(function (i) {
+								return function () {
+									that.comm.getLibraryDeck(deckNames[i],
+										function (xml) {
+											that.setupDeck(xml, deckNames[i]);
+											that.deckModified(true);
+										});
+								};
+							})(i));
+
+
+					deckListBut.click(
+							(function (i) {
+								return function () {
+									window.open('/gemp-lotr-server/deck/libraryHtml?deckName=' + encodeURIComponent(deckNames[i]), "_blank");
+								};
+							})(i));
+				}
+			}
+
+			that.deckListDialog.dialog("open");
+		});
+	},
+
+	clickCardFunction:function (event) {
+		var that = this;
+
+		var tar = $(event.target);
+		if (tar.length == 1 && tar[0].tagName == "A")
+			return true;
+
+		if (!this.successfulDrag && this.cardInfoDialog.isOpen()) {
+			this.cardInfoDialog.mouseUp();
+			event.stopPropagation();
+			return false;
+		}
+
+		if (tar.hasClass("actionArea")) {
+			var selectedCardElem = tar.closest(".card");
+			if (event.which >= 1) {
+				if (!this.successfulDrag) {
+					if (event.shiftKey || event.which > 1) {
+						this.cardInfoDialog.showCard(selectedCardElem.data("card"));
+						return false;
+					} else if (selectedCardElem.hasClass("cardInCollection")) {
+						var cardData = selectedCardElem.data("card");
+						this.selectionFunc(cardData.blueprintId, cardData.zone);
+						cardData.tokens = {count:(parseInt(cardData.tokens["count"]) - 1)};
+						layoutTokens(selectedCardElem);
+					} else if (selectedCardElem.hasClass("packInCollection")) {
+						// if (confirm("Would you like to open this pack?")) {
+							this.comm.openPack(this.getCollectionType(), selectedCardElem.data("card").blueprintId, function () {
+								
+								setTimeout(function (){
+										console.log("forcing delivery");
+										that.comm.forcePackDelivery();
+									}, 1000);
+								that.cardFilter.getCollection();
+							}, {
+								"404":function () {
+									alert("You have no pack of this type in your collection.");
+								}
+							});
+						//}
+					} else if (selectedCardElem.hasClass("cardToSelect")) {
+						this.comm.openSelectionPack(this.getCollectionType(), this.packSelectionId, selectedCardElem.data("card").blueprintId, function () {
+							setTimeout(function (){
+										console.log("forcing delivery");
+										that.comm.forcePackDelivery();
+									}, 1000);
+							that.cardFilter.getCollection();
+						}, {
+							"404":function () {
+								alert("You have no pack of this type in your collection or that selection is not available for this pack.");
+							}
+						});
+						this.selectionDialog.dialog("close");
+					} else if (selectedCardElem.hasClass("selectionInCollection")) {
+						var selectionDialogResize = function () {
+							var width = that.selectionDialog.width() + 10;
+							var height = that.selectionDialog.height() + 10;
+							that.selectionGroup.setBounds(2, 2, width - 2 * 2, height - 2 * 2);
+						};
+
+						if (this.selectionDialog == null) {
+							this.selectionDialog = $("<div></div>")
+									.dialog({
+								title:"Choose one",
+								autoOpen:false,
+								closeOnEscape:true,
+								resizable:true,
+								width:400,
+								height:200,
+								modal:true
+							});
+
+							this.selectionGroup = new NormalCardGroup(this.selectionDialog, function (card) {
+								return true;
+							}, false);
+
+							this.selectionDialog.bind("dialogresize", selectionDialogResize);
+						}
+						this.selectionDialog.html("");
+						var cardData = selectedCardElem.data("card");
+						this.packSelectionId = cardData.blueprintId;
+						var selection = selectedCardElem.data("selection");
+						var blueprintIds = selection.split("|");
+						for (var i = 0; i < blueprintIds.length; i++) {
+							var card = new Card(blueprintIds[i], null, null, "selection", this.lastCardId++, "player");
+							var cardDiv = Card.CreateCardDiv(card.imageUrl, card.testingText, null, card.isFoil(), false, card.isPack(), card.hasErrata(), card.incomplete);
+							cardDiv.data("card", card);
+							cardDiv.addClass("cardToSelect");
+							this.selectionDialog.append(cardDiv);
+						}
+						openSizeDialog(that.selectionDialog);
+						selectionDialogResize();
+					} else if (selectedCardElem.hasClass("cardInDeck")) {
+						this.removeCardFromDeck(selectedCardElem);
+					}
+					event.stopPropagation();
+				}
+			}
+			return false;
+		}
+		return true;
+	},
+
+	dragCardData:null,
+	dragStartX:null,
+	dragStartY:null,
+	successfulDrag:null,
+
+	dragStartCardFunction:function (event) {
+		this.successfulDrag = false;
+		var tar = $(event.target);
+		if (tar.hasClass("actionArea")) {
+			var selectedCardElem = tar.closest(".card");
+			if (event.which == 1) {
+				this.dragCardData = selectedCardElem.data("card");
+				this.dragStartX = event.clientX;
+				this.dragStartY = event.clientY;
+				return false;
+			}
+		}
+		return true;
+	},
+
+	dragStopCardFunction:function (event) {
+		if (this.dragCardData != null) {
+			if (this.dragStartY - event.clientY >= 20) {
+				this.cardInfoDialog.showCard(this.dragCardData);
+				this.successfulDrag = true;
+			}
+			this.dragCardData = null;
+			this.dragStartX = null;
+			this.dragStartY = null;
+			return false;
+		}
+		return true;
+	},
+
+	getDeckContents:function () {
+		var ringBearer = $(".card", this.ringBearerDiv);
+		var ring = $(".card", this.ringDiv);
+
+		var result = "";
+		if (ringBearer.length > 0)
+			result += ringBearer.data("card").blueprintId;
+		result += "|";
+		if (ring.length > 0)
+			result += ring.data("card").blueprintId;
+		result += "|";
+
+		var sites = new Array();
+		$(".card", this.siteDiv).each(
+				function () {
+					sites.push($(this).data("card").blueprintId);
+				});
+		result += sites;
+		result += "|";
+
+		var cards = new Array();
+		$(".card", this.drawDeckDiv).each(
+				function () {
+					cards.push($(this).data("card").blueprintId);
+				});
+		result += cards;
+		
+		// Use effective format code to determine if Map should be included
+		let effectiveFormat = this.getEffectiveFormatCode();
+		if(effectiveFormat == "pc_movie" || effectiveFormat == "test_pc_movie") {
+			result += "|";
+			var map = $(".card", this.mapDiv);
+			if (map.length > 0)
+				result += map.data("card").blueprintId;
+		}
+		
+
+		return result;
+	},
+
+	saveDeck:function (reloadList) {
+		var that = this;
+
+		var deckContents = this.getDeckContents();
+		if (deckContents == null)
+			alert("Deck must contain at least Ring-bearer, The One Ring and 9 sites");
+		else
+			// For RTMD decks, the dropdown value is the league code (numeric string).
+			// The server resolves this to the underlying format for validation,
+			// but stores the league code so the deck stays associated with the league.
+			this.comm.saveDeck(this.deckName, that.formatSelect.val(), this.notes, deckContents, function (xml) {
+				that.deckModified(false);
+				alert("Deck was saved.  Refresh the Game Hall to see it!");
+			}, {
+				"400":function () {
+					alert("Invalid deck format.");
+				}
+			});
+	},
+
+	addCardToContainer:function (blueprintId, zone, container, tokens) {
+		// a future-prize placeholder that somehow ended up in a saved deck is dropped on load rather than shown
+		if (Card.isPlaceholder(blueprintId))
+			return $();
+		var card = new Card(blueprintId, null, null, zone, this.lastCardId++, "player");
+		var cardDiv = Card.CreateCardDiv(card.imageUrl, card.testingText, null, card.isFoil(), tokens, card.isPack(), card.hasErrata(), card.incomplete);
+		cardDiv.data("card", card);
+		container.append(cardDiv);
+		return cardDiv;
+	},
+
+	showPredefinedFilter:function (filter, container) {
+		this.specialSelection = filter;
+		this.cardFilter.setFilterOverride(this.specialSelection);
+
+		var that = this;
+		this.selectionFunc = function (blueprintId) {
+			var cardDiv = this.addCardToContainer(blueprintId, "special", container, false);
+			cardDiv.addClass("cardInDeck");
+			that.showNormalFilter();
+			that.layoutSpecialGroups();
+			that.deckModified(true);
+		};
+	},
+
+	showNormalFilter:function () {
+		this.specialSelection = this.defaultSelection;
+		this.cardFilter.setFilterOverride(this.specialSelection);
+		this.selectionFunc = this.addCardToDeckAndLayout;
+	},
+
+	addCardToDeckDontLayout:function (blueprintId, side) {
+		var that = this;
+		if (Card.isPlaceholder(blueprintId))
+			return;
+		if (side == "FREE_PEOPLE") {
+			this.addCardToDeck(blueprintId, side);
+		} else if (side == "SHADOW") {
+			this.addCardToDeck(blueprintId, side);
+		} else if (side == null) {
+			var div = this.addCardToContainer(blueprintId, side, this.siteDiv, false)
+			div.addClass("cardInDeck");
+		}
+	},
+
+	addCardToDeckAndLayout:function (blueprintId, side) {
+		var that = this;
+		if (Card.isPlaceholder(blueprintId))
+			return;
+		if (side == "FREE_PEOPLE") {
+			this.addCardToDeck(blueprintId, side);
+			that.fpDeckGroup.layoutCards();
+		} else if (side == "SHADOW") {
+			this.addCardToDeck(blueprintId, side);
+			that.shadowDeckGroup.layoutCards();
+		} else if (side == null) {
+			var div = this.addCardToContainer(blueprintId, side, this.siteDiv, false)
+			div.addClass("cardInDeck");
+			that.siteGroup.layoutCards();
+		}
+		that.deckModified(true);
+	},
+
+	deckModified:function (value) {
+		var name = (this.deckName == null) ? "New deck" : this.deckName;
+		if (value)
+		{
+			this.deckValidationDirty = true;
+			this.deckContentsDirty = true;
+			$("#editingDeck").html("<font color='orange'>*" + name + " - modified</font>");
+
+      //Enable the errata button if user starts adding cards to empty 'Anything Goes' deck after the page was initialized
+			let formatCode = this.getEffectiveFormatCode();
+            if(formatCode == "rev_tow_sta") {
+                $("#convertErrataBut").button("option", "disabled", false);
             }
-        }
-        else if (end > 0) {
-            processedLine = line.slice(end+1);
-        }
-        if (processedLine.indexOf("(") > -1 || processedLine.indexOf(")") > -1 ||
-            processedLine.indexOf("[") > -1 || processedLine.indexOf("]") > -1) {
-                return this.removeNotes(processedLine);
-            }
-        return processedLine;
-    },
+		}
+		else
+		{
+			this.deckContentsDirty = false;
+			$("#editingDeck").text(name);
+		}
+	},
 
-    importDeckCollection:function (decklist, callback) {
-        this.comm.importCollection(decklist, function (xml) {
-            callback(xml);
-        }, {
-            "414":function () {
-                alert("Deck too large to import.");
-            }
-        });
-    },
+	addCardToDeck:function (blueprintId, side) {
+		var that = this;
+		if (Card.isPlaceholder(blueprintId))
+			return;
+		var added = false;
+		$(".card.cardInDeck", this.drawDeckDiv).each(
+				function () {
+					var cardData = $(this).data("card");
+					if (cardData.blueprintId == blueprintId) {
+						var attDiv = that.addCardToContainer(blueprintId, "attached", that.drawDeckDiv, false);
+						cardData.attachedCards.push(attDiv);
+						added = true;
+					}
+				});
+		if (!added) {
+			var div = this.addCardToContainer(blueprintId, side, this.drawDeckDiv, false)
+			div.addClass("cardInDeck");
+		}
 
-    loadDeckList:function () {
-        var that = this;
-        this.comm.getDecks(function (xml) {
-            if (that.deckListDialog == null) {
-                that.deckListDialog = $("<div></div>")
-                        .dialog({
-                    title:"Your stored decks",
-                    autoOpen:false,
-                    closeOnEscape:true,
-                    resizable:true,
-                    width:400,
-                    height:400,
-                    modal:true
-                });
-            }
-            that.deckListDialog.html("");
+		this.deckModified(true);
+	},
 
-            var root = xml.documentElement;
-            if (root.tagName == "decks") {
-                var decks = root.getElementsByTagName("deck");
-                for (var i = 0; i < decks.length; i++) {
-                    var deck = decks[i];
-                    var deckName = decks[i].childNodes[0].nodeValue;
-                    var openDeckBut = $("<button title='Open deck'><span class='ui-icon ui-icon-folder-open'></span></button>").button();
-                    var deckListBut = $("<button title='Deck list'><span class='ui-icon ui-icon-clipboard'></span></button>").button();
-                    var deleteDeckBut = $("<button title='Delete deck'><span class='ui-icon ui-icon-trash'></span></button>").button();
+	updateDeckStats:function () {
+		var that = this;
+		var deckContents = this.getDeckContents();
+		if (deckContents != null && deckContents != "") 
+		{
+			// Use effective format code for validation, not the composite RTMD key
+			var effectiveFormat = this.getEffectiveFormatCode();
+			var selectedOption = $("#formatSelect option:selected");
+			// Pass the league code if this is an RTMD league, so the server
+			// can apply deck building overrides from the player's meta-site
+			var leagueCode = this.isRtmdFormat() ? this.formatSelect.val() : null;
+			this.comm.getDeckStats(deckContents,
+				  effectiveFormat, // format
+				  selectedOption.data("type"), // collection name
+					function (html)
+					{
+						$("#deckStats").html(html);
+					},
+					{
+						"400":function ()
+						{
+							alert("Invalid deck for getting stats.");
+						}
+					},
+					leagueCode);
+		} else {
+			$("#deckStats").html("Deck has no Ring, Ring-bearer or all 9 sites");
+		}
+	},
+	
+	updateFormatOptions:function() {
+		var that = this;
+		var currentFormat = $("#formatSelect").val();
+		
+		//this.comm.getLeagues(function() { 
+			that.comm.getFormats(false,
+				function (json) 
+				{
+					that.formatSelect.empty();
+					that.formats = json.Formats;
+					
+					let max = 0;
+					let options = {};
+					for (const [code, format] of Object.entries(that.formats)) {
+						if(!format.hall)
+							continue;
+						
+						var option = $("<option/>")
+							.attr("value", code)
+							.attr("data-type", "default") // default collection for non-limited formats
+							.text(format.name);
+						options[format.order] = option;
+						if(format.order > max) {
+							max = format.order;
+						}
+					}
+					
+					for(let i = -1; i <= max; i++) {
+						if(Object.hasOwn(options, i)) {
+							that.formatSelect.append(options[i]);
+						}
+					}
+					
+					that.formatSelect.val(currentFormat);
+					that.formatSelect.change();
+					const sleep = ms => new Promise(r => setTimeout(r, ms));
+					that.showNormalFilter();
 
-                    var deckElem = $("<div class='deckItem'></div>");
-                    deckElem.append(openDeckBut);
-                    deckElem.append(deckListBut);
-                    deckElem.append(deleteDeckBut);
-                    deckElem.append($("<div/>").text(deckName).html());
+					that.formatsInitialized = true;
 
-                    that.deckListDialog.append(deckElem);
+					that.getCollectionTypes();
+				}, 
+				{
+					"400":function () 
+					{
+						alert("Could not retrieve formats.");
+					}
+				})
+		//})
+		;
+	},
 
-                    openDeckBut.click(
-                            (function (deckName) {
-                                return function () {
-                                    that.comm.getDeck(deckName,
-                                            function (xml) {
-                                                that.setupDeck(xml, deckName);
-                                            });
-                                };
-                            })(deckName));
+	removeCardFromDeck:function (cardDiv) {
+		var cardData = cardDiv.data("card");
+		if (cardData.attachedCards.length > 0) {
+			cardData.attachedCards[0].remove();
+			cardData.attachedCards.splice(0, 1);
+		} else {
+			cardDiv.remove();
+		}
+		var cardInCollectionElem = null;
+		$(".card", this.normalCollectionDiv).each(
+				function () {
+					var tempCardData = $(this).data("card");
+					if (tempCardData.blueprintId == cardData.blueprintId)
+						cardInCollectionElem = $(this);
+				});
+		if (cardInCollectionElem != null) {
+			var cardInCollectionData = cardInCollectionElem.data("card");
+			cardInCollectionData.tokens = {count:(parseInt(cardInCollectionData.tokens["count"]) + 1)};
+			layoutTokens(cardInCollectionElem);
+		}
 
-                    deckListBut.click(
-                            (function (deckName) {
-                                return function () {
-                                    window.open('/gemp-lotr-server/deck/html?deckName=' + encodeURIComponent(deckName), "_blank");
-                                };
-                            })(deckName));
+		this.layoutDeck();
+		this.deckModified(true);
+	},
 
-                    deleteDeckBut.click(
-                            (function (deckName) {
-                                return function () {
-                                    if (confirm("Are you sure you want to delete this deck?")) {
-                                        that.comm.deleteDeck(deckName,
-                                                function () {
-                                                    if (that.deckName == deckName) {
-                                                        that.deckName = null;
-                                                        $("#editingDeck").text("New deck");
-                                                        that.clearDeck();
-                                                    }
+	clearDeck:function () {
+		$(".cardInDeck").each(
+				function () {
+					var cardData = $(this).data("card");
+					for (var i = 0; i < cardData.attachedCards.length; i++)
+						cardData.attachedCards[i].remove();
+				});
+		$(".cardInDeck").remove();
 
-                                                    that.loadDeckList();
-                                                });
-                                    }
-                                };
-                            })(deckName));
-                }
-            }
+		this.layoutUI(false);
 
-            that.deckListDialog.dialog("open");
-        });
-    },
+		this.deckValidationDirty = true;
+		this.deckModified(false);
+	},
 
-    clickCardFunction:function (event) {
-        var that = this;
-
-        var tar = $(event.target);
-        if (tar.length == 1 && tar[0].tagName == "A")
-            return true;
-
-        if (!this.successfulDrag && this.infoDialog.dialog("isOpen")) {
-            this.infoDialog.dialog("close");
-            event.stopPropagation();
-            return false;
-        }
-
-        if (tar.hasClass("actionArea")) {
-            var selectedCardElem = tar.closest(".card");
-            if (event.which == 1) {
-                if (!this.successfulDrag) {
-                    if (event.shiftKey) {
-                        this.displayCardInfo(selectedCardElem.data("card"));
-                    } else if (selectedCardElem.hasClass("cardInCollection")) {
-                        var cardData = selectedCardElem.data("card");
-                        this.selectionFunc(cardData.blueprintId, cardData.zone);
-                        cardData.tokens = {count:(parseInt(cardData.tokens["count"]) - 1)};
-                        layoutTokens(selectedCardElem);
-                    } else if (selectedCardElem.hasClass("packInCollection")) {
-                        if (confirm("Would you like to open this pack?")) {
-                            this.comm.openPack(this.getCollectionType(), selectedCardElem.data("card").blueprintId, function () {
-                                that.cardFilter.getCollection();
-                            }, {
-                                "404":function () {
-                                    alert("You have no pack of this type in your collection.");
-                                }
-                            });
-                        }
-                    } else if (selectedCardElem.hasClass("cardToSelect")) {
-                        this.comm.openSelectionPack(this.getCollectionType(), this.packSelectionId, selectedCardElem.data("card").blueprintId, function () {
-                            that.cardFilter.getCollection();
-                        }, {
-                            "404":function () {
-                                alert("You have no pack of this type in your collection or that selection is not available for this pack.");
-                            }
-                        });
-                        this.selectionDialog.dialog("close");
-                    } else if (selectedCardElem.hasClass("selectionInCollection")) {
-                        var selectionDialogResize = function () {
-                            var width = that.selectionDialog.width() + 10;
-                            var height = that.selectionDialog.height() + 10;
-                            that.selectionGroup.setBounds(2, 2, width - 2 * 2, height - 2 * 2);
-                        };
-
-                        if (this.selectionDialog == null) {
-                            this.selectionDialog = $("<div></div>")
-                                    .dialog({
-                                title:"Choose one",
-                                autoOpen:false,
-                                closeOnEscape:true,
-                                resizable:true,
-                                width:400,
-                                height:200,
-                                modal:true
-                            });
-
-                            this.selectionGroup = new NormalCardGroup(this.selectionDialog, function (card) {
-                                return true;
-                            }, false);
-
-                            this.selectionDialog.bind("dialogresize", selectionDialogResize);
-                        }
-                        this.selectionDialog.html("");
-                        var cardData = selectedCardElem.data("card");
-                        this.packSelectionId = cardData.blueprintId;
-                        var selection = selectedCardElem.data("selection");
-                        var blueprintIds = selection.split("|");
-                        for (var i = 0; i < blueprintIds.length; i++) {
-                            var card = new Card(blueprintIds[i], "selection", "selection" + i, "player");
-                            var cardDiv = createCardDiv(card.imageUrl, null, card.isFoil(), false, card.isPack(), card.hasErrata());
-                            cardDiv.data("card", card);
-                            cardDiv.addClass("cardToSelect");
-                            this.selectionDialog.append(cardDiv);
-                        }
-                        openSizeDialog(that.selectionDialog);
-                        selectionDialogResize();
-                    } else if (selectedCardElem.hasClass("cardInDeck")) {
-                        this.removeCardFromDeck(selectedCardElem);
-                    }
-                    event.stopPropagation();
-                }
-            }
-            return false;
-        }
-        return true;
-    },
-
-    dragCardData:null,
-    dragStartX:null,
-    dragStartY:null,
-    successfulDrag:null,
-
-    dragStartCardFunction:function (event) {
-        this.successfulDrag = false;
-        var tar = $(event.target);
-        if (tar.hasClass("actionArea")) {
-            var selectedCardElem = tar.closest(".card");
-            if (event.which == 1) {
-                this.dragCardData = selectedCardElem.data("card");
-                this.dragStartX = event.clientX;
-                this.dragStartY = event.clientY;
-                return false;
-            }
-        }
-        return true;
-    },
-
-    dragStopCardFunction:function (event) {
-        if (this.dragCardData != null) {
-            if (this.dragStartY - event.clientY >= 20) {
-                this.displayCardInfo(this.dragCardData);
-                this.successfulDrag = true;
-            }
-            this.dragCardData = null;
-            this.dragStartX = null;
-            this.dragStartY = null;
-            return false;
-        }
-        return true;
-    },
-
-    displayCardInfo:function (card) {
-        this.infoDialog.html("");
-        this.infoDialog.html("<div style='scroll: auto'></div>");
-        this.infoDialog.append(createFullCardDiv(card.imageUrl, card.foil, card.horizontal, card.isPack()));
-        if (card.hasWikiInfo())
-            this.infoDialog.append("<div><a href='" + card.getWikiLink() + "' target='_blank'>Wiki</a></div>");
-        var windowWidth = $(window).width();
-        var windowHeight = $(window).height();
-
-        var horSpace = 30;
-        var vertSpace = 45;
-
-        if (card.horizontal) {
-            // 500x360
-            this.infoDialog.dialog({width:Math.min(500 + horSpace, windowWidth), height:Math.min(380 + vertSpace, windowHeight)});
-        } else {
-            // 360x500
-            this.infoDialog.dialog({width:Math.min(360 + horSpace, windowWidth), height:Math.min(520 + vertSpace, windowHeight)});
-        }
-        this.infoDialog.dialog("open");
-    },
-
-    getDeckContents:function () {
-        var ringBearer = $(".card", this.ringBearerDiv);
-        var ring = $(".card", this.ringDiv);
-
-        var result = "";
-        if (ringBearer.length > 0)
-            result += ringBearer.data("card").blueprintId;
-        result += "|";
-        if (ring.length > 0)
-            result += ring.data("card").blueprintId;
-        result += "|";
-
-        var sites = new Array();
-        $(".card", this.siteDiv).each(
-                function () {
-                    sites.push($(this).data("card").blueprintId);
-                });
-        result += sites;
-        result += "|";
-
-        var cards = new Array();
-        $(".card", this.drawDeckDiv).each(
-                function () {
-                    cards.push($(this).data("card").blueprintId);
-                });
-        result += cards;
-
-        return result;
-    },
-
-    saveDeck:function (reloadList) {
-        var that = this;
-
-        var deckContents = this.getDeckContents();
-        if (deckContents == null)
-            alert("Deck must contain at least Ring-bearer, The One Ring and 9 sites");
-        else
-            this.comm.saveDeck(this.deckName, deckContents, function (xml) {
-                that.deckModified(false);
-                alert("Deck was saved");
-            }, {
-                "400":function () {
-                    alert("Invalid deck format.");
-                }
-            });
-    },
-
-    addCardToContainer:function (blueprintId, zone, container, tokens) {
-        var card = new Card(blueprintId, zone, "deck", "player");
-        var cardDiv = createCardDiv(card.imageUrl, null, card.isFoil(), tokens, card.isPack(), card.hasErrata());
-        cardDiv.data("card", card);
-        container.append(cardDiv);
-        this.deckDirty = true;
-        return cardDiv;
-    },
-
-    showPredefinedFilter:function (filter, container) {
-        this.cardFilter.enableDetailFilters(false);
-        this.specialSelection = true;
-        this.cardFilter.setFilter(filter);
-
-        var that = this;
-        this.selectionFunc = function (blueprintId) {
-            var cardDiv = this.addCardToContainer(blueprintId, "special", container, false);
-            cardDiv.addClass("cardInDeck");
-            that.showNormalFilter();
-            that.layoutSpecialGroups();
-            that.deckModified(true);
-        };
-    },
-
-    showNormalFilter:function () {
-        this.cardFilter.enableDetailFilters(true);
-        this.specialSelection = false;
-        this.cardFilter.setFilter("");
-
-        this.selectionFunc = this.addCardToDeckAndLayout;
-    },
-
-    addCardToDeckDontLayout:function (blueprintId, side) {
-        var that = this;
-        if (side == "FREE_PEOPLE") {
-            this.addCardToDeck(blueprintId, side);
-        } else if (side == "SHADOW") {
-            this.addCardToDeck(blueprintId, side);
-        } else if (side == null) {
-            var div = this.addCardToContainer(blueprintId, side, this.siteDiv, false)
-            div.addClass("cardInDeck");
-        }
-    },
-
-    addCardToDeckAndLayout:function (blueprintId, side) {
-        var that = this;
-        if (side == "FREE_PEOPLE") {
-            this.addCardToDeck(blueprintId, side);
-            that.fpDeckGroup.layoutCards();
-        } else if (side == "SHADOW") {
-            this.addCardToDeck(blueprintId, side);
-            that.shadowDeckGroup.layoutCards();
-        } else if (side == null) {
-            var div = this.addCardToContainer(blueprintId, side, this.siteDiv, false)
-            div.addClass("cardInDeck");
-            that.siteGroup.layoutCards();
-        }
-        that.deckModified(true);
-    },
-
-    deckModified:function (value) {
-        var name = (this.deckName == null) ? "New deck" : this.deckName;
-        if (value)
-            $("#editingDeck").text(name + " - modified");
-        else
-            $("#editingDeck").text(name);
-    },
-
-    addCardToDeck:function (blueprintId, side) {
-        var that = this;
-        var added = false;
-        $(".card.cardInDeck", this.drawDeckDiv).each(
-                function () {
-                    var cardData = $(this).data("card");
-                    if (cardData.blueprintId == blueprintId) {
-                        var attDiv = that.addCardToContainer(blueprintId, "attached", that.drawDeckDiv, false);
-                        cardData.attachedCards.push(attDiv);
-                        added = true;
-                    }
-                });
-        if (!added) {
-            var div = this.addCardToContainer(blueprintId, side, this.drawDeckDiv, false)
-            div.addClass("cardInDeck");
-        }
-
-        this.deckDirty = true;
-    },
-
-    checkDeckStatsDirty:function () {
-        if (this.deckDirty) {
-            this.deckDirty = false;
-            this.updateDeckStats();
-        } else {
-            var that = this;
-            setTimeout(
-                    function () {
-                        that.checkDeckStatsDirty();
-                    }, that.checkDirtyInterval);
-        }
-    },
-
-    updateDeckStats:function () {
-        var that = this;
-        var deckContents = this.getDeckContents();
-        if (deckContents != null) {
-            this.comm.getDeckStats(deckContents,
-                    function (html) {
-                        $("#deckStats").html(html);
-                        setTimeout(
-                                function () {
-                                    that.checkDeckStatsDirty();
-                                }, that.checkDirtyInterval);
-                    }, {
-                "400":function () {
-                    alert("Invalid deck for getting stats.");
-                }
-            });
-        } else {
-            $("#deckStats").html("Deck has no Ring, Ring-bearer or all 9 sites");
-            setTimeout(
-                    function () {
-                        that.checkDeckStatsDirty();
-                    }, that.checkDirtyInterval);
-        }
-    },
-
-    removeCardFromDeck:function (cardDiv) {
-        var cardData = cardDiv.data("card");
-        if (cardData.attachedCards.length > 0) {
-            cardData.attachedCards[0].remove();
-            cardData.attachedCards.splice(0, 1);
-        } else {
-            cardDiv.remove();
-        }
-        var cardInCollectionElem = null;
-        $(".card", this.normalCollectionDiv).each(
-                function () {
-                    var tempCardData = $(this).data("card");
-                    if (tempCardData.blueprintId == cardData.blueprintId)
-                        cardInCollectionElem = $(this);
-                });
-        if (cardInCollectionElem != null) {
-            var cardInCollectionData = cardInCollectionElem.data("card");
-            cardInCollectionData.tokens = {count:(parseInt(cardInCollectionData.tokens["count"]) + 1)};
-            layoutTokens(cardInCollectionElem);
-        }
-
-        this.layoutDeck();
-        this.deckDirty = true;
-        this.deckModified(true);
-    },
-
-    clearDeck:function () {
+    getCardsInDeck:function () {
+        var cards = [];
         $(".cardInDeck").each(
-                function () {
-                    var cardData = $(this).data("card");
-                    for (var i = 0; i < cardData.attachedCards.length; i++)
-                        cardData.attachedCards[i].remove();
-                });
-        $(".cardInDeck").remove();
-
-        this.layoutUI(false);
-
-        this.deckDirty = true;
+            function () {
+                var cardData = $(this).data("card").bareBlueprint;
+                cards.push(cardData);
+            });
+        return cards;
     },
 
-    setupDeck:function (xml, deckName) {
-        var root = xml.documentElement;
-        if (root.tagName == "deck") {
-            this.clearDeck();
-            this.deckName = deckName;
-            $("#editingDeck").text(deckName);
+	setupDeck:function (xml, deckName) {
+		var root = xml.documentElement;
+		if (root.tagName == "deck") {
+			this.clearDeck();
+			this.deckName = deckName;
+			$("#editingDeck").text(deckName);
+			
+			var notes = root.getElementsByTagName("notes");
+			this.notes = notes[0].innerHTML;
 
-            var ringBearer = root.getElementsByTagName("ringBearer");
-            if (ringBearer.length > 0)
-                this.addCardToContainer(ringBearer[0].getAttribute("blueprintId"), "deck", this.ringBearerDiv, false).addClass("cardInDeck");
+			var ringBearer = root.getElementsByTagName("ringBearer");
+			if (ringBearer.length > 0)
+				this.addCardToContainer(ringBearer[0].getAttribute("blueprintId"), "deck", this.ringBearerDiv, false).addClass("cardInDeck");
 
-            var ring = root.getElementsByTagName("ring");
-            if (ring.length > 0)
-                this.addCardToContainer(ring[0].getAttribute("blueprintId"), "deck", this.ringDiv, false).addClass("cardInDeck");
+			var ring = root.getElementsByTagName("ring");
+			if (ring.length > 0)
+				this.addCardToContainer(ring[0].getAttribute("blueprintId"), "deck", this.ringDiv, false).addClass("cardInDeck");
 
-            var sites = root.getElementsByTagName("site");
-            for (var i = 0; i < sites.length; i++)
-                this.addCardToContainer(sites[i].getAttribute("blueprintId"), "deck", this.siteDiv, false).addClass("cardInDeck");
+			var map = root.getElementsByTagName("map");
+			if (map.length > 0)
+				this.addCardToContainer(map[0].getAttribute("blueprintId"), "deck", this.mapDiv, false).addClass("cardInDeck");
 
-            var cards = root.getElementsByTagName("card");
-            for (var i = 0; i < cards.length; i++)
-                this.addCardToDeck(cards[i].getAttribute("blueprintId"), cards[i].getAttribute("side"));
+			var sites = root.getElementsByTagName("site");
+			for (var i = 0; i < sites.length; i++)
+				this.addCardToContainer(sites[i].getAttribute("blueprintId"), "deck", this.siteDiv, false).addClass("cardInDeck");
 
-            this.layoutUI(false);
+			var cards = root.getElementsByTagName("card");
+			for (var i = 0; i < cards.length; i++)
+				this.addCardToDeck(cards[i].getAttribute("blueprintId"), cards[i].getAttribute("side"));
 
-            this.cardFilter.getCollection();
-        }
-        this.deckModified(false);
-    },
+			var targetFormat = root.getElementsByTagName("targetFormat");
+			if (targetFormat.length > 0)
+			{
+				var formatCode = targetFormat[0].getAttribute("formatCode");
+				var leagueCode = targetFormat[0].getAttribute("leagueCode");
 
-    clearCollection:function () {
-        $(".card", this.normalCollectionDiv).remove();
-    },
+				// If the deck is associated with an active RTMD league,
+				// select that league entry in the dropdown instead of the
+				// underlying format.
+				if (leagueCode && this.rtmdLeagues && this.rtmdLeagues[leagueCode]) {
+					this.formatSelect.val(leagueCode);
+				} else {
+					this.formatSelect.val(formatCode);
+				}
+				this.formatSelect.change();
+			}
 
-    addCardToCollection:function (type, blueprintId, count, side, contents) {
-        if (type == "pack") {
-            if (blueprintId.substr(0, 3) == "(S)") {
-                var card = new Card(blueprintId, "pack", "collection", "player");
-                card.tokens = {"count":count};
-                var cardDiv = createCardDiv(card.imageUrl, null, false, true, true, false);
-                cardDiv.data("card", card);
-                cardDiv.data("selection", contents);
-                cardDiv.addClass("selectionInCollection");
-            } else {
-                var card = new Card(blueprintId, "pack", "collection", "player");
-                card.tokens = {"count":count};
-                var cardDiv = createCardDiv(card.imageUrl, null, false, true, true, false);
-                cardDiv.data("card", card);
-                cardDiv.addClass("packInCollection");
-            }
-            this.normalCollectionDiv.append(cardDiv);
-        } else if (type == "card") {
-            var card = new Card(blueprintId, side, "collection", "player");
-            var countInDeck = 0;
-            $(".card", this.deckDiv).each(
-                    function () {
-                        var tempCardData = $(this).data("card");
-                        if (blueprintId == tempCardData.blueprintId)
-                            countInDeck++;
-                    });
-            card.tokens = {"count":count - countInDeck};
-            var cardDiv = createCardDiv(card.imageUrl, null, card.isFoil(), true, false, card.hasErrata());
-            cardDiv.data("card", card);
-            cardDiv.addClass("cardInCollection");
-            this.normalCollectionDiv.append(cardDiv);
-        }
-    },
+			this.layoutUI(false);
 
-    finishCollection:function () {
-        this.normalCollectionGroup.layoutCards();
-    },
+			this.cardFilter.getCollection();
+		}
+		this.deckModified(false);
+	},
 
-    layoutUI:function (layoutDivs) {
-        if (layoutDivs) {
-            var manageHeight = 23;
+	clearCollection:function () {
+		$(".card", this.normalCollectionDiv).remove();
+	},
 
-            var padding = 5;
-            var collectionWidth = this.collectionDiv.width();
-            var collectionHeight = this.collectionDiv.height();
+	addCardToCollection:function (type, blueprintId, count, side, contents) {
+		if (type == "pack") {
+			var card = new Card(blueprintId, null, null, "pack", this.lastCardId++, "player");
+			card.tokens = {"count":count};
+			var cardDiv = Card.CreateCardDiv(card.imageUrl, null, null, false, true, true);
+			cardDiv.data("card", card);
+			
+			if (blueprintId.substr(0, 3) == "(S)") {
+				cardDiv.data("selection", contents);
+				cardDiv.addClass("selectionInCollection");
+			} else {
+				cardDiv.addClass("packInCollection");
+			}
+			this.normalCollectionDiv.append(cardDiv);
+		} else if (type == "card" && Card.isPlaceholder(blueprintId)) {
+			// A promised prize: visible (and inspectable with shift/right-click) but not something to put in a deck,
+			// so it gets neither the cardInCollection class nor a deck count.
+			var placeholder = new Card(blueprintId, null, null, side, this.lastCardId++, "player");
+			placeholder.tokens = {"count":count};
+			var placeholderDiv = Card.CreateCardDiv(placeholder.imageUrl, null, null, false, true, false, false, false);
+			placeholderDiv.data("card", placeholder);
+			placeholderDiv.addClass("placeholderInCollection");
+			this.normalCollectionDiv.append(placeholderDiv);
+		} else if (type == "card") {
+			var card = new Card(blueprintId, null, null, side, this.lastCardId++, "player");
+			var countInDeck = 0;
+			$(".card", this.deckDiv).each(
+					function () {
+						var tempCardData = $(this).data("card");
+						if (blueprintId == tempCardData.blueprintId)
+							countInDeck++;
+					});
+			card.tokens = {"count":count - countInDeck};
+			var cardDiv = Card.CreateCardDiv(card.imageUrl, card.testingText, null, card.isFoil(), true, card.isPack(), card.hasErrata(), card.incomplete);
+			cardDiv.data("card", card);
+			cardDiv.addClass("cardInCollection");
+			this.normalCollectionDiv.append(cardDiv);
+		}
+	},
 
-            var deckWidth = this.deckDiv.width();
-            var deckHeight = this.deckDiv.height() - (manageHeight + padding);
+	finishCollection:function () {
+		this.normalCollectionGroup.layoutCards();
+	},
 
-            var rowHeight = Math.floor((deckHeight - 6 * padding) / 5);
-            var sitesWidth = Math.floor(1.5 * deckHeight / 5);
-            sitesWidth = Math.min(sitesWidth, 250);
+	layoutUI:function (layoutDivs) {
+		if (layoutDivs) {
+			var manageHeight = 23;
 
-            this.manageDecksDiv.css({position:"absolute", left:padding, top:padding, width:deckWidth, height:manageHeight});
+			var padding = 5;
+			var collectionWidth = this.collectionDiv.width();
+			var collectionHeight = this.collectionDiv.height();
 
-            this.ringBearerDiv.css({ position:"absolute", left:padding, top:manageHeight + 2 * padding, width:Math.floor((sitesWidth - padding) / 2), height:rowHeight });
-            this.ringBearerGroup.setBounds(0, 0, Math.floor((sitesWidth - padding) / 2), rowHeight);
-            this.ringDiv.css({ position:"absolute", left:Math.floor((sitesWidth + 3 * padding) / 2), top:manageHeight + 2 * padding, width:Math.floor((sitesWidth - padding) / 2), height:rowHeight });
-            this.ringGroup.setBounds(0, 0, Math.floor((sitesWidth - padding) / 2), rowHeight);
+			var deckWidth = this.deckDiv.width();
+			var deckHeight = this.deckDiv.height() - (manageHeight + padding);
 
-            this.siteDiv.css({ position:"absolute", left:padding, top:manageHeight + 3 * padding + rowHeight, width:sitesWidth, height:deckHeight - rowHeight - 2 * padding});
-            this.siteGroup.setBounds(0, 0, sitesWidth, deckHeight - rowHeight - 2 * padding);
+			var rowHeight = Math.floor((deckHeight - 6 * padding) / 5);
+			var sitesWidth = Math.floor(1.5 * deckHeight / 5);
+			sitesWidth = Math.min(sitesWidth, 250);
+			
+			var halfWidth = Math.floor((sitesWidth - padding) / 2);
+			var rightHalfLeft = Math.floor((sitesWidth + 3 * padding) / 2);
 
-            this.drawDeckDiv.css({ position:"absolute", left:padding * 2 + sitesWidth, top:manageHeight + 2 * padding, width:deckWidth - (sitesWidth + padding) - padding, height:deckHeight - 2 * padding - 50 });
-            this.fpDeckGroup.setBounds(0, 0, deckWidth - (sitesWidth + padding) - padding, (deckHeight - 2 * padding - 50) / 2);
-            this.shadowDeckGroup.setBounds(0, (deckHeight - 2 * padding - 50) / 2, deckWidth - (sitesWidth + padding) - padding, (deckHeight - 2 * padding - 50) / 2);
+			this.manageDecksDiv.css({position:"absolute", left:padding, top:padding, width:deckWidth, height:manageHeight});
 
-            this.bottomBarDiv.css({ position:"absolute", left:padding * 2 + sitesWidth, top:manageHeight + padding + deckHeight - 50, width:deckWidth - (sitesWidth + padding) - padding, height:50 });
+			// Row 1: Ring-bearer (left) and One Ring (right) — always visible
+			this.ringBearerDiv.css({ position:"absolute", left:padding, top:manageHeight + 2 * padding, width:halfWidth, height:rowHeight });
+			this.ringBearerGroup.setBounds(0, 0, halfWidth, rowHeight);
+			this.ringDiv.css({ display:"block", position:"absolute", left:rightHalfLeft, top:manageHeight + 2 * padding, width:halfWidth, height:rowHeight });
+			this.ringGroup.setBounds(0, 0, halfWidth, rowHeight);
+			
+			// Row 2: Map (left) and/or Race (right) — conditional
+			var showSpecialRow = this.showMap || this.showRace;
+			var specialRowTop = manageHeight + 2 * padding + rowHeight;
+			
+			if (this.showMap) {
+				this.mapDiv.css({ display:"block", position:"absolute", left:padding, top:specialRowTop, width:halfWidth, height:rowHeight });
+				this.mapGroup.setBounds(0, 0, halfWidth, rowHeight);
+			} else {
+				this.mapDiv.css({ display:"none" });
+				this.mapGroup.setBounds(0, 0, halfWidth, rowHeight);
+			}
+			
+			if (this.showRace) {
+				// Race always goes on the right half of row 2
+				this.raceDiv.css({ display:"block", position:"absolute", left:rightHalfLeft, top:specialRowTop, width:halfWidth, height:rowHeight });
+				this.raceGroup.setBounds(0, 0, halfWidth, rowHeight);
+			} else {
+				this.raceDiv.css({ display:"none" });
+				this.raceGroup.setBounds(0, 0, halfWidth, rowHeight);
+			}
+			
+			// Sites: positioned below the special row (or directly below row 1 if no special row)
+			if (showSpecialRow) {
+				this.siteDiv.css({ position:"absolute", left:padding, top:manageHeight + 3 * padding + 2 * rowHeight, width:sitesWidth, height:deckHeight - 2*rowHeight - 2 * padding});
+				this.siteGroup.setBounds(0, 0, sitesWidth, deckHeight - 2*rowHeight - 2 * padding);
+			} else {
+				this.siteDiv.css({ position:"absolute", left:padding, top:manageHeight + 3 * padding + rowHeight, width:sitesWidth, height:deckHeight - rowHeight - 2 * padding});
+				this.siteGroup.setBounds(0, 0, sitesWidth, deckHeight - rowHeight - 2 * padding);
+			}
+			
+			this.drawDeckDiv.css({ position:"absolute", left:padding * 2 + sitesWidth, top:manageHeight + 2 * padding, width:deckWidth - (sitesWidth + padding) - padding, height:deckHeight - 2 * padding - 50 });
+			this.fpDeckGroup.setBounds(0, 0, deckWidth - (sitesWidth + padding) - padding, (deckHeight - 2 * padding - 50) / 2);
+			this.shadowDeckGroup.setBounds(0, (deckHeight - 2 * padding - 50) / 2, deckWidth - (sitesWidth + padding) - padding, (deckHeight - 2 * padding - 50) / 2);
 
-            this.cardFilter.layoutUi(padding, 0, collectionWidth - padding, 160);
-            this.normalCollectionDiv.css({ position:"absolute", left:padding, top:160, width:collectionWidth - padding * 2, height:collectionHeight - 160 });
+			this.bottomBarDiv.css({ position:"absolute", left:padding * 2 + sitesWidth, top:manageHeight + padding + deckHeight - 50, width:deckWidth - (sitesWidth + padding) - padding, height:70 });
 
-            this.normalCollectionGroup.setBounds(0, 0, collectionWidth - padding * 2, collectionHeight - 160);
-        } else {
-            this.layoutDeck();
-            this.normalCollectionGroup.layoutCards();
-        }
-    },
+			this.cardFilter.layoutUi(padding, 0, collectionWidth - padding, 160);
+			//this.normalCollectionDiv.css({ position:"absolute", left:padding, top:160, width:collectionWidth - padding * 2, height:collectionHeight - 160 });
 
-    layoutSpecialGroups:function () {
-        this.ringBearerGroup.layoutCards();
-        this.ringGroup.layoutCards();
-        this.siteGroup.layoutCards();
-    },
+			this.normalCollectionGroup.setBounds(0, 0, collectionWidth - padding * 2, collectionHeight - 400);
+		} else {
+			this.layoutDeck();
+			this.normalCollectionGroup.layoutCards();
+		}
+	},
 
-    layoutDeck:function () {
-        this.layoutSpecialGroups();
-        this.fpDeckGroup.layoutCards();
-        this.shadowDeckGroup.layoutCards();
-    },
+	layoutSpecialGroups:function () {
+		this.ringBearerGroup.layoutCards();
+		this.ringGroup.layoutCards();
+		this.siteGroup.layoutCards();
+		if(this.showMap) {
+			this.mapGroup.layoutCards();
+		}
+		if(this.showRace) {
+			this.raceGroup.layoutCards();
+		}
+	},
 
-    processError:function (xhr, ajaxOptions, thrownError) {
-        if (thrownError != "abort")
-            alert("There was a problem during communication with server");
-    }
+	layoutDeck:function () {
+		this.layoutSpecialGroups();
+		this.fpDeckGroup.layoutCards();
+		this.shadowDeckGroup.layoutCards();
+	},
+
+	processError:function (xhr, ajaxOptions, thrownError) {
+		if (thrownError != "abort")
+		{
+			alert("There was a problem during communication with server");
+			console.log(xhr)
+			console.log(ajaxOptions)
+			console.log(thrownError)
+		}
+	}
 });

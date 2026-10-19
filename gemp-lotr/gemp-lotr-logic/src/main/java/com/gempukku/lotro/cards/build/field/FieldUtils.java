@@ -1,10 +1,17 @@
 package com.gempukku.lotro.cards.build.field;
 
 import com.gempukku.lotro.cards.build.InvalidCardDefinitionException;
+import com.gempukku.lotro.common.InactiveReason;
+import com.gempukku.lotro.common.Side;
+import com.gempukku.lotro.common.SitesBlock;
+import com.gempukku.lotro.common.SpotOverride;
+import org.hjson.JsonValue;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
-import java.util.Set;
+import java.util.*;
 
 public class FieldUtils {
 
@@ -16,7 +23,7 @@ public class FieldUtils {
         if (value == null)
             return defaultValue;
         if (!(value instanceof Number))
-            throw new InvalidCardDefinitionException("Unknown type in " + key + " field");
+            throw new InvalidCardDefinitionException("Value in " + key + " field must be an integer, not an evaluated value.");
         return ((Number) value).intValue();
     }
 
@@ -25,8 +32,7 @@ public class FieldUtils {
             return new String[0];
         else if (value instanceof String)
             return new String[]{(String) value};
-        else if (value instanceof JSONArray) {
-            final JSONArray array = (JSONArray) value;
+        else if (value instanceof final JSONArray array) {
             return (String[]) array.toArray(new String[0]);
         }
         throw new InvalidCardDefinitionException("Unknown type in " + key + " field");
@@ -39,6 +45,8 @@ public class FieldUtils {
     public static String getString(Object value, String key, String defaultValue) throws InvalidCardDefinitionException {
         if (value == null)
             return defaultValue;
+        if ((value instanceof Number))
+            return value.toString();
         if (!(value instanceof String))
             throw new InvalidCardDefinitionException("Unknown type in " + key + " field");
         return (String) value;
@@ -50,6 +58,17 @@ public class FieldUtils {
         if (!(value instanceof Boolean))
             throw new InvalidCardDefinitionException("Unknown type in " + key + " field");
         return (Boolean) value;
+    }
+
+    public static int getUniqueness(Object value, String key) throws InvalidCardDefinitionException {
+        if (value == null)
+            throw new InvalidCardDefinitionException("Value of " + key + " is required");
+        if (!(value instanceof Number) && !(value instanceof Boolean))
+            throw new InvalidCardDefinitionException("Value in " + key + " field must be an integer or boolean.");
+        if (value instanceof Boolean) {
+            return (Boolean) value ? 1 : 4;
+        }
+        return ((Number) value).intValue();
     }
 
     public static boolean getBoolean(Object value, String key, boolean defaultValue) throws InvalidCardDefinitionException {
@@ -64,7 +83,52 @@ public class FieldUtils {
         if (value == null)
             return null;
         final String string = getString(value, key);
-        return Enum.valueOf(enumClass, string.toUpperCase().replace(' ', '_').replace('-', '_'));
+        try {
+            return Enum.valueOf(enumClass, string.toUpperCase().replace(' ', '_').replace('-', '_'));
+        } catch (IllegalArgumentException exp) {
+            throw new InvalidCardDefinitionException("Unknown enum value - " + string + ", in " + key + " field");
+        }
+    }
+
+    public static <T extends Enum<T>> Set<T> getEnumArray(Class<T> enumClass, Object value, String key) throws InvalidCardDefinitionException {
+        if (value == null)
+            return new HashSet<T>();
+
+        //Perhaps it is a single enum outside of an array
+        try {
+            var result = getEnum(enumClass, value, key);
+            return Collections.singleton(result);
+        }
+        catch(InvalidCardDefinitionException ignored) { }
+
+        if (value instanceof final JSONArray array) {
+            var result = new HashSet<T>();
+            for(var item : array) {
+                result.add(getEnum(enumClass, item, key));
+            }
+            return result;
+        }
+        throw new InvalidCardDefinitionException("Unknown type in " + key + " field");
+    }
+
+    public static SitesBlock getBlock(Object value, String key) throws InvalidCardDefinitionException {
+        final String string = getString(value, key);
+        if (string == null)
+            throw new InvalidCardDefinitionException("Unknown block '" + string + "' in " + key + " field");
+        final SitesBlock block = SitesBlock.findBlock(string);
+        if (block == null)
+            throw new InvalidCardDefinitionException("Unknown block '" + string + "' in " + key + " field");
+        return block;
+    }
+
+    public static Side getSide(Object value, String key) throws InvalidCardDefinitionException {
+        final String string = getString(value, key);
+        if (string == null)
+            throw new InvalidCardDefinitionException("Unknown side '" + string + "' in " + key + " field");
+        final Side side = Side.Parse(string);
+        if (side == null)
+            throw new InvalidCardDefinitionException("Unknown side '" + string + "' in " + key + " field");
+        return side;
     }
 
     public static JSONArray getArray(Object value, String key) throws InvalidCardDefinitionException {
@@ -84,19 +148,92 @@ public class FieldUtils {
             return new JSONObject[0];
         else if (value instanceof JSONObject)
             return new JSONObject[]{(JSONObject) value};
-        else if (value instanceof JSONArray) {
-            final JSONArray array = (JSONArray) value;
+        else if (value instanceof final JSONArray array) {
             return (JSONObject[]) array.toArray(new JSONObject[0]);
         }
         throw new InvalidCardDefinitionException("Unknown type in " + key + " field");
     }
 
+    public static JSONObject[][] getNestedObjectArray(Object value, String key) throws InvalidCardDefinitionException {
+        if (value == null)
+            return new JSONObject[0][0];
+        else if (value instanceof final JSONArray array) {
+            var arrays = new ArrayList<JSONObject[]>();
+            for(int i = 0; i < array.size(); ++i) {
+                arrays.add(getObjectArray(array.get(i), "key[" + i + "]"));
+            }
+            return arrays.toArray(new JSONObject[0][]);
+        }
+
+
+        throw new InvalidCardDefinitionException("Unknown type in " + key + " field");
+    }
+
+    public static Map<InactiveReason, Boolean> getSpotOverride(Object value, String key) throws InvalidCardDefinitionException {
+        return getSpotOverride(value, key, SpotOverride.NONE);
+    }
+
+    /**
+     * Parses an activeOverride field from HJSON into a SpotOverride map.
+     *
+     * Supports:
+     * - Single string: "hindered" or "stacked" etc.
+     * - Array: ["hindered", "stacked"]
+     * - Special values: "all" (include all inactive cards), "none" (explicit default)
+     *
+     * @param value The HJSON field value
+     * @param key The field name (for error messages)
+     * @return A Map<InactiveReason, Boolean> for use with SpotOverride, or NONE if no override specified
+     */
+    public static Map<InactiveReason, Boolean> getSpotOverride(Object value, String key, Map<InactiveReason, Boolean> defaultValue) throws InvalidCardDefinitionException {
+        if (value == null) {
+            return defaultValue;
+        }
+
+        // Handle special string values and single enum case
+        if (value instanceof String str) {
+            String normalized = str.toLowerCase().trim();
+            if (normalized.equals("all")) {
+                return SpotOverride.INCLUDE_ALL;
+            }
+            if (normalized.equals("none")) {
+                return SpotOverride.NONE;
+            }
+            // Single enum value
+            InactiveReason reason = getEnum(InactiveReason.class, value, key);
+            return Map.of(reason, Boolean.TRUE);
+        }
+
+        // Array of enum values
+        if (value instanceof JSONArray array) {
+            if (array.isEmpty()) {
+                return null;
+            }
+            Map<InactiveReason, Boolean> result = new HashMap<>();
+            for (Object item : array) {
+                InactiveReason reason = getEnum(InactiveReason.class, item, key);
+                result.put(reason, Boolean.TRUE);
+            }
+            return result;
+        }
+
+        throw new InvalidCardDefinitionException("Unknown type in " + key + " field. Expected string or array of inactive reasons.");
+    }
+
     public static void validateAllowedFields(JSONObject object, String... fields) throws InvalidCardDefinitionException {
         Set<String> keys = object.keySet();
         for (String key : keys) {
-            if (!key.equals("type") && !contains(fields, key))
+            if (!key.equals("type") && !key.equals("ignoreCostCheckFailure") && !contains(fields, key))
                 throw new InvalidCardDefinitionException("Unrecognized field: " + key);
         }
+    }
+
+    private static final JSONParser parser = new JSONParser();
+
+    public static JSONObject parseSubObject(String jsonString) throws ParseException {
+        String json = JsonValue.readHjson(jsonString).toString();
+        var subObject = (JSONObject) parser.parse(json);
+        return subObject;
     }
 
     private static boolean contains(String[] fields, String key) {

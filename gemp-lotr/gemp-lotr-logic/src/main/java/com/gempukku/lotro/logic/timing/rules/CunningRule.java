@@ -8,7 +8,7 @@ import com.gempukku.lotro.logic.modifiers.ModifiersLogic;
 import com.gempukku.lotro.logic.modifiers.condition.PhaseCondition;
 
 public class CunningRule {
-    private ModifiersLogic _modifiersLogic;
+    private final ModifiersLogic _modifiersLogic;
 
     public CunningRule(ModifiersLogic modifiersLogic) {
         _modifiersLogic = modifiersLogic;
@@ -18,6 +18,6 @@ public class CunningRule {
         _modifiersLogic.addAlwaysOnModifier(
                 new CantTakeWoundsModifier(null, new PhaseCondition(Phase.ARCHERY), Keyword.CUNNING));
         _modifiersLogic.addAlwaysOnModifier(
-                new CantBeAssignedToSkirmishModifier(null, Keyword.CUNNING));
+                new CantBeAssignedToSkirmishModifier(null, null, Keyword.CUNNING));
     }
 }

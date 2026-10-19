@@ -1,0 +1,548 @@
+{
+	30_49: {
+		cardInfo: {
+			image: hobbit/HDG3049.jpg
+			collInfo: 30_49
+			rarity: _
+		}
+		title: Bag End
+		type: site
+		block: hobbit
+		site: 1
+		twilight: 0
+		effects: {
+			type: activated
+			phase: fellowship
+			cost: {
+				type: PlayCardFromHand
+				select: choose(culture(dwarven),follower)
+			}
+			effect: {
+				type: drawCards
+				count: 1
+			}
+		}
+	}
+	30_50: {
+		cardInfo: {
+			image: hobbit/HDG3050.jpg
+			collInfo: 30_50
+			rarity: _
+		}
+		title: The Troll Hoard
+		twilight: 3
+		type: site
+		block: hobbit
+		site: 2
+		keyword: [
+			forest
+			underground
+		]
+		effects: {
+			type: Trigger
+			optional: true
+			trigger: {
+				type: startOfPhase
+				phase: fellowship
+			}
+			requires: {
+				type: isSide
+				side: free people
+			}
+			effect: {
+				type: playCardFromDrawDeck
+				select: choose(hand weapon)
+				showAll: true
+				shuffle: true
+			}
+		}
+	}
+	30_51: {
+		cardInfo: {
+			image: hobbit/HDG3051.jpg
+			collInfo: 30_51
+			rarity: _
+		}
+		title: Rivendell
+		twilight: 1
+		type: site
+		block: hobbit
+		site: 3
+		effects: {
+			type: modifier
+			modifier: {
+				type: cantPlayCards
+				filter: troll
+			}
+		}
+	}
+	30_52: {
+		cardInfo: {
+			image: hobbit/HDG3052.jpg
+			collInfo: 30_52
+			rarity: _
+		}
+		title: Goblin Town
+		twilight: 4
+		type: site
+		block: hobbit
+		site: 4
+		keyword: underground
+		effects: {
+			type: activated
+			phase: maneuver
+			requires: {
+				type: isSide
+				side: free people
+			}
+			effect: {
+				type: playCardFromDrawDeck
+				select: choose(name(The One Ring))
+				showAll: true
+				shuffle: true
+			}
+		}
+	}
+	30_53: {
+		cardInfo: {
+			image: hobbit/HDG3053.jpg
+			collInfo: 30_53
+			rarity: _
+		}
+		title: Mirkwood
+		twilight: 6
+		type: site
+		block: hobbit
+		site: 5
+		keyword: forest
+		effects: {
+			type: Trigger
+			optional: false
+			trigger: {
+				type: movesTo
+				filter: self
+			}
+			effect: {
+				type: discard
+				select: all(name(Gandalf))
+			}
+		}
+	}
+	30_54: {
+		cardInfo: {
+			image: hobbit/HDG3054.jpg
+			collInfo: 30_54
+			rarity: _
+		}
+		title: Esgaroth
+		twilight: 3
+		type: site
+		block: hobbit
+		site: 6
+		keyword: river
+		effects: {
+			type: Trigger
+			optional: true
+			requires: {
+				type: isSide
+				side: free people
+			}
+			trigger: {
+				type: startOfPhase
+				phase: regroup
+			}
+			effect: {
+				type: playCardFromDrawDeck
+				select: choose(or(culture(esgaroth),culture(dwarven)),ally)
+				showAll: true
+				shuffle: true
+			}
+		}
+	}
+	30_55: {
+		cardInfo: {
+			image: hobbit/HDG3055.jpg
+			collInfo: 30_55
+			rarity: _
+		}
+		title: Erebor
+		twilight: 6
+		type: site
+		block: hobbit
+		site: 7
+		keyword: [
+			mountain
+			river
+		]
+		effects: {
+			type: activated
+			phase: shadow
+			requires: {
+				type: canSpot
+				filter: companion
+				count: 6
+			}
+			cost: {
+				type: exert
+				select: choose(minion)
+				count: 2
+			}
+			effect: {
+				type: drawCards
+				count: 2
+			}
+		}
+	}
+	30_56: {
+		cardInfo: {
+			image: hobbit/HDG3056.jpg
+			collInfo: 30_56
+			rarity: _
+		}
+		title: Smaug's Den
+		twilight: 8
+		type: site
+		block: hobbit
+		site: 8
+		keyword: [
+			mountain
+			underground
+		]
+		effects: {
+			type: activated
+			phase: shadow
+			effect: {
+				type: choice
+				texts: [
+					Play Smaug from your draw deck
+					Play Smaug from your discard pile
+				]
+				effects: [
+					{
+						type: playCardFromDrawDeck
+						select: choose(name(Smaug))
+						showAll: true
+						shuffle: true
+					}
+					{
+						type: playCardFromDiscard
+						select: choose(name(Smaug))
+					}
+				]
+			}
+		}
+	}
+	30_57: {
+		cardInfo: {
+			image: hobbit/HDG3057.jpg
+			collInfo: 30_57
+			rarity: _
+		}
+		title: Battle of the Five Armies
+		twilight: 9
+		type: site
+		block: hobbit
+		site: 9
+		keyword: [
+			mountain
+			battleground
+		]
+		effects: {
+			type: activated
+			phase: shadow
+			cost: {
+				type: removeBurdens
+				amount: 2
+			}
+			effect: {
+				type: playCardFromDiscard
+				select: choose(minion,not(name(Smaug)))
+			}
+		}
+	}
+	30_58: {
+		cardInfo: {
+			image: hobbit/HDG3058.jpg
+			collInfo: 30_58
+			rarity: _
+		}
+		title: Bilbo's Kitchen
+		twilight: 0
+		type: site
+		block: hobbit
+		site: 1
+		effects: {
+			type: Trigger
+			optional: true
+			requires: {
+				type: isSide
+				side: free people
+			}
+			trigger: {
+				type: startOfPhase
+				phase: fellowship
+			}
+			cost: {
+				type: exert
+				select: choose(companion)
+			}
+			effect: {
+				type: playCardFromDrawDeck
+				select: choose(culture(dwarven),follower)
+				showAll: true
+				shuffle: true
+			}
+		}
+	}
+	30_59: {
+		cardInfo: {
+			image: hobbit/HDG3059.jpg
+			collInfo: 30_59
+			rarity: _
+		}
+		title: Trollshaw Forest
+		twilight: 2
+		type: site
+		block: hobbit
+		site: 2
+		keyword: forest
+		effects: {
+			type: Trigger
+			optional: false
+			trigger: {
+				type: startOfPhase
+				phase: maneuver
+			}
+			effect: {
+				type:forEachPlayer
+				effect: [
+					{
+						type: chooseYesOrNo
+						text: Would you like to play a hand weapon?
+						memorize: choice
+					}
+					{
+						type: If
+						check: {
+							type: memoryIs
+							memory: choice
+							value: yes
+						}
+						true: {
+							type: playCardFromDrawDeck
+							select: choose(hand weapon)
+							showAll: true
+							shuffle: true
+						}
+					}
+				]
+			}
+		}
+	}
+	30_60: {
+		cardInfo: {
+			image: hobbit/HDG3060.jpg
+			collInfo: 30_60
+			rarity: _
+		}
+		title: Rhudaur
+		twilight: 1
+		type: site
+		block: hobbit
+		site: 3
+		keyword: plains
+		effects: {
+			type: activated
+			phase: shadow
+			limitPerTurn: 1
+			cost: {
+				type: exert
+				select: choose(your,fierce,minion)
+			}
+			effect: {
+				type: playCardFromDrawDeck
+				select: choose(condition)
+				showAll: true
+				shuffle: true
+			}
+		}
+	}
+	30_61: {
+		cardInfo: {
+			image: hobbit/HDG3061.jpg
+			collInfo: 30_61
+			rarity: _
+		}
+		title: Wooded Steep Cliff
+		twilight: 3
+		type: site
+		block: hobbit
+		site: 4
+		keyword: [
+			mountain
+			forest
+		]
+		effects: {
+			type: Trigger
+			optional: false
+			trigger: {
+				type: movesTo
+				filter: self
+			}
+			effect: {
+				type: choice
+				player: fp
+				texts: [
+					Exert Thorin
+					Exert 2 other companions
+				]
+				effects: [
+					{
+						type: exert
+						select: choose(name(Thorin))
+					}
+					{
+						type: exert
+						count: 2
+						select: choose(not(name(Thorin)),companion)
+					}
+				]
+			}
+		}
+	}
+	30_62: {
+		cardInfo: {
+			image: hobbit/HDG3062.jpg
+			collInfo: 30_62
+			rarity: _
+		}
+		title: Old Forest Road
+		twilight: 5
+		type: site
+		block: hobbit
+		site: 5
+		keyword: forest
+		effects: {
+			type: Trigger
+			optional: true
+			trigger: {
+				type: startOfPhase
+				phase: shadow
+			}
+			requires: {
+				type: isSide
+				side: shadow
+			}
+			cost: {
+				type: discard
+				select: choose(name(Gandalf))
+			}
+			effect: {
+				type: playCardFromDiscard
+				select: choose(minion)
+			}
+		}
+	}
+	30_63: {
+		cardInfo: {
+			image: hobbit/HDG3063.jpg
+			collInfo: 30_63
+			rarity: _
+		}
+		title: Lake-Town
+		twilight: 3
+		type: site
+		block: hobbit
+		site: 6
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: modifyCost
+					requires: {
+						type: perPhaseLimit
+						limit: 1
+					}
+					filter: orc
+					amount: -2
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: played
+					filter: orc
+				}
+				requires: {
+						type: perPhaseLimit
+						limit: 1
+					}
+				effect: {
+					type: incrementPerPhaseLimit
+					limit: 1
+				}
+			}
+		]
+	}
+	30_64: {
+		cardInfo: {
+			image: hobbit/HDG3064.jpg
+			collInfo: 30_64
+			rarity: _
+		}
+		title: Dale
+		twilight: 6
+		type: site
+		block: hobbit
+		site: 7
+		keyword: mountain
+		effects: {
+			type: activated
+			phase: regroup
+			requires: [
+				{
+					type: canSpot
+					filter: your,minion
+				}
+				{
+					type: canSpot
+					count: 6
+					filter: companion
+				}
+			]
+			effect: {
+				type: addModifier
+				modifier: {
+					type: hasToMoveIfAble
+				}
+			}
+		}
+	}
+	30_65: {
+		cardInfo: {
+			image: hobbit/HDG3065.jpg
+			collInfo: 30_65
+			rarity: _
+		}
+		title: Ravenhill
+		twilight: 8
+		type: site
+		block: hobbit
+		site: 9
+		keyword: mountain
+		effects: {
+			type: activated
+			phase: maneuver
+			cost: {
+				type: removeFromTheGame
+				select: choose(your,minion)
+			}
+			effect: {
+				type: playCardFromDiscard
+				select: choose(minion)
+				discount: -2
+			}
+		}
+	}
+}

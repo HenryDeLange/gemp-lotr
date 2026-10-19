@@ -13,8 +13,8 @@ import com.gempukku.lotro.logic.timing.Effect;
 import java.util.Collections;
 
 public class PlayEventAction extends AbstractCostToEffectAction {
-    private PhysicalCard _eventPlayed;
-    private boolean _requiresRanger;
+    private final PhysicalCard _eventPlayed;
+    private final boolean _requiresRanger;
 
     private boolean _cardRemoved;
 
@@ -26,7 +26,7 @@ public class PlayEventAction extends AbstractCostToEffectAction {
     private boolean _discountResolved;
     private boolean _discountApplied;
 
-    private Zone _playedFrom;
+    private final Zone _playedFrom;
 
     public PlayEventAction(PhysicalCard card) {
         this(card, false);
@@ -69,6 +69,7 @@ public class PlayEventAction extends AbstractCostToEffectAction {
         if (!_cardRemoved) {
             _cardRemoved = true;
             final Zone playedFromZone = _eventPlayed.getZone();
+            _eventPlayed.setPlayedFromZone(playedFromZone);
 
             game.getGameState().sendMessage(_eventPlayed.getOwner() + " plays " + GameUtils.getCardLink(_eventPlayed) + " from " + playedFromZone.getHumanReadable());
             game.getGameState().removeCardsFromZone(_eventPlayed.getOwner(), Collections.singleton(_eventPlayed));
@@ -90,7 +91,7 @@ public class PlayEventAction extends AbstractCostToEffectAction {
             final DiscountEffect discount = getNextPotentialDiscount();
             if (discount != null) {
                 if (_eventPlayed.getBlueprint().getSide() == Side.SHADOW) {
-                    int twilightCost = game.getModifiersQuerying().getTwilightCost(game, _eventPlayed, null, 0, false);
+                    int twilightCost = game.getModifiersQuerying().getTwilightCostToPlay(game, _eventPlayed, null, 0, false);
                     int requiredDiscount = Math.max(0, twilightCost - game.getGameState().getTwilightPool() - getProcessedDiscount() - getPotentialDiscount(game));
                     discount.setMinimalRequiredDiscount(requiredDiscount);
                 }
@@ -113,7 +114,7 @@ public class PlayEventAction extends AbstractCostToEffectAction {
 
             if (!_cardPlayed) {
                 _cardPlayed = true;
-                _playCardEffect = new PlayEventEffect(this, _playedFrom, _eventPlayed, _requiresRanger, isPaidToil());
+                _playCardEffect = new PlayEventEffect(_eventPlayed.getOwner(), this, _playedFrom, _eventPlayed, _requiresRanger, isPaidToil());
                 return _playCardEffect;
             }
 

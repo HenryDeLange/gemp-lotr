@@ -1,0 +1,471 @@
+{
+
+	# 60_8: {
+	# 	cardInfo: {
+	# 		//id: 0_8.1
+	# 		revision: 1
+	# 		image: errata/60_8.jpg
+	# 		collInfo: 10R8
+	# 		rarity: R
+	# 	}
+	# 	title: Cirdan
+	# 	subtitle: The Shipwright
+	# 	unique: true
+	# 	culture: Elven
+	# 	twilight: 4
+	# 	type: companion
+	# 	race: Elf
+	# 	strength: 7
+	# 	vitality: 4
+	# 	resistance: 6
+	# 	effects: [
+	# 		{
+	# 			type: toPlay
+	# 			requires: {
+	# 				type: canSpot
+	# 				filter: elf
+	# 				count: 2
+	# 			}
+	# 		}
+	# 		{
+	# 			type: activated
+	# 			phase: skirmish
+	# 			cost: {
+	# 				type: exert
+	# 				select: self
+	# 			}
+	# 			effect: [
+	# 				{
+	# 					type: modifyStrength
+	# 					select: choose(minion,inSkirmishAgainst(self))
+	# 					memorize: chosenMinion
+	# 					amount: {
+	# 						type: forEachInDiscard
+	# 						filter: your,culture(elven),event
+	# 						multiplier: -1
+	# 					}
+	# 				}
+	# 				{
+	# 					type: If
+	# 					check: {
+	# 						type: memorymatches
+	# 						memory: chosenMinion
+	# 						filter: maxStrength(6)
+	# 					}
+	# 					true: {
+	# 						type: removeCardsInDiscardFromGame
+	# 						count: 3
+	# 						select: choose(culture(elven),event)
+	# 					}
+	# 				}
+	# 			]
+	# 		}
+	# 	]
+	# 	gametext: To play, spot 2 Elves.<br> <b>Skirmish:</b> Exert Cirdan to make a minion he is skirmishing strength -1 for each [elven] event in your discard pile. If that minion is now strength 6 or less, remove 3 [elven] events in your discard pile from the game.
+	# 	lore: "...he was grey and old, save that his eyes were keen as stars...."
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	60_8: {
+		cardInfo: {
+			//id: 60_8.2
+			parent: 10_8
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 2
+			image: errata/LOTR-EN10E008.2_card.jpg
+			collInfo: 10R8
+			rarity: R
+		}
+		title: Cirdan
+		subtitle: The Shipwright
+		unique: true
+		side: Free Peoples
+		culture: Elven
+		twilight: 4
+		type: Companion
+		race: Elf
+		strength: 7
+		vitality: 4
+		resistance: 6
+		effects: [
+			{
+				type: toPlay
+				requires: {
+					type: canSpot
+					filter: elf
+					count: 2
+				}
+			}
+			{
+				type: activated
+				phase: skirmish
+				cost: {
+					type: exert
+					select: self
+				}
+				effect: [
+					{
+						type: modifyStrength
+						select: choose(minion,inSkirmishAgainst(self))
+						memorize: chosenMinion
+						amount: {
+							type: forEachInDiscard
+							filter: your,culture(elven),event
+							multiplier: -1
+						}
+					}
+					{
+						type: AddTrigger
+						trigger: {
+							type: losesSkirmish
+							overwhelm: true
+							filter: memory(chosenMinion)
+							against: self
+						}
+						effect: {
+							type: removeCardsInDiscardFromGame
+							count: {
+								type: ForEachInDiscard
+								discard: you
+								filter: culture(elven),event
+								divider: 2
+							}
+							select: choose(culture(elven),event)
+						}
+					}
+				]
+			}
+		]
+		gametext: To play, spot 2 Elves.<br> <b>Skirmish:</b> Exert Cirdan to make a minion he is skirmishing strength -1 for each [elven] event in your discard pile. If that minion is overwhelmed, remove half of the [elven] events in your discard pile from the game (rounded down).
+		lore: "...he was grey and old, save that his eyes were keen as stars...."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	# 60_11: {
+	# 	cardInfo: {
+	# 		imagePath: errata/60_11.jpg
+	# 		javaClass: false
+	# 		parent: 10_11
+	# 		parentPath: errata/pc
+	# 		revision: 1
+	# 		collInfo: 10R11
+	# 		rarity: R
+	# 		setNum: "10"
+	# 		cardNum: 11
+	# 		// Standard, Masterwork, Tengwar, FullArt, etc.  Top-level cards are always Standard.
+	# 		style: Standard
+	# 	}
+	# 	title: Galadriel
+	# 	subtitle: Lady Redeemed
+	# 	unique: true
+	# 	culture: elven
+	# 	twilight: 3
+	# 	type: companion
+	# 	race: elf
+	# 	strength: 3
+	# 	vitality: 3
+	# 	resistance: 6
+	# 	effects: [
+	# 		{
+	# 			type: modifyOwnCost
+	# 			requires: {
+	# 				type: phase
+	# 				phase: play starting fellowship
+	# 			}
+	# 			amount: -3
+	# 		}
+	# 		{
+	# 			type: Trigger
+	# 			optional: true
+	# 			trigger: {
+	# 				type: startOfPhase
+	# 				phase: regroup
+	# 			}
+	# 			cost: {
+	# 				type: discardFromHand
+	# 				count: 1
+	# 				forced: false
+	# 				select: choose(culture(elven),event)
+	# 			}
+	# 			effect: {
+	# 				type: discard
+	# 				select: choose(side(shadow),or(condition,possession))
+	# 			}
+	# 		}
+	# 	]
+	# 	gametext: When Galadriel is in your starting fellowship, her twilight cost is -3.<br>At the start of the regroup phase, you may discard an [Elven] event from hand to discard a Shadow condition or Shadow possession.
+	# 	lore: "'I pass the test,' she said. 'I will diminish, and go into the West, and remain Galadriel.'"
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	# 60_11: {
+	# 	cardInfo: {
+	# 		imagePath: errata/60_11.jpg
+	# 		javaClass: false
+	# 		parent: 10_11
+	# 		parentPath: errata/pc
+	# 		revision: 2
+	# 		collInfo: 10R11
+	# 		rarity: R
+	# 		setNum: "10"
+	# 		cardNum: 11
+	# 		// Standard, Masterwork, Tengwar, FullArt, etc.  Top-level cards are always Standard.
+	# 		style: Standard
+	# 	}
+	# 	title: Galadriel
+	# 	subtitle: Lady Redeemed
+	# 	unique: true
+	# 	side: Free Peoples
+	# 	culture: Elven
+	# 	twilight: 3
+	# 	type: Companion
+	# 	race: Elf
+	# 	strength: 3
+	# 	vitality: 3
+	# 	resistance: 6
+	# 	effects: [
+	# 		{
+	# 			type: modifyOwnCost
+	# 			requires: {
+	# 				type: phase
+	# 				phase: play starting fellowship
+	# 			}
+	# 			amount: -2
+	# 		}
+	# 		{
+	# 			type: activated
+	# 			phase: [
+	# 				fellowship
+	# 				regroup
+	# 			]
+	# 			cost: [
+	# 				{
+	# 					type: Exert
+	# 					filter: self
+	# 				}
+	# 				{
+	# 					type: discardFromHand
+	# 					count: 1
+	# 					forced: false
+	# 					select: choose(culture(elven),event)
+	# 				}
+	# 			]
+	# 			effect: {
+	# 				type: discard
+	# 				select: choose(side(shadow),or(condition,possession))
+	# 			}
+	# 		}
+	# 	]
+	# 	gametext: When Galadriel is in your starting fellowship, her twilight cost is –2. <br><b>Fellowship</b> <i>or</i> <b>Regroup:</b>  Exert Galadriel and discard an [elven] event from hand to discard a Shadow condition or Shadow possession.
+	# 	lore: "'I pass the test,' she said. 'I will diminish, and go into the West, and remain Galadriel.'"
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	# 60_11: {
+	# 	cardInfo: {
+	# 		//id: 0_11.3
+	# 		revision: 3
+	# 		image: errata/60_11.jpg
+	# 		collInfo: 10R11
+	# 		rarity: R
+	# 	}
+	# 	title: Galadriel
+	# 	subtitle: Lady Redeemed
+	# 	unique: true
+	# 	culture: elven
+	# 	twilight: 3
+	# 	type: companion
+	# 	race: elf
+	# 	strength: 3
+	# 	vitality: 3
+	# 	resistance: 6
+	# 	effects: [
+	# 		{
+	# 			type: modifyOwnCost
+	# 			requires: {
+	# 				type: phase
+	# 				phase: play starting fellowship
+	# 			}
+	# 			amount: -3
+	# 		}
+	# 		{
+	# 			type: activated
+	# 			phase: regroup
+	# 			requires: {
+	# 					type: perPhaseLimit
+	# 					limit: 1
+	# 				}
+	# 			cost: [
+	# 				{
+	# 					type: discardFromHand
+	# 					count: 1
+	# 					forced: false
+	# 					select: choose(culture(elven),event)
+	# 				}
+	# 			]
+	# 			effect: [
+	# 				{
+	# 					type: discard
+	# 					select: choose(side(shadow),or(condition,possession))
+	# 				}
+	# 				{
+	# 					type: incrementPerPhaseLimit
+	# 					limit: 1
+	# 				}
+	# 			]
+	# 		}
+	# 	]
+	# 	gametext: When Galadriel is in your starting fellowship, her twilight cost is –3.<br>Regroup: Exert Galadriel and discard an [elven] event from hand to discard a Shadow condition or Shadow possession (limit once per phase).
+	# 	lore: "'I pass the test,' she said. 'I will diminish, and go into the West, and remain Galadriel.'"
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	60_11: {
+		cardInfo: {
+			//id: 60_11.4
+			parent: 10_11
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 4
+			image: errata/LOTR-EN10E011.4_card.jpg
+			collInfo: 10R11
+			rarity: R
+		}
+		title: Galadriel
+		subtitle: Lady Redeemed
+		unique: true
+		side: Free Peoples
+		culture: Elven
+		twilight: 3
+		type: Companion
+		race: Elf
+		strength: 3
+		vitality: 3
+		resistance: 6
+		effects: [
+			{
+				type: modifyOwnCost
+				requires: {
+					type: phase
+					phase: play starting fellowship
+				}
+				amount: -3
+			}
+			{
+				type: activated
+				phase: [
+					fellowship
+					regroup
+				]
+				cost: {
+					type: discardFromHand
+					forced: false
+					select: choose(culture(elven),event)
+				}
+				effect: {
+					type: Hinder
+					select: choose(side(shadow),or(condition,possession))
+				}
+			}
+		]
+		gametext: <b>Fellowship</b> <i>or</i> <b>Regroup</b>: Discard an [elven] event from hand to hinder a Shadow condition or possession.
+		lore: "'I pass the test,' she said. 'I will diminish, and go into the West, and remain Galadriel.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	60_12: {
+		cardInfo: {
+			//id: 0_12.1
+			revision: 1
+			image: errata/LOTR-EN10E012.1.jpg
+			collInfo: 10U12
+			rarity: U
+		}
+		title: Glimpse of Fate
+		unique: true
+		culture: elven
+		twilight: 0
+		type: condition
+		keyword: support area
+		effects: [
+			{
+				type: toPlay
+				requires: {
+					type: CanSpot
+					filter: Elf
+					count: 2
+				}
+			}
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: losesInitiative
+					side: free peoples
+				}
+				requires: {
+					type: perTurnLimit
+					limit: 1
+				}
+				effect: [
+					{
+						type: incrementPerTurnLimit
+						limit: 1
+					}
+					{
+						type: modifyStrength
+						select: choose(minion)
+						amount: -3
+						until: start(regroup)
+					}
+				]
+			}
+		]
+		gametext: To play, spot 2 Elves. <br>When you lose initiative, you may make a minion strength –3 until the regroup phase (limit once per turn).
+		lore: "'The uttermost choice is before you: to repent and go to the Havens... or else to abide the Doom of Men.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

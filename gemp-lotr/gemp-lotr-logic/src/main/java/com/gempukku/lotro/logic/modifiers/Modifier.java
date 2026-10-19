@@ -50,6 +50,7 @@ public interface Modifier {
     int getMinionSiteNumberModifier(LotroGame game, PhysicalCard physicalCard);
 
     boolean isAdditionalCardTypeModifier(LotroGame game, PhysicalCard physicalCard, CardType cardType);
+    boolean isAdditionalRaceModifier(LotroGame game, PhysicalCard physicalCard, Race race);
 
     int getTwilightCostModifier(LotroGame game, PhysicalCard physicalCard, PhysicalCard target, boolean ignoreRoamingPenalty);
 
@@ -61,7 +62,7 @@ public interface Modifier {
 
     boolean canTakeWounds(LotroGame game, Collection<PhysicalCard> woundSources, PhysicalCard physicalCard, int woundsAlreadyTakenInPhase, int woundsToTake);
 
-    boolean canTakeWoundsFromLosingSkirmish(LotroGame game, PhysicalCard physicalCard, Set<PhysicalCard> winners);
+    boolean canTakeWoundsFromLosingSkirmish(LotroGame game, PhysicalCard physicalCard);
 
     boolean canTakeArcheryWound(LotroGame game, PhysicalCard physicalCard);
 
@@ -73,6 +74,8 @@ public interface Modifier {
 
     boolean isUnhastyCompanionAllowedToParticipateInSkirmishes(LotroGame game, PhysicalCard card);
 
+    boolean isAssignmentCostPaid(LotroGame game, PhysicalCard card);
+
     boolean isAllyPreventedFromParticipatingInArcheryFire(LotroGame game, PhysicalCard card);
 
     boolean isAllyPreventedFromParticipatingInSkirmishes(LotroGame game, Side sidePlayer, PhysicalCard card);
@@ -80,6 +83,7 @@ public interface Modifier {
     int getArcheryTotalModifier(LotroGame game, Side side);
 
     int getMoveLimitModifier(LotroGame game);
+    int getThreatLimitModifier(LotroGame game);
 
     boolean addsTwilightForCompanionMove(LotroGame game, PhysicalCard companion);
 
@@ -135,6 +139,8 @@ public interface Modifier {
 
     boolean hasFlagActive(LotroGame game, ModifierFlag modifierFlag);
 
+    boolean hasFlagActive(LotroGame game, ModifierFlag modifierFlag, String playerId);
+
     boolean isSiteReplaceable(LotroGame game, String playerId);
 
     boolean canPlaySite(LotroGame game, String playerId);
@@ -148,14 +154,35 @@ public interface Modifier {
     boolean lostAllKeywords(LotroGame game, PhysicalCard card);
 
     Evaluator getFpSkirmishStrengthOverrideEvaluator(LotroGame game, PhysicalCard fpCharacter);
+    Evaluator getShadowSkirmishStrengthOverrideEvaluator(LotroGame game, PhysicalCard fpCharacter);
 
     boolean canSpotCulture(LotroGame game, Culture culture, String playerId);
 
     int getFPCulturesSpotCountModifier(LotroGame game, String playerId);
 
+    int getSiteControlledSpotCountModifier(LotroGame game, String playerId);
+
     int getSanctuaryHealModifier(LotroGame game);
+
+    int getStartingFellowshipCostModifier(LotroGame game, String playerId);
+
+    int getMinimumBidModifier(LotroGame game, String playerId);
+
+    boolean isHandRevealed(LotroGame game, String playerId);
+
+    int getOverrideUniqueness(LotroGame game, PhysicalCard card);
+
+    /**
+     * Whether this modifier's uniqueness override is a loosening one (raising the number of copies allowed in play)
+     * rather than a restricting one.  Restricting overrides beat loosening ones - see ModifiersLogic.getUniqueness.
+     */
+    boolean loosensUniqueness(LotroGame game, PhysicalCard card);
 
     int getPotentialDiscount(LotroGame game, PhysicalCard discountCard);
 
     void appendPotentialDiscounts(LotroGame game, CostToEffectAction action, PhysicalCard card);
+
+    boolean deadPileGoesToDiscard(LotroGame game, PhysicalCard card);
+
+    boolean sanctuaryMayRemoveBurdens(LotroGame game, String playerId);
 }

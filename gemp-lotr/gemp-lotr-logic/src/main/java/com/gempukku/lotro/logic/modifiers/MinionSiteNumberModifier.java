@@ -7,12 +7,8 @@ import com.gempukku.lotro.logic.modifiers.evaluator.ConstantEvaluator;
 import com.gempukku.lotro.logic.modifiers.evaluator.Evaluator;
 
 public class MinionSiteNumberModifier extends AbstractModifier {
-    private Evaluator evaluator;
-    private boolean nonCardTextModifier;
-
-    public MinionSiteNumberModifier(PhysicalCard source, Filterable affectFilter, int modifier) {
-        this(source, affectFilter, null, modifier);
-    }
+    private final Evaluator evaluator;
+    private final boolean nonCardTextModifier;
 
     public MinionSiteNumberModifier(PhysicalCard source, Filterable affectFilter, Condition condition, int modifier) {
         this(source, affectFilter, condition, new ConstantEvaluator(modifier));

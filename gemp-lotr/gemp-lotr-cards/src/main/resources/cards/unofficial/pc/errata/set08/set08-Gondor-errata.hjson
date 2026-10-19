@@ -1,0 +1,153 @@
+{
+	
+	58_43: {
+		cardInfo: {
+			//id: 8_43.1
+			parent: 8_43
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN08E043.1_card.jpg
+			collInfo: 8R43
+			rarity: R
+		}
+		title: Shadow Host
+		unique: true
+		side: Free Peoples
+		culture: Gondor
+		twilight: 5
+		type: Companion
+		race: Wraith
+		keyword: enduring
+		strength: 9
+		vitality: 3
+		signet: Aragorn
+		resistance: 6
+		effects: [
+			{
+				type: toPlay
+				requires: {
+					type: canSpot
+					filter: culture(gondor),wraith
+					count: 2
+				}
+			}
+			{
+				type: ExtraCost
+				cost: {
+					type: AddThreats
+					amount: 2
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: addKeyword
+					requires: {
+						type: CanSpot
+						filter: self,exhausted
+					}
+					filter: self
+					keyword: defender+1
+				}
+			}
+		]
+		gametext: <b>Enduring.</b> To play, spot 2 [gondor] Wraiths and add 2 threats. <br>While Shadow Host is exhausted, it is defender +1.
+		lore: "...fear went on before them, until they came to Calembel upon Ciril, and the sun went down like blood behind Pinnath Gelin...."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	58_48: {
+		cardInfo: {
+			//id: 8_48.1
+			parent: 8_48
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN08E048.1.jpg
+			collInfo: 8C48
+			rarity: C
+		}
+		title: Swept Away
+		unique: false
+		culture: gondor
+		twilight: 0
+		type: condition
+		keyword: [
+			support area
+		]
+		effects: [
+			{
+				type: Trigger
+				optional: false
+				optional: false
+				trigger: {
+					type: moves
+				}
+				effect: {
+					type: choice
+					texts: [
+						Add a threat
+						Discard this condition
+					]
+					effects: [
+						{
+							type: AddThreats
+							amount: 1
+						}
+						{
+							type: discard
+							select: self
+						}
+					]
+				}
+			}
+			{
+				type: Modifier
+				modifier: {
+					type: CantTakeWounds
+					filter: exhausted,culture(gondor),wraith
+					requires: {
+						type: HaveInitiative
+						side: freeps
+					}
+				}
+			}
+			{
+				type: Response
+				trigger: {
+					type: AboutToDiscard
+					filter: self
+					source: side(Shadow)
+				}
+				cost: {
+					type: DiscardFromHand
+					count: 2
+					forced: false
+				}
+				effect: {
+					type: PreventDiscard
+					select: self
+				}
+			}
+		]
+		gametext: Each time the fellowship moves, add a threat or discard this condition. <br>While you have initiative, exhausted [gondor] Wraiths cannot take wounds.\Response: If a Shadow card is about to discard this condition, discard 2 cards from hand to prevent that.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	
+	
+}

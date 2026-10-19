@@ -21,41 +21,50 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class FilterCardsInMemory implements EffectAppenderProducer {
-    @Override
-    public EffectAppender createEffectAppender(JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
-        FieldUtils.validateAllowedFields(effectObject, "filter", "memory", "memorizeMatching", "memorizeNotMatching");
+	@Override
+	public EffectAppender createEffectAppender(boolean cost, JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
+		FieldUtils.validateAllowedFields(effectObject, "filter", "memory", "memorizeMatching", "memorizeNotMatching");
 
-        final String filter = FieldUtils.getString(effectObject.get("filter"), "filter");
-        final String memory = FieldUtils.getString(effectObject.get("memory"), "memory");
-        final String memorizeMatching = FieldUtils.getString(effectObject.get("memorizeMatching"), "memorizeMatching");
-        final String memorizeNotMatching = FieldUtils.getString(effectObject.get("memorizeNotMatching"), "memorizeNotMatching");
+		final String filter = FieldUtils.getString(effectObject.get("filter"), "filter");
+		final String memory = FieldUtils.getString(effectObject.get("memory"), "memory");
+		final String memorizeMatching = FieldUtils.getString(effectObject.get("memorizeMatching"), "memorizeMatching");
+		final String memorizeNotMatching = FieldUtils.getString(effectObject.get("memorizeNotMatching"), "memorizeNotMatching");
 
-        final FilterableSource filterableSource = environment.getFilterFactory().generateFilter(filter, environment);
+		if (filter == null)
+			throw new InvalidCardDefinitionException("Filter is required for a FilterCardsInMemory effect.");
 
-        return new DelayedAppender() {
-            @Override
-            protected Effect createEffect(boolean cost, CostToEffectAction action, ActionContext actionContext) {
-                return new UnrespondableEffect() {
-                    @Override
-                    protected void doPlayEffect(LotroGame game) {
-                        final Filterable filterable = filterableSource.getFilterable(actionContext);
-                        final Collection<? extends PhysicalCard> cardsFromMemory = actionContext.getCardsFromMemory(memory);
-                        List<PhysicalCard> matchingCards = new LinkedList<>();
-                        List<PhysicalCard> notMatchingCards = new LinkedList<>();
-                        for (PhysicalCard physicalCard : cardsFromMemory) {
-                            if (Filters.and(filterable).accepts(game, physicalCard))
-                                matchingCards.add(physicalCard);
-                            else
-                                notMatchingCards.add(physicalCard);
-                        }
+		if (memory == null)
+			throw new InvalidCardDefinitionException("Memory is required for a FilterCardsInMemory effect.");
 
-                        if (memorizeMatching != null)
-                            actionContext.setCardMemory(memorizeMatching, matchingCards);
-                        if (memorizeNotMatching != null)
-                            actionContext.setCardMemory(memorizeNotMatching, notMatchingCards);
-                    }
-                };
-            }
-        };
-    }
+		if (memorizeMatching == null && memorizeNotMatching == null)
+			throw new InvalidCardDefinitionException("One of memorizeMatching or memorizeNotMatching is required for a FilterCardsInMemory effect.");
+
+		final FilterableSource filterableSource = environment.getFilterFactory().generateFilter(filter, environment);
+
+		return new DelayedAppender() {
+			@Override
+			protected Effect createEffect(boolean cost, CostToEffectAction action, ActionContext actionContext) {
+				return new UnrespondableEffect() {
+					@Override
+					protected void doPlayEffect(LotroGame game) {
+						final Filterable filterable = filterableSource.getFilterable(actionContext);
+						final Collection<? extends PhysicalCard> cardsFromMemory = actionContext.getCardsFromMemory(memory);
+						List<PhysicalCard> matchingCards = new LinkedList<>();
+						List<PhysicalCard> notMatchingCards = new LinkedList<>();
+						for (PhysicalCard physicalCard : cardsFromMemory) {
+							if (Filters.accepts(game, physicalCard, filterable))
+								matchingCards.add(physicalCard);
+							else
+								notMatchingCards.add(physicalCard);
+						}
+
+						if (memorizeMatching != null)
+							actionContext.setCardMemory(memorizeMatching, matchingCards);
+						if (memorizeNotMatching != null)
+							actionContext.setCardMemory(memorizeNotMatching, notMatchingCards);
+					}
+				};
+			}
+		};
+	}
 }

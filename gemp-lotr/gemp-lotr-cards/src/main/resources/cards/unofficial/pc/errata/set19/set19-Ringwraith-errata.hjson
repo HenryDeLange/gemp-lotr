@@ -1,0 +1,139 @@
+{
+	
+	69_37: {
+		cardInfo: {
+			//id: 9_37.1
+			revision: 1
+			image: errata/LOTR-EN19E037.1.jpg
+			collInfo: 19P37
+			rarity: P
+		}
+		title: Úlairë Lemenya
+		subtitle: Dark Enemy
+		unique: true
+		culture: wraith
+		twilight: 4
+		type: minion
+		race: nazgul
+		strength: 9
+		vitality: 2
+		site: 3
+		keyword: fierce
+		effects: {
+			type: modifier
+			modifier: {
+				type: modifyStrength
+				filter: self
+				amount: {
+					type: ForEachInDiscard
+					filter: your,culture(wraith),possession
+					limit: 9
+				}
+			}
+		}
+		gametext: <b>Fierce.</b><br> Úlairë Lemenya is strength +1 for each [wraith] possession in your discard pile (limit +9).
+		lore: "'Do you wish them to find you? They are terrible!'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	69_38: {
+		cardInfo: {
+			//id: 9_38.1
+			revision: 1
+			image: errata/69_38.jpg
+			collInfo: 19P38
+			rarity: P
+		}
+		title: Ulaire Nertea
+		subtitle: Dark Horseman
+		unique: true
+		culture: Wraith
+		twilight: 4
+		type: minion
+		race: nazgul
+		strength: 9
+		vitality: 2
+		site: 3
+		keyword: fierce
+		effects: [
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: played
+					filter: self
+				}
+				effect: [
+					{
+						type: chooseARace
+						memorize: chosenRace
+					}
+					{
+						type: storeWhileInZone
+						memory: chosenRace
+					}
+				]
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: fpstartedassigning
+				}
+				effect: [
+					{
+						type: chooseYesOrNo
+						player: fp
+						text: Would you like to add a burden to be able to assign Ulaire Nertea to a {chosenRace}?
+						memorize: choice
+					}
+					{
+						type: If
+						check: {
+							type: memoryIs
+							memory: choice
+							value: no
+						}
+						true: {
+							type: addmodifier
+							until: start(skirmish)
+							modifier: {
+								type: cantBeAssignedToSkirmishAgainst
+								side: free people
+								fpCharacter: companion,race(stored)
+								minion: self
+							}
+						}
+					}
+					{
+						type: If
+						check: {
+							type: memoryIs
+							memory: choice
+							value: yes
+						}
+						true: {
+							type: addBurdens
+							amount: 1
+						}
+					}
+				]
+			}
+		]
+		gametext: <b>Fierce.</b><br> When you play Úlairë Nertëa, name a race. The Free Peoples player must add a burden to assign Úlairë Nertëa to skirmish a companion of the named race.
+		lore: Some accepted Sauron's gift for glory and a notion of great deeds.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

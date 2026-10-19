@@ -5,7 +5,7 @@ import com.gempukku.lotro.cache.Cached;
 import java.util.Set;
 
 public class CachedIpBanDAO implements IpBanDAO, Cached {
-    private IpBanDAO _delegate;
+    private final IpBanDAO _delegate;
     private Set<String> _bannedIps;
     private Set<String> _bannedIpPrefixes;
 
@@ -21,7 +21,12 @@ public class CachedIpBanDAO implements IpBanDAO, Cached {
 
     @Override
     public int getItemCount() {
-        return 2;
+        int total = 0;
+        if(_bannedIps != null)
+            total += _bannedIps.size();
+        if(_bannedIpPrefixes != null)
+            total += _bannedIpPrefixes.size();
+        return total;
     }
 
     @Override

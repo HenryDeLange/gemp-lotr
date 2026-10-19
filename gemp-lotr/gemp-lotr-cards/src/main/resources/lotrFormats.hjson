@@ -1,0 +1,1209 @@
+[
+	{
+		name: Debug
+		code: debug
+		sites: MULTIPATH
+		maximumSameName: 100
+		minDeckSize: 1
+		blocks: [
+			fotr_block
+		]
+		sets: [
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+			30, 31, 32, 33
+			51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69
+			100, 101, 102, 103
+		]
+		hall: false
+	}
+	{
+		name: Anything Goes
+		code: rev_tow_sta
+		order: -1
+		sites: MULTIPATH
+		cancelRingBearerSkirmish: true
+		sets: [
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+			30, 31, 32, 33
+			50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69
+			100, 101, 102, 103
+		]
+		blocks: [
+			Promotional|Promotional:0
+			fotr_block
+			ttt_block
+			king_block
+			war_block
+			hunter_block
+			Additional Sets|Reflections:9,Expanded Middle-earth:14,The Wraith Collection:16,Age's End:19
+			Player's Council V-sets|V0 - PC Kitchen Sink:100,V1 - Shadow of the Past:101,V2 - King of the Golden Hall:102, V3 - The Pelennor Fields:103
+			Player's Council Errata|Promotional Errata:50,The Fellowship of the Ring Errata:51,Mines of Moria Errata:52,Realms of the Elf-lords Errata:53,The Two Towers Errata:54,Battle of Helm's Deep Errata:55,Ents of Fangorn Errata:56,Return of the King Errata:57,Siege of Gondor Errata:58,Reflections Errata:59,Mount Doom Errata:60,Shadows Errata:61,Black Rider Errata:62,Bloodlines Errata:63,Expanded Middle-earth Errata:64,The Hunters Errata:65,The Wraith Collection Errata:66,Rise of Saruman Errata:67,Treachery & Deceit Errata:68,Age's End Errata:69
+			Latest PC Errata|Latest PC Errata:pc_errata
+			hobbit
+		]
+	}
+	{
+		name: Fellowship Block
+		code: fotr_block
+		order: 1
+		sites: FELLOWSHIP
+		cancelRingBearerSkirmish: true
+		blocks: [
+			fotr_block
+		]
+		sets: [
+			1, 2, 3
+		]
+	}
+	{
+		name: Fellowship Block (PC)
+		code: pc_fotr_block
+		order: 2
+		sites: FELLOWSHIP
+		cancelRingBearerSkirmish: true
+		winAtEndOfRegroup: true
+		discardPileIsPublic: true
+		blocks: [
+			fotr_block
+			Player's Council V-sets|V1 - Shadow of the Past:101
+			Player's Council Errata|The Fellowship of the Ring Errata:51,Mines of Moria Errata:52,Realms of the Elf-lords Errata:53
+			Latest PC Errata|Latest PC Errata:pc_errata
+		]
+		sets: [
+			1, 2, 3, 101
+		]
+		errataSets: [
+			51,52,53
+		]
+	}
+	{
+		name: Movie Block
+		code: movie
+		order: 3
+		sites: KING
+		banned: [
+			"8_1", "3_38", "3_106", "1_40", "2_32", "1_248", "3_108", "1_45", "7_96", "3_42", 
+			"10_2", "10_91", "1_108", "1_80", "3_67", "1_195", "3_68", "1_139", "7_49", "1_313", "1_234"
+		]
+		blocks: [
+			fotr_block
+			ttt_block
+			king_block
+			Additional Sets|Reflections:9
+		]
+		sets: [
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+		]
+	}
+	{
+		name: Movie Block (PC)
+		code: pc_movie
+		order: 4
+		sites: MULTIPATH
+		usesMaps: true
+		winAtEndOfRegroup: true
+		discardPileIsPublic: true
+		sets: [
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 101, 102, 103
+		]
+		valid: [
+			"0_56", "0_57", "0_58", "0_59", "0_60"
+		]
+		blocks: [
+			pc_fotr_block
+			pc_ttt_block
+			pc_king_block
+			Additional Sets|Promotional:0,Reflections:9
+			Player's Council V-sets|V1 - Shadow of the Past:101,V2 - King of the Golden Hall:102, V3 - The Pelennor Fields:103
+			Player's Council Errata|The Fellowship of the Ring Errata:51,Mines of Moria Errata:52,Realms of the Elf-lords Errata:53,The Two Towers Errata:54,Battle of Helm's Deep Errata:55,Ents of Fangorn Errata:56,Return of the King Errata:57,Siege of Gondor Errata:58,Reflections Errata:59,Mount Doom Errata:60
+			Latest PC Errata|Latest PC Errata:pc_errata
+		]
+		errataSets: [
+			51,52,53,54,55,56,57,58,59,60
+		]
+	}
+	{
+		name: Towers Block (PC)
+		code: pc_ttt_block
+		hall: false
+		order: 9
+		sites: TWO_TOWERS
+		cancelRingBearerSkirmish: true
+		sets: [
+			4, 5, 6, 102
+		]
+		errataSets: [
+			54,55,66
+		]
+		blocks: [
+			ttt_block
+		]
+	}
+	{
+		name: King Block (PC)
+		code: pc_king_block
+		
+		hall: false
+		order: 118
+		sites: KING
+		cancelRingBearerSkirmish: true
+		restricted: [
+			"7_49"
+		]
+		sets: [
+			7, 8, 10, 103
+		]
+		errataSets: [
+			57,58,60
+		]
+		blocks: [
+			king_block
+		]
+	}
+	{
+		name: Latest PC Errata
+		code: pc_errata
+		sites: MULTIPATH
+		hall: false
+		# Fill this up with the current batch of errata for it to show up on the playtest server.
+		valid: [
+			'52_46',
+			'53_66',
+			'60_20',
+			'102_5',
+			'103_35', '103_65', '103_83', '103_97'
+		]
+		sets: [
+			100
+		]
+	}
+	{
+		name: Expanded
+		code: expanded
+		order: 5
+		sites: SHADOWS
+		banned: [
+			"1_45", "1_138", "1_234", "1_311", "1_313", "1_316", "2_121", "3_17", "3_38", "3_42", 
+			"3_67", "3_68", "3_108", "3_113", "4_73", "7_49", "8_1", "10_2", "10_11", "10_91", 
+			"11_31", "11_100", "11_132"
+		]
+		restricted: [
+			"1_40", "1_80", "1_108", "1_139", "1_195", "1_248", "2_32", "2_75", "3_106", "4_276", "4_304"
+		]
+		sets: [
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+		]
+		blocks: [
+			Promotional|Promotional:0
+			fotr_block
+			ttt_block
+			king_block
+			war_block
+			hunter_block
+			Additional Sets|Reflections:9,Expanded Middle-earth:14,The Wraith Collection:16,Age's End:19
+			Latest PC Errata|Latest PC Errata:pc_errata
+		]
+	}
+	{
+		name: Expanded (PC)
+		code: pc_expanded
+		order: 6
+		sites: SHADOWS
+		winAtEndOfRegroup: true
+		discardPileIsPublic: true
+		sets: [
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 100, 101, 102, 103
+		]
+		blocks: [
+			Promotional|Promotional:0
+			fotr_block
+			ttt_block
+			king_block
+			war_block
+			hunter_block
+			Additional Sets|Reflections:9,Expanded Middle-earth:14,The Wraith Collection:16,Age's End:19
+			Player's Council V-sets|V0 - PC Kitchen Sink:100,V1 - Shadow of the Past:101,V2 - King of the Golden Hall:102, V3 - The Pelennor Fields:103
+			Player's Council Errata|Promotional Errata:50,The Fellowship of the Ring Errata:51,Mines of Moria Errata:52,Realms of the Elf-lords Errata:53,The Two Towers Errata:54,Battle of Helm's Deep Errata:55,Ents of Fangorn Errata:56,Return of the King Errata:57,Siege of Gondor Errata:58,Reflections Errata:59,Mount Doom Errata:60,Shadows Errata:61,Black Rider Errata:62,Bloodlines Errata:63,Expanded Middle-earth Errata:64,The Hunters Errata:65,The Wraith Collection Errata:66,Rise of Saruman Errata:67,Treachery & Deceit Errata:68,Age's End Errata:69
+		]
+		errataSets: [
+			51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69
+		]
+	}
+	{
+		name: Fellowship Block - Set 1
+		code: fotr1_block
+		order: 7
+		sites: FELLOWSHIP
+		cancelRingBearerSkirmish: true
+		sets: [
+			1
+		]
+		block: [
+			Fellowship Block|The Fellowship of the Ring:1
+		]
+		hall: false
+	}
+	{
+		name: Fellowship Block - Sets 1-2
+		code: fotr2_block
+		order: 8
+		sites: FELLOWSHIP
+		cancelRingBearerSkirmish: true
+		sets: [
+			1, 2
+		]
+		block: [
+			Fellowship Block|The Fellowship of the Ring:1,Mines of Moria:2
+		]
+		hall: false
+	}
+	{
+		name: Towers Block
+		code: ttt_block
+		order: 9
+		sites: TWO_TOWERS
+		cancelRingBearerSkirmish: true
+		sets: [
+			4, 5, 6
+		]
+		blocks: [
+			ttt_block
+		]
+	}
+	{
+		name: Towers Open - Sets 1-4
+		code: open_legacy
+		order: 10
+		sites: TWO_TOWERS
+		cancelRingBearerSkirmish: true
+		sets: [
+			1, 2, 3, 4
+		]
+		blocks: [
+			fotr_block
+			Towers Block|The Two Towers:4
+		]
+		hall: false
+	}
+	{
+		name: Towers Block - Set 4
+		code: ttt1_block
+		order: 11
+		sites: TWO_TOWERS
+		cancelRingBearerSkirmish: true
+		sets: [
+			4
+		]
+		blocks: [
+			Towers Block|The Two Towers:4
+		]
+		hall: false
+	}
+	{
+		name: Towers Block - Sets 4-5
+		code: ttt2_block"
+		order: 12
+		sites: TWO_TOWERS
+		cancelRingBearerSkirmish: true
+		sets: [
+			4, 5
+		]
+		blocks: [
+			Towers Block|The Two Towers:4,Battle of Helm's Deep:5
+		]
+		hall: false
+	}
+	
+	{
+		name: Towers Standard
+		code: towers_standard
+		order: 13
+		sites: TWO_TOWERS
+		cancelRingBearerSkirmish: true
+		banned: [
+			"1_40", "1_45", "1_80", "1_108", "1_139", "1_234", "1_248", "1_313", "2_32", 
+			"2_101", "2_108", "3_38", "3_42", "3_68", "4_192"
+		]
+		sets: [
+			1, 2, 3, 4, 5, 6
+		]
+		blocks: [
+			fotr_block
+			ttt_block
+		]
+	}
+	{
+		name: Towers Standard - Sets 1-4
+		code: ttt_standard
+		order: 14
+		sites: TWO_TOWERS
+		cancelRingBearerSkirmish: true
+		banned: [
+			"1_40", "1_45", "1_80", "1_108", "1_139", "1_234", "1_248", "1_313", "2_32", 
+			"2_101", "2_108", "3_38", "3_42", "3_68", "4_192"
+		]
+		sets: [
+			1, 2, 3, 4
+		]
+		blocks: [
+			fotr_block
+			Towers Block|The Two Towers:4
+		]
+		hall: false
+	}
+	{
+		name: Towers Standard - Sets 1-5
+		code: bohd_standard
+		order: 15
+		sites: TWO_TOWERS
+		cancelRingBearerSkirmish: true
+		banned: [
+			"1_40", "1_45", "1_80", "1_108", "1_139", "1_234", "1_248", "1_313", "2_32", 
+			"2_101", "2_108", "3_38", "3_42", "3_68", "4_192"
+		]
+		sets: [
+			1, 2, 3, 4, 5
+		]
+		blocks: [
+			fotr_block
+			Towers Block|The Two Towers:4,Battle of Helm's Deep:5
+		]
+		hall: false
+	}
+	{
+		name: Towers Standard - Sets 2-6
+		code: ts_no_fotr
+		order: 16
+		sites: TWO_TOWERS
+		cancelRingBearerSkirmish: true
+		banned: [
+			"1_40", "1_45", "1_80", "1_108", "1_139", "1_234", "1_248", "1_313", "2_32", 
+			"2_101", "2_108", "3_38", "3_42", "3_68", "4_192"
+		]
+		sets: [
+			2, 3, 4, 5, 6
+		]
+		blocks: [
+			fotr_block
+			ttt_block
+		]
+		hall: false
+	}
+	{
+		name: Enhanced Towers Standard
+		code: ts_reflections
+		order: 17
+		sites: TWO_TOWERS
+		cancelRingBearerSkirmish: false
+		banned: [
+			"1_40", "1_45", "1_80", "1_108", "1_139", "1_234", "1_248", "1_313", "2_32", 
+			"2_101", "2_108", "3_38", "3_42", "3_68", "4_192"
+		]
+		sets: [
+			1, 2, 3, 4, 5, 6, 9, 14, 16
+		]
+		blocks: [
+			fotr_block
+			ttt_block
+			Additional Sets|Reflections:9,Expanded Middle-earth:14,The Wraith Collection:16
+		]
+		hall: true
+	}
+	{
+		name: King Block
+		code: king_block
+		order: 18
+		sites: KING
+		cancelRingBearerSkirmish: true
+		restricted: [
+			"7_49"
+		]
+		sets: [
+			7, 8, 10
+		]
+		blocks: [
+			king_block
+		]
+	}
+	{
+		name: King Block - Set 7
+		code: king1_block
+		order: 19
+		sites: KING
+		cancelRingBearerSkirmish: true
+		restricted: [
+			"7_49"
+		]
+		sets: [
+			7
+		]
+		block: [
+			King Block|The Return of the King:7
+		]
+		hall: false
+	}
+	{
+		name: King Block - Sets 7-8
+		code: king2_block
+		order: 20
+		sites: KING
+		cancelRingBearerSkirmish: true
+		restricted: [
+			"7_49"
+		]
+		sets: [
+			7, 8
+		]
+		block: [
+			King Block|The Return of the King:7,Siege of Gondor:8
+		]
+		hall: false
+	}
+	{
+		name: King Standard
+		code: rotk_sta
+		order: 21
+		sites: KING
+		cancelRingBearerSkirmish: true
+		banned: [
+			"1_40", "1_45","1_80", "1_108", "1_139", "1_195", "1_234", "1_248", "1_313", 
+			"2_32", "2_101", "2_108", "3_38", "3_42", "3_67", "3_68", "3_106", "3_108"
+		]
+		sets: [
+			1, 2, 3, 4, 5, 6, 7
+		]
+		blocks: [
+			fotr_block
+			ttt_block
+			King Block|The Return of the King:7
+		]
+	}
+	{
+		name: Movie Block - Sets 1-7
+		code: movie7
+		order: 22
+		sites: KING
+		banned: [
+			"8_1", "3_38", "3_106", "1_40", "2_32", "1_248", "3_108", "1_45", "7_96", 
+			"3_42", "10_2", "10_91", "1_108", "1_80", "3_67", "1_195", "3_68", "1_139", 
+			"7_49", "1_313", "1_234"
+		]
+		sets: [
+			1, 2, 3, 4, 5, 6, 7
+		]
+		blocks: [
+			fotr_block
+			ttt_block
+			King Block|The Return of the King:7
+		]
+		hall: false
+	}
+	{
+		name: Movie Block - Sets 1-8
+		code: movie8
+		order: 23
+		sites: KING
+		banned: [
+			"8_1", "3_38", "3_106", "1_40", "2_32", "1_248", "3_108", "1_45", "7_96", 
+			"3_42", "10_2", "10_91", "1_108", "1_80", "3_67", "1_195", "3_68", "1_139", 
+			"7_49", "1_313", "1_234"
+		]
+		sets: [
+			1, 2, 3, 4, 5, 6, 7, 8
+		]
+		blocks: [
+			fotr_block
+			ttt_block
+			King Block|The Return of the King:7,Siege of Gondor:8
+		]
+		hall: false
+	}
+	{
+		name: Movie Block - Sets 1-9
+		code: movie9
+		order: 24
+		sites: KING
+		banned: [
+			"8_1", "3_38", "3_106", "1_40", "2_32", "1_248", "3_108", "1_45", "7_96", 
+			"3_42", "10_2", "10_91", "1_108", "1_80", "3_67", "1_195", "3_68", "1_139", 
+			"7_49", "1_313", "1_234"
+		]
+		sets: [
+			1, 2, 3, 4, 5, 6, 7, 8, 9
+		]
+		blocks: [
+			fotr_block
+			ttt_block
+			King Block|The Return of the King:7,Siege of Gondor:8
+			Additional Sets|Reflections:9
+		]
+		hall: false
+	}
+	{
+		name: Movie Block - Sets 1-8, 10
+		code: movie_sans9
+		order: 25
+		sites: KING
+		banned: [
+			"8_1", "3_38", "3_106", "1_40", "2_32", "1_248", "3_108", "1_45", "7_96", 
+			"3_42", "10_2", "10_91", "1_108", "1_80", "3_67", "1_195", "3_68", "1_139", 
+			"7_49", "1_313", "1_234"
+		]
+		sets: [
+			1, 2, 3, 4, 5, 6, 7, 8, 10
+		]
+		blocks: [
+			fotr_block
+			ttt_block
+			king_block
+		]
+		hall: false
+	}
+	{
+		name: Movie Block, no GLR (10R11)
+		code: movie_exp
+		order: 26
+		sites: KING
+		banned: [
+			"8_1", "3_38", "3_106", "1_40", "2_32", "1_248", "3_108", "1_45", "10_11", 
+			"7_96", "3_42", "10_2", "10_91", "1_108", "1_80", "3_67", "1_195", "3_68", 
+			"1_139", "7_49", "1_313", "1_234"
+		]
+		sets: [
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+		]
+		blocks: [
+			fotr_block
+			ttt_block
+			king_block
+			Additional Sets|Reflections:9
+		]
+		hall: false
+	}
+	{
+		name: Pre-Shadows Multipath
+		code: multipath
+		order: 27
+		sites: MULTIPATH
+		banned: [
+			"1_138", "1_311", "1_316", "1_331", "1_338", "1_354", "1_355", "1_360", 
+			"2_14", "2_75", "3_1", "3_113", "4_73", "4_338", "4_355", "4_357", "7_190", 
+			"8_20", "10_11", "8_1", "8_3", "3_38", "3_106", "1_40", "2_32", "1_248", 
+			"3_108", "1_45", "7_96", "3_42", "10_2", "10_91", "1_108", "1_80", "3_67", 
+			"1_195", "3_68", "1_139", "7_49", "1_313", "1_234", "7_156"
+		]
+		valid: [
+			"0_56-60"
+		]
+		sets: [
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+		]
+		blocks: [
+			fotr_block
+			ttt_block
+			king_block
+			Additional Sets|Reflections:9
+		]
+	}
+	{
+		name: War of the Ring Block
+		code: war_block
+		order: 28
+		sites: SHADOWS
+		restricted: [
+			"11_132", "11_100"
+		]
+		sets: [
+			11, 12, 13
+		]
+		blocks: [
+			war_block
+		]
+	}
+	{
+		name: War of the Ring Block - Set 11
+		code: war_block11
+		order: 29
+		sites: SHADOWS
+		restricted: [
+			"11_132", "11_100"
+		]
+		sets: [
+			11
+		]
+		blocks: [
+			war_block
+		]
+		hall: false
+	}
+	{
+		name: War of the Ring Block - Sets 11-12
+		code: war_block12
+		order: 30
+		sites: SHADOWS
+		restricted: [
+			"11_132", "11_100"
+		]
+		sets: [
+			11, 12
+		]
+		blocks: [
+			war_block
+		]
+		hall: false
+	}
+	{
+		name: War of the Ring Block - Sets 10-14
+		code: war_block14
+		order: 31
+		sites: SHADOWS
+		restricted: [
+			"11_132", "11_100"
+		]
+		sets: [
+			10, 11, 12, 13, 14
+		]
+		blocks: [
+			King Block|Mount Doom:10
+			war_block
+			Additional Sets|Expanded Middle-earth:14
+		]
+		hall: false
+	}
+	{
+		name: War of the Ring Standard
+		code: war_standard
+		order: 32
+		sites: SHADOWS
+		banned: [
+			"4_73", "4_276", "4_304", "7_49", "8_1", "10_2", "10_11", "10_91", "11_31", 
+			"11_100", "11_132"
+		]
+		valid: [
+			"0_56-60"
+		]
+		sets: [
+			4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+		]
+		blocks: [
+			ttt_block
+			king_block
+			war_block
+			Additional Sets|Reflections:9,Expanded Middle-earth:14
+		]
+	}
+	{
+		name: Hunters Block
+		code: hunter_block
+		order: 33
+		sites: SHADOWS
+		sets: [
+			15, 17, 18
+		]
+		blocks: [
+			hunter_block
+		]
+	}
+	{
+		name: Pre-Hunters Expanded
+		code: pre-hunters_expanded
+		sites: SHADOWS
+		order: 34
+		banned: [
+			"1_45", "1_138", "1_234", "1_311", "1_313", "1_316", "2_121", "3_17", "3_38", 
+			"3_42", "3_67", "3_68", "3_108", "3_113", "4_73", "7_49", "8_1", "10_2", "10_11", 
+			"10_91", "11_31", "11_100", "11_132"
+		]
+		restricted: [
+			"1_40", "1_80", "1_108", "1_139", "1_195", "1_248", "2_32", "2_75", "3_106", 
+			"4_276", "4_304"
+		]
+		sets: [
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+		]
+		blocks: [
+			Promotional|Promotional:0
+			fotr_block
+			ttt_block
+			king_block
+			war_block
+			Additional Sets|Reflections:9,Expanded Middle-earth:14
+		]
+	}
+	{
+		name: Standard
+		code: standard
+		order: 35
+		sites: SHADOWS
+		banned: [
+			"0_1-19", "0_21", "0_22", "0_30-47", "0_62-67", "8_1", "13_188", "11_114", "11_31", 
+			"10_11", "15_64", "10_2", "10_91", "11_132", "7_49", "11_100"
+		]
+		sets: [
+			0, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+		]
+		blocks: [
+			Promotional|Promotional:0
+			king_block
+			war_block
+			hunter_block
+			Additional Sets|Reflections:9,Expanded Middle-earth:14,The Wraith Collection:16,Age's End:19
+		]
+	}
+	{
+		name: Open
+		code: open
+		order: 36
+		sites: SHADOWS
+		restricted: [
+			"1_248", "7_49", "10_2", "10_91", "11_100", "11_132"
+		]
+		sets: [
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+		]
+		blocks: [
+			Promotional|Promotional:0
+			fotr_block
+			ttt_block
+			king_block
+			war_block
+			hunter_block
+			Additional Sets|Reflections:9,Expanded Middle-earth:14,The Wraith Collection:16,Age's End:19
+		]
+	}
+	{
+		name: French
+		code: french
+		order: 38
+		sites: SHADOWS
+		banned: [
+			"1_40", "1_45", "1_80", "1_108", "1_138", "1_234", "1_248", "1_311", "1_313", 
+			"1_316", "2_14", "2_32", "2_75", "2_121", "3_17", "3_38", "3_42", "3_67", "3_68", 
+			"3_108", "4_73", "4_304", "5_23", "9_35", "11_31", "11_49", "11_100", "11_114", 
+			"11_132", "11_222", "11_226", "11_231", "11_232", "13_11", "13_37", "13_64", 
+			"13_188", "14_6"
+		]
+		sets: [
+			0, 1, 2, 3, 4, 5, 6, 9, 11, 12, 13, 14
+		]
+		blocks: [
+			Promotional|Promotional:0
+			fotr_block
+			ttt_block
+			war_block
+			Additional Sets|Reflections:9,Expanded Middle-earth:14,The Wraith Collection:16
+		]
+	}
+	{
+		name: Second Edition
+		code: 2nd_ed
+		order: 39
+		sites: SECOND_ED
+		banned: [
+			
+		]
+		restricted: [
+			
+		]
+		valid: [
+			
+		]
+		sets: [
+			40
+		]
+		cancelRingBearerSkirmish: true
+		winAtEndOfRegroup: true
+		ruleOfFour: false
+		"winOnControlling5Sites": true
+		hall: false
+	}
+	{
+		name: The Hobbit Draft Game
+		code: hobbit
+		order: 40
+		sites: HOBBIT
+		cancelRingBearerSkirmish: true
+		restricted: [
+			"30_2", "30_5", "30_6", "30_7", "30_8", "30_9", "30_10", "30_11", "30_12", 
+			"30_15", "30_16", "30_17", "30_18", "30_19", "30_29", "30_47", "30_48", "30_58"
+		]
+		sets: [
+			30, 31, 32, 33
+		]
+		blocks: [
+			hobbit
+		]
+		restrictedName: [
+			"Gandalf", Bilbo
+		]
+		hall: true
+	}
+	{
+		name: PLAYTEST - Fellowship Block (PC)
+		code: test_pc_fotr_block
+		order: 41
+		sites: FELLOWSHIP
+		cancelRingBearerSkirmish: true
+		winAtEndOfRegroup: true
+		discardPileIsPublic: true
+		hall: false
+		playtest: true
+		sets: [
+			1, 2, 3, 101, 151
+		]
+		errataSets: [
+			51,52,53
+			71,72,73
+		]
+	}
+	{
+		name: PLAYTEST - Movie Block (PC)
+		code: test_pc_movie
+		order: 42
+		sites: MULTIPATH
+		winAtEndOfRegroup: true
+		discardPileIsPublic: true
+		usesMaps: true
+		hall: false
+		playtest: true
+		sets: [
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 101, 151
+		]
+		errataSets: [
+			51,52,53,54,55,56,57,58,59,60
+			71,72,73,74,75,76,77,78,79,80
+		]
+	}
+	{
+		name: PLAYTEST - Expanded (PC)
+		code: test_pc_expanded
+		sites: SHADOWS
+		order: 43
+		winAtEndOfRegroup: true
+		discardPileIsPublic: true
+		hall: false
+		playtest: true
+		sets: [
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 100, 101, 151
+		]
+		errataSets: [
+			51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69
+			71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89
+		]
+	}
+	{
+		name: Movie Block - Czech
+		code: movie_czech
+		order: 44
+		sites: KING
+		// Unbanned: Flaming Brand, Relics of Moria, Saruman KoI, Savagery to Match Their Numbers, Frying Pan
+		// Banned: Galadriel LR, Vilya
+		banned: [
+			"8_1", "3_38", "3_106", "1_40", "1_248", "1_45", "7_96", "3_42",
+			"10_2", "10_91", "1_108", "1_80", "3_67", "7_49", "1_313", "1_234",
+			"10_11", "3_27"
+		]
+		blocks: [
+			fotr_block
+			ttt_block
+			king_block
+			Additional Sets|Reflections:9
+		]
+		sets: [
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+		]
+	}
+	{
+		name: Expanded - Czech
+		code: expanded_czech
+		order: 45
+		sites: SHADOWS
+		// Banned: Leaving Forever, Steward's Tomb, New Chapter, Mountain Troll, Shadowfax 17R, Grimbeorn, Mithlond, Secluded Homestead
+		// R-list: Deceit
+		banned: [
+			"1_45", "1_138", "1_234", "1_311", "1_313", "1_316", "2_121", "3_17", "3_38", "3_42",
+			"3_67", "3_68", "3_108", "3_113", "4_73", "7_49", "8_1", "10_2", "10_11", "10_91",
+			"11_31", "11_100", "11_132",
+			"7_24", "18_139", "13_154", "15_112", "17_24", "14_6", "18_136", "13_22"
+		]
+		restricted: [
+			"1_40", "1_80", "1_108", "1_139", "1_195", "1_248", "2_32", "2_75", "3_106", "4_276", "4_304",
+			"18_29"
+		]
+		sets: [
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+		]
+		blocks: [
+			Promotional|Promotional:0
+			fotr_block
+			ttt_block
+			king_block
+			war_block
+			hunter_block
+			Additional Sets|Reflections:9,Expanded Middle-earth:14,The Wraith Collection:16,Age's End:19
+			Latest PC Errata|Latest PC Errata:pc_errata
+		]
+	}
+	{
+		name: Fellowship Block - Poorman's
+		code: fotr_poorman
+		sites: FELLOWSHIP
+		cancelRingBearerSkirmish: true
+		banned: [
+			"1_1", "1_13", "1_14", "1_15", "1_16", "1_22", "1_23", "1_28", "1_30", "1_33", "1_34", "1_35", "1_36", "1_38", "1_40", "1_45", "1_47", "1_49", "1_50", "1_55", "1_62", "1_66", "1_69"
+			"1_71", "1_72", "1_75", "1_79", "1_80", "1_81", "1_83", "1_87", "1_88", "1_89", "1_90", "1_93", "1_95", "1_96", "1_99", "1_100", "1_111", "1_114", "1_115", "1_118", "1_120", "1_123", "1_124"
+			"1_125", "1_127", "1_128", "1_129", "1_131", "1_132", "1_137", "1_139", "1_140", "1_143", "1_147", "1_148", "1_155", "1_163", "1_165", "1_166", "1_167", "1_169", "1_170", "1_172", "1_173"
+			"1_175", "1_183", "1_186", "1_189", "1_190", "1_195", "1_199", "1_200", "1_204", "1_205", "1_206", "1_208", "1_210", "1_212", "1_214", "1_216", "1_217", "1_221", "1_224", "1_228", "1_229"
+			"1_230", "1_236", "1_237", "1_240", "1_243", "1_244", "1_245", "1_246", "1_247", "1_250", "1_252", "1_253", "1_254", "1_256", "1_259", "1_263", "1_264", "1_265", "1_272", "1_276", "1_279"
+			"1_282", "1_284", "1_288", "1_289", "1_291", "1_302", "1_307", "1_308", "1_310", "1_313", "1_314", "1_318", "2_1", "2_7", "2_11", "2_12", "2_15", "2_19", "2_20", "2_22", "2_25", "2_27"
+			"2_32", "2_36", "2_38", "2_39", "2_43", "2_45", "2_46", "2_49", "2_50", "2_52", "2_53", "2_57", "2_66", "2_73", "2_74", "2_75", "2_77", "2_80", "2_84", "2_85", "2_86", "2_93", "2_94", "2_97"
+			"2_100", "2_105", "2_108", "2_109", "2_112", "2_113", "3_1", "3_3", "3_8", "3_13", "3_15", "3_17", "3_19", "3_21", "3_23", "3_27", "3_29", "3_34", "3_38", "3_39", "3_40", "3_41", "3_42"
+			"3_44", "3_50", "3_52", "3_54", "3_64", "3_65", "3_66", "3_67", "3_68", "3_71", "3_77", "3_80", "3_81", "3_85", "3_91", "3_93", "3_99", "3_102", "3_103", "3_104", "3_105", "3_110", "3_113"
+		]
+		sets: [
+			1, 2, 3
+		]
+		blocks: [
+			fotr_block
+		]
+		hall: false
+	}
+	{
+		name: Fellowship Block - Highlander
+		code: fotr_highlander
+		sites: FELLOWSHIP
+		cancelRingBearerSkirmish: true
+		maximumSameName: 1
+		sets: [
+			1, 2, 3
+		]
+		blocks: [
+			fotr_block
+		]
+		hall: false
+	}
+    {
+  		name: Movie Block - Poorman's
+  		code: movie_poorman
+  		sites: KING
+  		banned: [
+    		"1_1", "1_13", "1_14", "1_15", "1_16", "1_22", "1_23", "1_28", "1_30", "1_33",
+    		"1_34", "1_35", "1_36", "1_38", "1_40", "1_45", "1_47", "1_49", "1_50", "1_55",
+    		"1_62", "1_66", "1_69", "1_71", "1_72", "1_75", "1_79", "1_80", "1_81", "1_83",
+    		"1_87", "1_88", "1_89", "1_90", "1_93", "1_95", "1_96", "1_99", "1_100", "1_111",
+    		"1_114", "1_115", "1_118", "1_120", "1_123", "1_124", "1_125", "1_127", "1_128",
+    		"1_129", "1_131", "1_132", "1_137", "1_139", "1_140", "1_143", "1_147", "1_148",
+    		"1_155", "1_163", "1_165", "1_166", "1_167", "1_169", "1_170", "1_172", "1_173",
+    		"1_175", "1_183", "1_186", "1_189", "1_190", "1_195", "1_199", "1_200", "1_204",
+    		"1_205", "1_206", "1_208", "1_210", "1_212", "1_214", "1_216", "1_217", "1_221",
+    		"1_224", "1_228", "1_229", "1_230", "1_236", "1_237", "1_240", "1_243", "1_244",
+    		"1_245", "1_246", "1_247", "1_250", "1_252", "1_253", "1_254", "1_256", "1_259",
+    		"1_263", "1_264", "1_265", "1_272", "1_276", "1_279", "1_282", "1_284", "1_288",
+    		"1_289", "1_291", "1_302", "1_307", "1_308", "1_310", "1_313", "1_314", "1_318",
+    		"2_1", "2_7", "2_11", "2_12", "2_15", "2_19", "2_20", "2_22", "2_25", "2_27",
+    		"2_32", "2_36", "2_38", "2_39", "2_43", "2_45", "2_46", "2_49", "2_50", "2_52",
+    		"2_53", "2_57", "2_66", "2_73", "2_74", "2_75", "2_77", "2_80", "2_84", "2_85",
+    		"2_86", "2_93", "2_94", "2_97", "2_100", "2_105", "2_108", "2_109", "2_112", "2_113",
+    		"3_1", "3_3", "3_8", "3_13", "3_15", "3_17", "3_19", "3_21", "3_23", "3_27",
+    		"3_29", "3_34", "3_38", "3_39", "3_40", "3_41", "3_42", "3_44", "3_50", "3_52",
+    		"3_54", "3_64", "3_65", "3_66", "3_67", "3_68", "3_71", "3_77", "3_80", "3_81",
+    		"3_85", "3_91", "3_93", "3_99", "3_102", "3_103", "3_104", "3_105", "3_110", "3_113",
+    		"4_1", "4_6", "4_19", "4_20", "4_22", "4_23", "4_29", "4_30", "4_32", "4_33",
+    		"4_35", "4_39", "4_40", "4_41", "4_45", "4_46", "4_48", "4_52", "4_54", "4_55",
+    		"4_58", "4_61", "4_65", "4_69", "4_72", "4_73", "4_75", "4_79", "4_84", "4_89",
+    		"4_91", "4_92", "4_94", "4_95", "4_100", "4_103", "4_106", "4_107", "4_111", "4_116",
+    		"4_118", "4_119", "4_120", "4_121", "4_124", "4_125", "4_133", "4_139", "4_140", "4_144",
+    		"4_146", "4_149", "4_150", "4_154", "4_157", "4_158", "4_160", "4_162", "4_163", "4_164",
+    		"4_166", "4_167", "4_168", "4_169", "4_171", "4_172", "4_173", "4_174", "4_176", "4_177",
+    		"4_179", "4_186", "4_199", "4_200", "4_203", "4_209", "4_211", "4_213", "4_214", "4_215",
+    		"4_218", "4_219", "4_223", "4_225", "4_229", "4_231", "4_237", "4_238", "4_240", "4_243",
+    		"4_244", "4_245", "4_246", "4_247", "4_251", "4_256", "4_257", "4_259", "4_261", "4_262",
+    		"4_267", "4_269", "4_271", "4_272", "4_274", "4_279", "4_284", "4_289", "4_290", "4_293",
+    		"4_294", "4_299", "4_300", "4_301", "4_303", "4_304", "4_307", "4_311", "4_313", "4_315",
+    		"4_317", "5_3", "5_4", "5_5", "5_7", "5_11", "5_16", "5_18", "5_19", "5_21",
+    		"5_25", "5_29", "5_31", "5_39", "5_41", "5_46", "5_47", "5_49", "5_50", "5_51",
+    		"5_56", "5_58", "5_59", "5_69", "5_70", "5_71", "5_72", "5_78", "5_82", "5_84",
+    		"5_86", "5_89", "5_94", "5_95", "5_96", "5_100", "5_102", "5_103", "5_112", "5_113",
+    		"5_116", "5_123", "5_124", "5_125", "5_126", "5_127", "5_128", "6_6", "6_7", "6_11",
+    		"6_15", "6_18", "6_23", "6_26", "6_28", "6_30", "6_31", "6_35", "6_39", "6_41",
+    		"6_44", "6_46", "6_49", "6_50", "6_55", "6_57", "6_60", "6_62", "6_68", "6_74",
+    		"6_76", "6_77", "6_78", "6_80", "6_82", "6_85", "6_88", "6_89", "6_92", "6_94",
+    		"6_96", "6_101", "6_103", "6_106", "6_109", "6_113", "6_114", "6_123", "6_124", "6_125",
+    		"6_126", "6_127", "6_128", "7_2", "7_5", "7_7", "7_9", "7_10", "7_12", "7_16",
+    		"7_17", "7_18", "7_21", "7_22", "7_24", "7_25", "7_27", "7_28", "7_32", "7_33",
+    		"7_37", "7_38", "7_39", "7_43", "7_44", "7_48", "7_50", "7_56", "7_57", "7_58",
+    		"7_61", "7_63", "7_66", "7_67", "7_68", "7_69", "7_70", "7_71", "7_73", "7_74",
+    		"7_79", "7_80", "7_85", "7_87", "7_91", "7_95", "7_97", "7_100", "7_101", "7_103",
+    		"7_104", "7_112", "7_113", "7_114", "7_119", "7_122", "7_127", "7_129", "7_143", "7_145",
+    		"7_148", "7_152", "7_158", "7_159", "7_163", "7_164", "7_165", "7_166", "7_167", "7_169",
+    		"7_170", "7_177", "7_179", "7_180", "7_181", "7_182", "7_183", "7_188", "7_191", "7_197",
+    		"7_204", "7_205", "7_206", "7_210", "7_211", "7_213", "7_215", "7_219", "7_221", "7_223",
+    		"7_227", "7_228", "7_230", "7_232", "7_233", "7_236", "7_239", "7_241", "7_242", "7_249",
+    		"7_250", "7_251", "7_255", "7_260", "7_261", "7_266", "7_267", "7_268", "7_269", "7_274",
+    		"7_279", "7_283", "7_284", "7_286", "7_306", "7_308", "7_311", "7_314", "7_316", "7_318",
+    		"7_321", "7_324", "7_325", "7_327", "8_2", "8_3", "8_7", "8_11", "8_12", "8_15",
+    		"8_20", "8_21", "8_24", "8_25", "8_27", "8_32", "8_33", "8_36", "8_37", "8_38",
+    		"8_43", "8_49", "8_51", "8_57", "8_62", "8_65", "8_67", "8_68", "8_70", "8_72",
+    		"8_77", "8_81", "8_84", "8_88", "8_91", "8_92", "8_93", "8_95", "8_96", "8_103",
+    		"8_105", "8_108", "8_113", "8_115", "10_1", "10_3", "10_6", "10_7", "10_8", "10_9",
+    		"10_11", "10_13", "10_14", "10_17", "10_18", "10_19", "10_21", "10_23", "10_25", "10_28",
+    		"10_29", "10_38", "10_40", "10_45", "10_46", "10_48", "10_51", "10_58", "10_59", "10_60",
+    		"10_63", "10_67", "10_68", "10_71", "10_72", "10_75", "10_88", "10_89", "10_94", "10_95",
+    		"10_99", "10_100", "10_101", "10_104" 
+  		]
+  		sets: [
+      1, 2, 3, 4, 5, 6, 7, 8, 10
+  		]
+  		blocks: [
+      		fotr_block
+      		ttt_block
+      		king_block
+  		]
+  		hall: false
+	}
+	{
+		name: Movie Block - Highlander
+		code: movie_highlander
+		sites: KING
+		maximumSameName: 1
+		sets: [
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+		]
+		blocks: [
+			fotr_block
+			ttt_block
+			king_block
+			Additional Sets|Reflections:9
+		]
+		hall: false
+	}
+	{
+		name: Limited - Hobbit
+		code: limited_hobbit
+		sites: HOBBIT
+		cancelRingBearerSkirmish: true
+		Limited: true
+		sets: [
+			30, 31, 32, 33
+		]
+		blocks: [
+			hobbit
+		]
+		hall: false
+	}
+	{
+		name: Limited - FOTR
+		code: limited_fotr
+		sites: FELLOWSHIP
+		cancelRingBearerSkirmish: true
+		maximumSameName: 100
+		sets: [
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+		]
+		blocks: [
+			fotr_block
+			Other|Promotional:0,The Two Towers:4,Battle of Helm's Deep:5,Ents of Fangorn:6The Return of the King:7,Siege of Gondor:8,Reflections:9,Mount Doom:10,Shadows:11,Black Rider:12,Bloodlines:13,Expanded Middle-earth:14,The Hunters:15,The Wraith Collection:16,Rise of Saruman:17,Treachery & Deceit:18,Age's End:19
+		]
+		hall: false
+	}
+	{
+		name: Limited - FOTR (PC)
+		code: limited_fotr_pc
+		sites: FELLOWSHIP
+		cancelRingBearerSkirmish: true
+		maximumSameName: 100
+		sets: [
+			1, 2, 3, 101
+		]
+		blocks: [
+			Fellowship Block|The Fellowship of the Ring:1,Mines of Moria:2,Realms of the Elf-lords:3,V1 - Shadow of the Past:101
+		]
+		errataSets: [
+			51,52,53
+			71,72,73
+		]
+		hall: false
+	}
+	{
+		name: Limited - TTT
+		code: limited_ttt
+		sites: TWO_TOWERS
+		cancelRingBearerSkirmish: true
+		maximumSameName: 100
+		sets: [
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+		]
+		blocks: [
+			ttt_block
+			Other|Promotional:0,The Fellowship of the Ring:1,Mines of Moria:2,Realms of the Elf-lords:3,The Return of the King:7,Siege of Gondor:8,Reflections:9,Mount Doom:10,Shadows:11,Black Rider:12,Bloodlines:13,Expanded Middle-earth:14,The Hunters:15,The Wraith Collection:16,Rise of Saruman:17,Treachery & Deceit:18,Age's End:19
+		]
+		hall: false
+	}
+	{
+		name: Limited - ROTK
+		code: limited_king
+		sites: KING
+		cancelRingBearerSkirmish: true
+		maximumSameName: 100
+		sets: [
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+		]
+		blocks: [
+			king_block
+			Additional Sets|Reflections:9,
+			Other|Promotional:0,The Fellowship of the Ring:1,Mines of Moria:2,Realms of the Elf-lords:3,The Two Towers:4,Battle of Helm's Deep:5,Ents of Fangorn:6,Reflections:9,Shadows:11,Black Rider:12,Bloodlines:13,Expanded Middle-earth:14,The Hunters:15,The Wraith Collection:16,Rise of Saruman:17,Treachery & Deceit:18,Age's End:19
+		]
+		hall: false
+	}
+	{
+		name: Limited - WOTR
+		code: limited_shadows
+		sites: SHADOWS
+		cancelRingBearerSkirmish: false
+		maximumSameName: 100
+		sets: [
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+		]
+		blocks: [
+			war_block
+			Additional Sets|Expanded Middle-earth:14,The Wraith Collection:16,Age's End:19
+			Movie Block|Promotional:0,The Fellowship of the Ring:1,Mines of Moria:2,Realms of the Elf-lords:3,The Two Towers:4,Battle of Helm's Deep:5,Ents of Fangorn:6,The Return of the King:7,Siege of Gondor:8,Reflections:9,Mount Doom:10
+			hunter_block
+		]
+		hall: false
+	}
+	{
+		name: Limited - TH
+		code: limited_hunters
+		sites: SHADOWS
+		cancelRingBearerSkirmish: false
+		maximumSameName: 100
+		sets: [
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+		]
+		blocks: [
+			war_block
+			hunter_block
+			Additional Sets|Expanded Middle-earth:14,The Wraith Collection:16,Age's End:19
+			Movie Block|Promotional:0,The Fellowship of the Ring:1,Mines of Moria:2,Realms of the Elf-lords:3,The Two Towers:4,Battle of Helm's Deep:5,Ents of Fangorn:6,The Return of the King:7,Siege of Gondor:8,Reflections:9,Mount Doom:10
+		]
+		hall: false
+	}
+	{
+		name: Limited - Multipath Movie
+		code: limited_multipath
+		sites: MULTIPATH
+		cancelRingBearerSkirmish: false
+		maximumSameName: 100
+		sets: [
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+		]
+		blocks: [
+			fotr_block
+			ttt_block
+			king_block
+			Additional Sets|Reflections:9
+		]
+		hall: false
+	}
+]

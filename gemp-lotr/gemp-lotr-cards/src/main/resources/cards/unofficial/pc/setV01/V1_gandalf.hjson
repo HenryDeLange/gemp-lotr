@@ -1,0 +1,442 @@
+{
+
+	101_13: {
+		cardInfo: {
+			//id: 101_13
+			image: sets/vset1/LOTR-ENV1S013.0_card.jpg
+			collInfo: V1C13
+			rarity: C
+		}
+		title: Counsel of the Wise
+		unique: false
+		side: Free Peoples
+		culture: Gandalf
+		twilight: 0
+		type: Event
+		timewords: Fellowship
+		effects: {
+			type: event
+			requires: {
+				type: canSpot
+				filter: name(Gandalf)
+			}
+			cost: {
+				type: chooseCardsFromDrawDeck
+				select: choose(culture(elven),ally)
+				memorize: chosenAlly
+				text: Choose an [Elven] ally to reveal from your draw deck.
+				showAll: true
+			}
+			effect: {
+				type: optional
+				text: Would you like to pay {chosenAlly} twilight cost to take it into hand?
+				cost: {
+					type: addtwilight
+					amount: {
+						type: twilightCostInMemory
+						memory: chosenAlly
+					}
+				}
+				effect: {
+					type: putcardsfromdeckintohand
+					count: 1
+					select: memory(chosenAlly)
+					reveal: true
+					shuffle: false
+					showAll: false
+				}
+			}
+		}
+		gametext: Spot Gandalf to reveal an [elven] ally from your draw deck.  You may add (X) to take that ally into hand, where X is that ally's twilight cost.
+		lore: "Beside Glorfindel there were several other counsellors of Elrond's household, of whom Erestor was the chief; and with him was Galdor, an Elf from the Grey Havens..."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	# 101_14: {
+	# 	title: Gandalf
+	# 	subtitle: Olorin
+	# 	unique: true
+	# 	culture: gandalf
+	# 	twilight: 4
+	# 	type: companion
+	# 	race: wizard
+	# 	strength: 6
+	# 	vitality: 4
+	# 	signet: gandalf
+	# 	resistance: 6
+	# 	effects: [
+	# 		{
+	# 			type: Trigger
+	# 			optional: true
+	# 			trigger: {
+	# 				type: startOfPhase
+	# 				phase: fellowship
+	# 			}
+	# 			requires: {
+	# 				type: canSpot
+	# 				filter: culture(elven),ally
+	# 				count: 2
+	# 			}
+	# 			cost: {
+	# 				type: exert
+	# 				select: choose(name(Gandalf))
+	# 			}
+	# 			effect: {
+	# 				type: shuffleCardsFromDiscardIntoDrawDeck
+	# 				select: choose(or(culture(gandalf),culture(elven)))
+	# 			}
+	# 		}
+	# 		{
+	# 			type: modifier
+	# 			modifier: {
+	# 				type: modifyStrength
+	# 				requires: {
+	# 					type: canSpot
+	# 					filter: culture(elven),ally
+	# 					count: 3
+	# 				}
+	# 				filter: name(Gandalf)
+	# 				amount: 2
+	# 			}
+	# 		}
+
+	# 		{
+	# 			type: modifier
+	# 			modifier: {
+	# 				type: modifyStrength
+	# 				requires: [
+	# 					{
+	# 						type: canSpot
+	# 						filter: name(Elrond)
+	# 					}
+	# 					{
+	# 						type: canSpot
+	# 						filter: name(Galadriel)
+	# 					}
+	# 					{
+	# 						type: canSpot
+	# 						filter: name(Celeborn)
+	# 					}
+	# 				]
+	# 				filter: name(Gandalf)
+	# 				amount: 2
+	# 			}
+	# 		}
+	# 	]
+	# }
+	101_14: {
+		cardInfo: {
+			//id: 101_14
+			image: sets/vset1/LOTR-ENV1S014.1_card.jpg
+			revision: 1
+			collInfo: V1R14
+			rarity: R
+		}
+		title: Gandalf
+		subtitle: Olorin
+		unique: true
+		side: Free Peoples
+		culture: Gandalf
+		twilight: 4
+		type: Companion
+		race: Wizard
+		strength: 7
+		vitality: 4
+		signet: Gandalf
+		resistance: 6
+		effects: [
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: startOfPhase
+					phase: fellowship
+				}
+				requires: {
+					type: canSpot
+					filter: culture(elven),ally
+					count: 3
+				}
+				cost: {
+					type: exert
+					select: self
+				}
+				effect: {
+					type: PutCardsFromDiscardIntoHand
+					select: choose(event,or(culture(gandalf),culture(elven)))
+				}
+			}			
+			{
+				type: modifier
+				modifier: {
+					type: modifyStrength
+					filter: self
+					amount: {
+						type: ForEachYouCanSpot
+						filter: or(name(Elrond),name(Galadriel),name(Celeborn),name(Saruman))
+					}
+				}
+			}
+		]
+		gametext: At the start of your fellowship phase, you may spot 3 [elven] allies and exert Gandalf to take a [Gandalf] or [elven] event from your discard pile into your hand.<br>Gandalf is strength +1 for each of these characters you can spot: Celeborn, Elrond, Galadriel, Saruman.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	101_15: {
+		cardInfo: {
+			//id: 101_15
+			image: sets/vset1/LOTR-ENV1S015.0_card.jpg
+			collInfo: V1R15
+			rarity: R
+		}
+		title: Gwaihir
+		subtitle: Lord of Eagles
+		unique: true
+		side: Free Peoples
+		culture: Gandalf
+		twilight: 4
+		type: Ally
+		allyHome: 4F
+		race: Eagle
+		strength: 8
+		vitality: 2
+		effects: [
+			{
+				type: toPlay
+				requires: {
+					type: canSpot
+					filter: name(Gandalf)
+				}
+			}
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: movesTo
+					filter: not(your)
+				}
+				effect: {
+					type: heal
+					select: choose(companion,signet(gandalf))
+				}
+			}
+			{
+				type: activated
+				phase: regroup
+				cost: {
+					type: discard
+					select: self
+				}
+				effect: [
+					{
+						type: addModifier
+						modifier: {
+							type: modifyMoveLimit
+							amount: 1
+						}
+						until: endOfTurn
+					}
+					{
+						type: optional
+						player: shadowPlayer
+						text: Would you like to take up to 2 Shadow cards into hand from discard?
+						effect: {
+							type: putCardsFromDiscardIntoHand
+							select: choose(side(shadow))
+							count: 2
+						}
+
+					}
+				]
+			}
+		]
+		gametext: To play, spot Gandalf.<br>Each time the fellowship moves to an opponent's site, you may heal a companion with the Gandalf signet.<br>Regroup: Discard Gwaihir to make the move limit for this turn +1; the Shadow player may take up to 2 Shadow cards into hand from their discard pile.
+		lore: ""
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	101_16: {
+		cardInfo: {
+			//id: 101_16
+			image: sets/vset1/LOTR-ENV1S016.0_card.jpg
+			collInfo: V1C16
+			rarity: C
+		}
+		title: My Heart Tells Me
+		unique: true
+		side: Free Peoples
+		culture: Gandalf
+		twilight: 1
+		type: Condition
+		keywords: Support Area
+		effects: {
+			type: Response
+			trigger: {
+				type: aboutToTakeWound
+				filter: minion
+			}
+			requires: [
+				{
+					type: canSpot
+					filter: name(Gandalf)
+				}
+				{
+					type: perTurnLimit
+					limit: 1
+				}
+			]
+			effect: [
+				{
+					type: incrementPerTurnLimit
+					limit: 1
+				}
+				{
+					type: preventWound
+					select: choose(minion)
+				}
+				{
+					type: heal
+					select: choose(companion)
+				}
+			]
+		}
+		gametext: Each time a minion is about to take a wound, you may spot Gandalf to prevent that wound and heal a companion (limit once per turn).
+		lore: "'Then do not be too eager to deal out death in judgement.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	101_17: {
+		cardInfo: {
+			//id: 101_17
+			image: sets/vset1/LOTR-ENV1S017.0_card.jpg
+			collInfo: V1C17
+			rarity: C
+		}
+		title: Two Eyes, as Often as I Can Spare Them
+		unique: false
+		side: Free Peoples
+		culture: Gandalf
+		twilight: 3
+		type: Event
+		timewords: Fellowship
+		effects: {
+			type: event
+			requires: [
+				{
+					type: canSpot
+					filter: name(Frodo)
+				}
+				{
+					type: canSpot
+					filter: name(Gandalf)
+				}
+			]
+			effect: {
+				type: drawCards
+				count: {
+					type: forEachVitality
+					filter: name(Frodo)
+				}
+			}
+		}
+		gametext: Spot Gandalf and Frodo to draw X cards, where X is Frodo's vitality.
+		lore: "'You'll keep an eye on Frodo, won't you?'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	101_18: {
+		cardInfo: {
+			//id: 101_18
+			image: sets/vset1/LOTR-ENV1S018.0_card.jpg
+			collInfo: V1R18
+			rarity: R
+		}
+		title: The White Council
+		unique: true
+		side: Free Peoples
+		culture: Gandalf
+		twilight: 1
+		type: Condition
+		keywords: Support Area
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: SarumanFirstSentenceInactive
+					requires: [
+						{
+							type: canspot
+							filter: name(Gandalf)
+						}
+						{
+							type: canspot
+							filter: culture(elven),ally
+							count: 2
+						}
+					]
+				}
+			}
+			{
+				type: activated
+				phase: regroup
+				limitPerPhase: 2
+				requires: [
+					{
+						type: canSpot
+						count: 2
+						filter: culture(elven),not(exhausted)
+					}
+				]
+				cost: {
+					type: exert
+					select: choose(culture(elven),ally)
+					count: 2
+				}
+				effect: {
+					type: heal
+					select: choose(companion,or(name(Gandalf),signet(gandalf)))
+				}
+			}
+		]
+		gametext: While you can spot Gandalf and 2 [elven] allies, the first sentence of Saruman's game text does not apply.<br>Regroup: Exert 2 [elven] allies to heal Gandalf or a companion with the Gandalf signet (limit 2 per phase).
+		lore: "'For even the very wise cannot see all ends.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+}

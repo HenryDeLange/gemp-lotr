@@ -6,9 +6,9 @@ import com.gempukku.lotro.logic.modifiers.ModifiersLogic;
 import com.gempukku.lotro.logic.timing.rules.*;
 
 public class RuleSet {
-    private LotroGame _game;
-    private DefaultActionsEnvironment _actionsEnvironment;
-    private ModifiersLogic _modifiersLogic;
+    private final LotroGame _game;
+    private final DefaultActionsEnvironment _actionsEnvironment;
+    private final ModifiersLogic _modifiersLogic;
 
     public RuleSet(LotroGame game, DefaultActionsEnvironment actionsEnvironment, ModifiersLogic modifiersLogic) {
         _game = game;
@@ -56,6 +56,7 @@ public class RuleSet {
         new ActivatePhaseActionsRule(_actionsEnvironment).applyRule();
         new ActivatePhaseActionsFromHandRule(_actionsEnvironment).applyRule();
         new ActivatePhaseActionsFromDiscardRule(_actionsEnvironment).applyRule();
+        new ActivatePhaseActionsFromDrawDeckRule(_actionsEnvironment).applyRule();
         new ActivatePhaseActionsFromStackedRule(_actionsEnvironment).applyRule();
 
         new RequiredTriggersRule(_actionsEnvironment).applyRule();
@@ -66,5 +67,7 @@ public class RuleSet {
 
         new TakeOffRingRule(_actionsEnvironment).applyRule();
         new ConcealedRule(_actionsEnvironment).applyRule();
+        new HinderedRule(_modifiersLogic, _actionsEnvironment).applyRule();
+        new RestoreRule(_actionsEnvironment).applyRule();
     }
 }

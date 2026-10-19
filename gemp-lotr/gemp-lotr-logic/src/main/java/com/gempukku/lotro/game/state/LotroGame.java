@@ -7,33 +7,44 @@ import com.gempukku.lotro.game.LotroCardBlueprintLibrary;
 import com.gempukku.lotro.game.LotroFormat;
 import com.gempukku.lotro.logic.modifiers.ModifiersEnvironment;
 import com.gempukku.lotro.logic.modifiers.ModifiersQuerying;
+import com.gempukku.lotro.packs.PackOpener;
 
 public interface LotroGame {
-    public GameState getGameState();
+    GameState getGameState();
 
-    public LotroCardBlueprintLibrary getLotroCardBlueprintLibrary();
+    LotroCardBlueprintLibrary getLotroCardBlueprintLibrary();
 
-    public ModifiersEnvironment getModifiersEnvironment();
+    /**
+     * Returns the pack opener for mid-game booster pack effects, or null if not available.
+     */
+    PackOpener getPackOpener();
 
-    public ModifiersQuerying getModifiersQuerying();
+    ModifiersEnvironment getModifiersEnvironment();
 
-    public ActionsEnvironment getActionsEnvironment();
+    ModifiersQuerying getModifiersQuerying();
 
-    public UserFeedback getUserFeedback();
+    ActionsEnvironment getActionsEnvironment();
 
-    public void checkRingBearerCorruption();
+    UserFeedback getUserFeedback();
 
-    public void checkRingBearerAlive();
+    void checkRingBearerCorruption();
 
-    public void playerWon(String currentPlayerId, String reason);
+    void checkRingBearerAlive();
 
-    public void playerLost(String currentPlayerId, String reason);
+    void playerWon(String currentPlayerId, String reason);
 
-    public String getWinnerPlayerId();
+    void playerLost(String currentPlayerId, String reason);
 
-    public LotroFormat getFormat();
+    String getWinnerPlayerId();
 
-    public boolean shouldAutoPass(String playerId, Phase phase);
+    LotroFormat getFormat();
 
-    public boolean isSolo();
+    /**
+     * Returns the league-specific extra info this game was created with (e.g. RTMDGameInfo), or null.
+     */
+    GameExtraInfo getExtraInfo();
+
+    boolean shouldAutoPass(String playerId, Phase phase);
+
+    boolean isSolo();
 }

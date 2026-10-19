@@ -14,13 +14,13 @@ import java.util.Collections;
 import java.util.HashSet;
 
 public abstract class ChooseArbitraryCardsEffect extends AbstractEffect {
-    private String _playerId;
-    private String _choiceText;
-    private boolean _showMatchingOnly;
-    private Collection<PhysicalCard> _cards;
-    private Filterable _filter;
-    private int _minimum;
-    private int _maximum;
+    private final String _playerId;
+    private final String _choiceText;
+    private final boolean _showMatchingOnly;
+    private final Collection<PhysicalCard> _cards;
+    private final Filterable _filter;
+    private final int _minimum;
+    private final int _maximum;
 
     public ChooseArbitraryCardsEffect(String playerId, String choiceText, Collection<? extends PhysicalCard> cards, int minimum, int maximum) {
         this(playerId, choiceText, cards, Filters.any, minimum, maximum);
@@ -34,7 +34,7 @@ public abstract class ChooseArbitraryCardsEffect extends AbstractEffect {
         _playerId = playerId;
         _choiceText = choiceText;
         _showMatchingOnly = showMatchingOnly;
-        _cards = new HashSet<PhysicalCard>(cards);
+        _cards = new HashSet<>(cards);
         _filter = filter;
         _minimum = minimum;
         _maximum = maximum;
@@ -42,7 +42,7 @@ public abstract class ChooseArbitraryCardsEffect extends AbstractEffect {
 
     @Override
     public boolean isPlayableInFull(LotroGame game) {
-        return Filters.filter(_cards, game, _filter).size() >= _minimum;
+        return Filters.filter(game, _cards, _filter).size() >= _minimum;
     }
 
     @Override
@@ -57,7 +57,7 @@ public abstract class ChooseArbitraryCardsEffect extends AbstractEffect {
 
     @Override
     protected FullEffectResult playEffectReturningResult(final LotroGame game) {
-        Collection<PhysicalCard> possibleCards = Filters.filter(_cards, game, _filter);
+        Collection<PhysicalCard> possibleCards = Filters.filter(game, _cards, _filter);
 
         boolean success = possibleCards.size() >= _minimum;
 
@@ -67,7 +67,7 @@ public abstract class ChooseArbitraryCardsEffect extends AbstractEffect {
             minimum = possibleCards.size();
 
         if (_maximum == 0) {
-            cardsSelected(game, Collections.<PhysicalCard>emptySet());
+            cardsSelected(game, Collections.emptySet());
         } else if (possibleCards.size() == minimum) {
             cardsSelected(game, possibleCards);
         } else {
@@ -85,6 +85,10 @@ public abstract class ChooseArbitraryCardsEffect extends AbstractEffect {
         }
 
         return new FullEffectResult(success);
+    }
+
+    public void removeCard(PhysicalCard card) {
+        _cards.remove(card);
     }
 
     protected abstract void cardsSelected(LotroGame game, Collection<PhysicalCard> selectedCards);

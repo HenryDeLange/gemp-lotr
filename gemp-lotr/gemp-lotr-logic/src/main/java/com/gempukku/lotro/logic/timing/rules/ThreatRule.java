@@ -18,7 +18,8 @@ import java.util.Collections;
 import java.util.List;
 
 public class ThreatRule {
-    private DefaultActionsEnvironment _actionsEnvironment;
+    public static String ThreatRuleSource = "Threat Rule";
+    private final DefaultActionsEnvironment _actionsEnvironment;
 
     public ThreatRule(DefaultActionsEnvironment actionsEnvironment) {
         _actionsEnvironment = actionsEnvironment;
@@ -31,7 +32,7 @@ public class ThreatRule {
                     public List<? extends RequiredTriggerAction> getRequiredAfterTriggers(LotroGame game, EffectResult effectResult) {
                         if (effectResult.getType() == EffectResult.Type.ANY_NUMBER_KILLED) {
                             KilledResult killResult = (KilledResult) effectResult;
-                            if (Filters.filter(killResult.getKilledCards(), game, Filters.or(CardType.COMPANION, CardType.ALLY)).size() > 0) {
+                            if (Filters.acceptsAny(game, killResult.getKilledCards(), Filters.or(CardType.COMPANION, CardType.ALLY))) {
                                 RequiredTriggerAction action = new RequiredTriggerAction(null);
                                 action.appendEffect(
                                         new ThreatWoundsEffect(killResult));
@@ -53,7 +54,7 @@ public class ThreatRule {
                                         filter = Filters.and(filter, Filters.not(Filters.ringBearer));
 
                                     ChooseAndWoundCharactersEffect woundCharacter = new ChooseAndWoundCharactersEffect(action, game.getGameState().getCurrentPlayerId(), 1, 1, filter);
-                                    woundCharacter.setSourceText("Threat Rule");
+                                    woundCharacter.setSourceText(ThreatRuleSource);
                                     action.appendEffect(woundCharacter);
                                 }
                                 return Collections.singletonList(action);

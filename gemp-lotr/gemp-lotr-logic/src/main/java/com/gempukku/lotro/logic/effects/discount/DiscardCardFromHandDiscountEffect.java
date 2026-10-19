@@ -13,11 +13,11 @@ import com.gempukku.lotro.logic.timing.Action;
 import java.util.Collection;
 
 public class DiscardCardFromHandDiscountEffect extends AbstractSubActionEffect implements DiscountEffect {
-    private Action _action;
-    private String _playerId;
+    private final Action _action;
+    private final String _playerId;
     private int _minimalDiscount;
     private int _discardedCount;
-    private Filterable[] _discardedCardFilter;
+    private final Filterable[] _discardedCardFilter;
 
     public DiscardCardFromHandDiscountEffect(Action action, String playerId, Filterable... discardedCardFilter) {
         _action = action;
@@ -47,12 +47,12 @@ public class DiscardCardFromHandDiscountEffect extends AbstractSubActionEffect i
 
     @Override
     public int getMaximumPossibleDiscount(LotroGame game) {
-        return Filters.filter(game.getGameState().getHand(_playerId), game, _discardedCardFilter).size();
+        return Filters.filter(game, game.getGameState().getHand(_playerId), _discardedCardFilter).size();
     }
 
     @Override
     public boolean isPlayableInFull(LotroGame game) {
-        return Filters.filter(game.getGameState().getHand(_playerId), game, _discardedCardFilter).size() >= _minimalDiscount;
+        return Filters.filter(game, game.getGameState().getHand(_playerId), _discardedCardFilter).size() >= _minimalDiscount;
     }
 
     @Override
@@ -64,9 +64,12 @@ public class DiscardCardFromHandDiscountEffect extends AbstractSubActionEffect i
                         @Override
                         protected void cardsBeingDiscardedCallback(Collection<PhysicalCard> cardsBeingDiscarded) {
                             _discardedCount = cardsBeingDiscarded.size();
+                            discountPaidCallback(_discardedCount);
                         }
                     });
             processSubAction(game, subAction);
         }
     }
+
+    protected void discountPaidCallback(int paid) {  }
 }

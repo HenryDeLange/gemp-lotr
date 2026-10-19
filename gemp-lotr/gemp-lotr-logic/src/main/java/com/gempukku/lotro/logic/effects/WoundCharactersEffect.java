@@ -3,13 +3,12 @@ package com.gempukku.lotro.logic.effects;
 import com.gempukku.lotro.common.Filterable;
 import com.gempukku.lotro.filters.Filter;
 import com.gempukku.lotro.game.PhysicalCard;
-import com.gempukku.lotro.game.state.GameState;
 import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.GameUtils;
 import com.gempukku.lotro.logic.modifiers.ModifierFlag;
-import com.gempukku.lotro.logic.modifiers.ModifiersQuerying;
 import com.gempukku.lotro.logic.timing.Effect;
 import com.gempukku.lotro.logic.timing.results.WoundResult;
+import com.gempukku.lotro.logic.timing.rules.ThreatRule;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -72,13 +71,14 @@ public class WoundCharactersEffect extends AbstractPreventableCardEffect {
 
     @Override
     protected void playoutEffectOn(LotroGame game, Collection<PhysicalCard> cards) {
-        if (cards.size() > 0)
+        if (!cards.isEmpty())
             game.getGameState().sendMessage(getAppendedNames(cards) + " " + GameUtils.be(cards) + " wounded by " + _sourceText);
 
         for (PhysicalCard woundedCard : cards) {
             game.getGameState().addWound(woundedCard);
             game.getModifiersEnvironment().addedWound(woundedCard);
-            game.getActionsEnvironment().emitEffectResult(new WoundResult(_sources, woundedCard));
+            boolean threat = _sourceText.equals(ThreatRule.ThreatRuleSource);
+            game.getActionsEnvironment().emitEffectResult(new WoundResult(_sources, threat, woundedCard));
         }
     }
 

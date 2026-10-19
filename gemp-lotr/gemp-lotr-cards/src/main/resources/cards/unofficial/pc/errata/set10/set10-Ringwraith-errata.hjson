@@ -1,0 +1,69 @@
+{
+
+	60_68: {
+		cardInfo: {
+			//id: 0_68.1
+			revision: 1
+			image: errata/LOTR-EN10S068.1_card.jpg
+			collInfo: 10R68
+			rarity: R
+		}
+		title: Ulaire Enquea
+		subtitle: Thrall of The One
+		unique: true
+		side: Shadow
+		culture: Wraith
+		twilight: 6
+		type: Minion
+		race: Nazgul
+		keyword: enduring
+		strength: 11
+		vitality: 4
+		site: 3
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: CantBeExerted
+					filter: self
+					requires: {
+						type: phase
+						phase: skirmish
+					}
+					by: side(shadow)
+				}
+			},
+			{
+				type: activated
+				phase: skirmish
+				requires: {
+					type: CanSpot
+					filter: self,wounded,InSkirmish
+				}
+				cost: [
+					{
+						type: RemoveTwilight
+						amount: 1
+					}
+					{
+						type: heal
+						select: self
+					}
+				]
+				effect: {
+					type: AddBurdens
+					
+				}
+			}
+		]
+		gametext: <b>Enduring.</b> <br>Shadow cards cannot exert Ulaire Enquea during a skirmish phase. <br><b>Skirmish:</b> If Ulaire Enquea is skirmishing, remove (1) and heal him to add a burden.
+		lore: "Ever they circled above the City, like vultures that expect their fill of doomed men's flesh."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

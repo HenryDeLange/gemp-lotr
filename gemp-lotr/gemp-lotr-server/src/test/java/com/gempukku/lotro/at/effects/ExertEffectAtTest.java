@@ -21,13 +21,13 @@ public class ExertEffectAtTest extends AbstractAtTest {
 
         skipMulligans();
 
-        final PhysicalCardImpl merry = new PhysicalCardImpl(101, "1_303", P1, _library.getLotroCardBlueprint("1_303"));
+        final PhysicalCardImpl merry = new PhysicalCardImpl(101, "1_303", P1, _cardLibrary.getLotroCardBlueprint("1_303"));
 
         _game.getGameState().addCardToZone(_game, merry, Zone.FREE_CHARACTERS);
         _game.getGameState().addWound(merry);
         _game.getGameState().addWound(merry);
 
-        ActivateCardAction action = new ActivateCardAction(merry);
+        ActivateCardAction action = new ActivateCardAction(merry, AbstractAtTest.P1);
         ChooseAndExertCharactersEffect exertEffect = new ChooseAndExertCharactersEffect(action, P1, 1, 1, 2, CardType.COMPANION, Filters.not(Filters.ringBearer));
         action.appendEffect(exertEffect);
 

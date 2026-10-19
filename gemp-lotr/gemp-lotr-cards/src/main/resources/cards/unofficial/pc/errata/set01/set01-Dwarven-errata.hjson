@@ -1,0 +1,773 @@
+{
+	51_5: {
+		cardInfo: {
+			//id: 51_5.1
+			parent: 1_5
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN01E005.1_card.jpg
+			collInfo: 1C5
+			rarity: C
+		}
+		title: Cleaving Blow
+		unique: false
+		side: Free Peoples
+		culture: Dwarven
+		twilight: 1
+		type: Event
+		timewords: Skirmish
+		effects: {
+			type: event
+			effect: [
+				{
+					type: modifyStrength
+					select: choose(dwarf)
+					amount: 2
+					memorize: chosenDwarf
+				}
+				{
+					type: addKeyword
+					select: memory(chosenDwarf)
+					keyword: damage+1
+				}
+				{
+					type: discard
+					select: choose(side(Shadow), item, AttachedTo(minion, InSkirmishAgainst(memory(chosenDwarf))))
+				}
+			]
+		}
+		gametext: Skirmish: Make a Dwarf strength +2 and <b>damage +1</b> and discard a Shadow item borne by a minion that Dwarf is skirmishing.
+		lore: "The shoddy workmanship of Orc-smiths cannot withstand the fury of Durin's folk."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_7: {
+		cardInfo: {
+			//id: 1_7.1
+			parent: 1_7
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/51_7.jpg
+			collInfo: 1C7
+			rarity: C
+		}
+		title: Dwarf Guard
+		culture: Dwarven
+		twilight: 1
+		type: Companion
+		race: Dwarf
+		strength: 5
+		vitality: 2
+		resistance: 6
+		effects: {
+			type: toPlay
+			requires: {
+				type: canSpot
+				filter: dwarf
+			}
+		}
+		gametext: To play, spot a Dwarf.
+		lore: Dwarves from Dain's people are stout companions, trustworthy and loyal.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	# 51_9: {
+	# 	cardInfo: {
+	# 	# 		imagePath: errata/LOTR-EN01E009.1.jpg
+	# 		//If this is true, then all gameplay-related info outside this cardInfo definition
+	# 		// will be ignored and the java class loaded instead.
+	# 		javaClass: false
+	# 		//This instructs the blueprint generator to insert this card as an alt of the listed
+	# 		// parent blueprint. Can of course be ommitted if not an errata or promo.
+	# 		parent: 1_9
+	# 		//This is the tree path to use within the alts structure on the parent.
+	# 		// Can of course be ommitted if parent is null. 
+	# 		parentPath: errata/pc
+	# 		//Versioning differentiates releases within a particular alt path, such as PC errata
+	# 		// version 1 vs version 2.  PC version 2 will not conflict with, say, Decipher version 2.
+	# 		//Top-level cards should always be version 0.
+	# 		revision: 1
+	# 		collInfo: 1C9
+	# 		rarity: C
+	# 		setNum: "1"
+	# 		cardNum: 9
+	# 		// Standard, Masterwork, Tengwar, FullArt, etc.  Top-level cards are always Standard.
+	# 		style: Standard
+	# 	}
+	# 	title: Dwarven Axe
+	# 	culture: dwarven
+	# 	twilight: 0
+	# 	type: possession
+	# 	itemclass: hand weapon
+	# 	strength: 2
+	# 	target: dwarf
+	# 	effects: {
+	# 		type: Trigger
+	# 		trigger: {
+	# 			type: losesSkirmish
+	# 			filter: minion
+	# 			against: bearer
+	# 			memorize: losingMinion
+	# 		}
+	# 		effect: {
+	# 			type: choice
+	# 			player: OwnerFromMemory(losingMinion)
+	# 			texts: [
+	# 				Exert a minion
+	# 				Discard the bottom card of your draw deck
+	# 			]
+	# 			effects: [
+	# 				{
+	# 					type: exert
+	# 					select: choose(your,minion)
+	# 				}
+	# 				{
+	# 					type: discardBottomCardsFromDeck
+	# 					deck: OwnerFromMemory(losingMinion)
+	# 					forced: false
+	# 				}
+	# 			]
+	# 		}
+	# 	}
+	# 	gametext: Bearer must be a Dwarf. <br>Each time a minion loses a skirmish to bearer, that minion's owner must exert a minion or discard the bottom card of their draw deck.
+	# 	lore: "'Buckler and corslet, axe and sword / And shining spears were laid in hoard.'"
+	# 	promotext: ""
+	# 	alts: {
+	# 		//These are just CardInfo objects
+	# 		promos: {
+	# 		}
+	# 		//These are full card definitions, with redundant info that is the same as the original card ommitted
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	51_9: {
+		cardInfo: {
+			//id: 1_9.2
+			parent: 1_9
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 2
+			image: errata/LOTR-EN01E009.2_card.jpg
+			collInfo: 1C9
+			rarity: C
+		}
+		title: Dwarven Axe
+		unique: false
+		side: Free Peoples
+		culture: Dwarven
+		twilight: 1
+		type: Possession
+		itemclass: Hand Weapon
+		strength: 2
+		target: dwarf
+		effects: {
+			type: Trigger
+			optional: false
+			trigger: {
+				type: losesSkirmish
+				filter: minion
+				against: bearer
+			}
+			effect: [
+				{
+					# Need to check for minions first, else if this was the last
+					# minion on the table, it defaults to asking freeps to make
+					# the choice.
+					type: If
+					check: {
+						type: CanSpot
+						filter: minion
+					}
+					true: [
+						{
+							type: ChooseActiveCards
+							select: choose(minion)
+							memorize: chosenMinion
+							count: 0-1
+							text: Choose a minion to make strength -1 until regroup
+						}
+						{
+							type: If
+							check: {
+								type: HasCardInMemory
+								memory: chosenMinion
+							}
+							true: {
+								type: Preventable
+								player: OwnerFromMemory(chosenMinion)
+								text: Would you like to discard the bottom 2 cards of your draw deck to prevent {chosenMinion} being strength -1 until regroup?
+								cost: {
+									type: discardBottomCardsFromDeck
+									deck: OwnerFromMemory(chosenMinion)
+									count: 2
+									forced: false
+								}
+								effect: {
+									type: ModifyStrength
+									amount: -1
+									select: memory(chosenMinion)
+									until: start(regroup)
+								}
+							}
+						}
+					]
+				}
+			]
+		}
+		gametext: Bearer must be a Dwarf. <br>Each time a minion loses a skirmish to bearer, you may make a minion strength -1 until the regroup phase.  The Shadow player may discard 2 cards from the bottom of their draw deck to prevent this.
+		lore: "'Buckler and corslet, axe and sword / And shining spears were laid in hoard.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+
+	51_11: {
+		cardInfo: {
+			//id: 1_11.1
+			parent: 1_11
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/51_11.jpg
+			collInfo: 1C11
+			rarity: C
+		}
+		title: Farin
+		subtitle: Dwarven Emissary
+		unique: true
+		culture: dwarven
+		twilight: 2
+		type: companion
+		race: dwarf
+		strength: 6
+		vitality: 3
+		resistance: 6
+		effects: [
+			{
+				type: toPlay
+				requires: {
+					type: canSpot
+					filter: dwarf
+				}
+			}
+			{
+				type: modifier
+				modifier: {
+					type: modifyStrength
+					filter: self,inSkirmishAgainst(orc)
+					amount: 2
+				}
+			}
+		]
+		gametext: To play, spot a Dwarf.<br>While skirmishing an Orc, Farin is strength +2.
+		lore: Among the envoys sent to represent the Dwarves of Erebor at the Council of Elrond was Farin, a young but wise Dwarf, and a fierce foe in battle.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	51_12: {
+		cardInfo: {
+			//id: 1_12.1
+			parent: 1_12
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/51_12.jpg
+			collInfo: 1U12
+			rarity: U
+		}
+		title: Gimli
+		subtitle: Dwarf of Erebor
+		unique: true
+		culture: dwarven
+		twilight: 2
+		type: companion
+		race: dwarf
+		strength: 6
+		vitality: 3
+		resistance: 6
+		signet: aragorn
+		keyword: damage+1
+		effects: {
+			type: activated
+			phase: fellowship
+			requires: {
+				type: twilightPoolLessThan
+				amount: 2
+			}
+			cost: [
+				{
+					type: addTwilight
+					amount: 2
+				}
+				{
+					type: putCardsFromHandOnBottomOfDeck
+				}
+			]
+			effect: {
+				type: drawCards
+			}
+		}
+		gametext: <b>Damage +1</b> <br> <b>Fellowship: </b> If the twilight pool has fewer than 2 twilight tokens, add (2) and place a card from hand beneath your draw deck to draw a card.
+		lore: "Gimli now walked ahead by the wizard's side, so eager was he to come to Moria."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+		51_15: {
+		cardInfo: {
+			//id: 51_15.1
+			parent: 1_15
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN01E015.1_card.jpg
+			collInfo: 1R15
+			rarity: R
+		}
+		title: Gimli's Helm
+		unique: true
+		side: Free Peoples
+		culture: Dwarven
+		twilight: 0
+		type: Possession
+		itemclass: Helm
+		target: title(Gimli)
+		effects: [
+			{
+				type: modifier
+				modifier: {
+					type: cantTakeMoreWoundsThan
+					filter: bearer
+					phase: skirmish
+				}
+			}
+			{
+				type: activated
+				phase: skirmish
+				cost: [
+					{
+						type: memorize
+						filter: bearer
+						memory: oldBearer
+					}
+					{
+						type: discard
+						select: self
+					}
+				]
+				effect: {
+					type: DisableWounds
+					select: memory(oldBearer)
+				}
+			}
+		]
+		gametext: Bearer must be Gimli.<br>He takes no more than 1 wound during each skirmish phase.<br><b>Skirmish:</b> Discard Gimli's Helm to make Gimli unable to take wounds.
+		lore: "A helm fashioned under the Lonely Mountain protects the head of Gimli the Dwarf."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_16: {
+		cardInfo: {
+			//id: 1_16.1
+			parent: 1_16
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN01E016.1.jpg
+			collInfo: 1R16
+			rarity: R
+		}
+		title: Greatest Kingdom of My People
+		unique: true
+		culture: dwarven
+		twilight: 1
+		type: condition
+		keyword: [
+			tale
+			support area
+		]
+		effects: [
+			{
+				type: extraCost
+				cost: {
+					type: exert
+					select: choose(dwarf)
+				}
+			}
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: played
+					filter: orc
+					memorize: playedOrc
+				}
+				requires: {
+					type: perTurnLimit
+					limit: 1
+				}
+				effect: [
+					{
+						type: chooseCardsFromDiscard
+						select: choose(culture(dwarven))
+						memorize: chosenCard
+						count: 0-1
+						text: Choose a Dwarven card from your discard pile to take into hand
+					}
+					{
+						type: preventable
+						player: shadow
+						text: Would you like to discard the bottom 2 cards of your draw deck to prevent the Free Peoples player taking {chosenCard} into hand from their discard pile?
+						cost: {
+							type: discardBottomCardsFromDeck
+							count: 2
+							forced: false
+							deck: ownerFromMemory(playedOrc)
+						}
+						effect: {
+							type: putCardsFromDiscardIntoHand
+							select: memory(chosenCard)
+						}
+					}
+					{
+						type: IncrementPerTurnLimit
+						limit: 1
+					}
+				]
+			}
+		]
+		gametext: <b>Tale.</b>  To play, exert a Dwarf. \The first time your opponent plays an Orc each turn, you may take a [dwarven] card into hand from your discard pile.  The Shadow player may discard the bottom 2 cards of their draw deck to prevent this.
+		lore: "'With golden roof and silver floor / And runes of power upon the door.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	# 51_17: {
+	# 	cardInfo: {
+	# 		//id: 1_17.1
+	# 		parent: 1_17
+	# 		variant: ERRATA
+	# 		variantPath: promos/pc
+	# 		revision: 1
+	# 		image: errata/LOTR-EN01E017.1.jpg
+	# 		collInfo: 1U17
+	# 		rarity: U
+	# 	}
+	# 	title: Grimir
+	# 	subtitle: Dwarven Elder
+	# 	unique: true
+	# 	culture: dwarven
+	# 	twilight: 1
+	# 	type: ally
+	# 	allyHome: 3F
+	# 	race: dwarf
+	# 	strength: 3
+	# 	vitality: 3
+	# 	effects: {
+	# 		type: activated
+	# 		phase: fellowship
+	# 		cost: [
+	# 			{
+	# 				type: exert
+	# 				select: self
+	# 			}
+	# 			{
+	# 				type: discardTopCardsFromDeck
+	# 				deck: freeps
+	# 				count: 1
+	# 				forced: false
+	# 			}
+	# 		]
+	# 		effect: {
+	# 			type: PutCardsFromDiscardOnTopOfDeck
+	# 			select: choose(culture(dwarven),event)
+	# 			count: 1
+	# 		}
+	# 	}
+	# 	gametext: <b>Fellowship:</b> Exert Grimir and discard the top card of your draw deck to place a [dwarven] event from your discard pile on top of your draw deck.
+	# 	lore: Old and grey after many years spent in exile before the Lonely Mountain was reclaimed, Grimir can still wield his axe with strength.
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	# 51_17: {
+	# 	cardInfo: {
+	# 		//id: 51_17.2
+	# 		parent: 1_17
+	# 		variant: ERRATA
+	# 		variantPath: errata/pc
+	# 		revision: 2
+	# 		image: errata/LOTR-EN01E017.2_card.jpg
+	# 		collInfo: 1U17
+	# 		rarity: U
+	# 	}
+	# 	title: Grimir
+	# 	subtitle: Dwarven Elder
+	# 	unique: true
+	# 	side: Free Peoples
+	# 	culture: Dwarven
+	# 	twilight: 1
+	# 	type: Ally
+	# 	allyHome: 3F
+	# 	race: Dwarf
+	# 	strength: 3
+	# 	vitality: 3
+	# 	effects: [
+	# 		{
+	# 			type: Activated
+	# 			phase: Skirmish
+	# 			cost: [
+	# 				{
+	# 					type: Spot
+	# 					filter: Dwarven, companion
+	# 				}
+	# 				{
+	# 					type: Exert
+	# 					select: self
+	# 				}
+	# 			]
+	# 			effect: {
+	# 				type: PlayCardFromDiscard
+	# 				select: choose(Dwarven, event)
+	# 				memorize: playedEvent
+	# 				extraEffects: {
+	# 					type: RemoveFromTheGame
+	# 					select: memory(playedEvent)
+	# 				}
+	# 			}
+	# 		}
+	# 	]
+	# 	gametext: Skirmish: Spot a [dwarven] companion and exert Grimir to play a [dwarven] event from your discard pile, then remove it from the game.
+	# 	lore: Old and grey after many years spent in exile before the Lonely Mountain was reclaimed, Grimir can still wield his axe with strength.
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+		51_17: {
+		cardInfo: {
+			//id: 51_17.3
+			parent: 1_17
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 3
+			image: errata/LOTR-EN01E017.3_card.jpg
+			collInfo: 1U17
+			rarity: U
+		}
+		title: Grimir
+		subtitle: Dwarven Elder
+		unique: true
+		side: Free Peoples
+		culture: Dwarven
+		twilight: 1
+		type: Ally
+		allyHome: 3F
+		race: Dwarf
+		strength: 3
+		vitality: 3
+		effects: [
+			{
+				type: Activated
+				phase: Skirmish
+				cost: [
+					{
+						type: Spot
+						filter: Dwarven, companion
+					}
+					{
+						type: Exert
+						select: self
+						times: 2
+					}
+				]
+				effect: {
+					type: PlayCardFromDiscard
+					select: choose(Dwarven, event, Timeword(skirmish))
+					memorize: playedEvent
+					extraEffects: {
+						type: RemovePlayedEventFromTheGame
+						filter: played
+					}
+				}
+			}
+		]
+		gametext: Skirmish: Spot a [dwarven] companion and exert Grimir twice to play a [dwarven] skirmish event from your discard pile, then remove it from the game.
+		lore: Old and grey after many years spent in exile before the Lonely Mountain was reclaimed, Grimir can still wield his axe with strength.
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_23: {
+		cardInfo: {
+			//id: 1_23.1
+			parent: 1_23
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN01E023.1.jpg
+			collInfo: 1R23
+			rarity: R
+		}
+		title: Nobody Tosses a Dwarf
+		culture: dwarven
+		twilight: 0
+		type: event
+		timeword: response
+		effects: {
+			type: responseEvent
+			trigger: {
+				type: winsSkirmish
+				filter: dwarf
+			}
+			effect: [
+				{
+					type: chooseActiveCards
+					select: choose(side(shadow))
+					memorize: chosenCard
+					text: Choose a Shadow card to discard
+				}
+				{
+					type: preventable
+					player: shadow
+					text: Would you like to discard the bottom 3 cards of your deck to prevent {chosenCard} from being discarded?
+					cost: {
+						type: discardBottomCardsFromDeck
+						deck: shadow
+						count: 3
+						forced: false
+					}
+					effect: {
+						type: discard
+						select: memory(chosenCard)
+					}
+				}
+			]
+		}
+		gametext: If a Dwarf wins a skirmish, discard a Shadow card.  Its owner may discard 3 cards from the bottom of their draw deck to prevent this.
+		lore: "'My folk have never had dealings with any of the servants of the Enemy.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	51_25: {
+		cardInfo: {
+			//id: 51_25.1
+			parent: 1_25
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 1
+			image: errata/LOTR-EN01E025.1_card.jpg
+			collInfo: 1C25
+			rarity: C
+		}
+		title: Still Draws Breath
+		unique: 1
+		side: Free Peoples
+		culture: Dwarven
+		twilight: 2
+		type: Condition
+		keywords: [
+			Support Area
+			Tale
+		]
+		effects: [
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: winsSkirmish
+					filter: dwarf
+					memorize: winner
+				}
+				cost: {
+					type: DiscardFromHand
+					forced: false
+				}
+				effect: [
+					{
+						type: heal
+						select: memory(winner)
+					}
+				]
+			}
+		]
+		gametext: Tale. Each time a Dwarf wins a skirmish, you may discard a card from hand to heal that Dwarf. 
+		lore: "When thirteen had fallen the rest fled shrieking, leaving the defenders unharmed...."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	
+	
+	
+	
+	
+}

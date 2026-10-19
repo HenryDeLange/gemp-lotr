@@ -1,0 +1,43 @@
+{
+
+	61_31: {
+		cardInfo: {
+			//id: 1_31.1
+			revision: 1
+			image: errata/61_31.jpg
+			collInfo: 11C31
+			rarity: C
+		}
+		title: Final Account
+		culture: gandalf
+		twilight: 1
+		type: event
+		timeword: fellowship
+		effects: {
+			type: event
+			cost: [
+				{
+					type: exert
+					select: choose(culture(gandalf),wizard)
+				}
+				{
+					type: discardFromHand
+					forced: false
+				}
+			]
+			effect: {
+				type: putCardsFromDiscardIntoHand
+				select: choose(side(shadow))
+			}
+		}
+		gametext: To play, exert a [gandalf] Wizard.<br>Discard a card from hand to take a Shadow card from your discard pile into hand.
+		lore: "Gandalf lifted it carefully, but the leaves crackled and broke as he laid it on the slab."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

@@ -1,0 +1,47 @@
+{
+
+	61_100: {
+		cardInfo: {
+			//id: 1_100.1
+			revision: 1
+			image: errata/61_100.jpg
+			collInfo: 11R100
+			rarity: R
+		}
+		title: Strange-looking Men
+		culture: men
+		twilight: 4
+		type: minion
+		race: man
+		strength: 10
+		vitality: 2
+		site: 4
+		effects: {
+			type: Trigger
+			optional: true
+			trigger: {
+				type: startOfPhase
+				phase: maneuver
+			}
+			cost: {
+				type: exert
+				select: self
+			}
+			effect: {
+				type: transfer
+				select: choose(or(possession,condition),attachedTo(character))
+				where: choose(character)
+				checkTarget: true
+			}
+		}
+		gametext: At the start of the maneuver phase, you may exert this minion to transfer a possession or condition borne by a character to another eligible bearer.
+		lore: "The strangers, especially those that had come up the Greenway, stared at them curiously."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

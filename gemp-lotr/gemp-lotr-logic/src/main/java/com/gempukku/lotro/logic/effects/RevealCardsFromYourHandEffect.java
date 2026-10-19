@@ -6,7 +6,6 @@ import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.GameUtils;
 import com.gempukku.lotro.logic.PlayOrder;
 import com.gempukku.lotro.logic.decisions.ArbitraryCardsSelectionDecision;
-import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
 import com.gempukku.lotro.logic.timing.AbstractEffect;
 import com.gempukku.lotro.logic.timing.Effect;
 import com.gempukku.lotro.logic.timing.results.RevealCardFromHandResult;
@@ -15,13 +14,9 @@ import java.util.Collection;
 import java.util.Collections;
 
 public class RevealCardsFromYourHandEffect extends AbstractEffect {
-    private PhysicalCard _source;
-    private String _handPlayerId;
-    private Collection<? extends PhysicalCard> _cards;
-
-    public RevealCardsFromYourHandEffect(PhysicalCard source, String handPlayerId, PhysicalCard card) {
-        this(source, handPlayerId, Collections.singleton(card));
-    }
+    private final PhysicalCard _source;
+    private final String _handPlayerId;
+    private final Collection<? extends PhysicalCard> _cards;
 
     public RevealCardsFromYourHandEffect(PhysicalCard source, String handPlayerId, Collection<? extends PhysicalCard> cards) {
         _source = source;
@@ -60,9 +55,9 @@ public class RevealCardsFromYourHandEffect extends AbstractEffect {
         String nextPlayer;
         while ((nextPlayer = playerOrder.getNextPlayer()) != null) {
             game.getUserFeedback().sendAwaitingDecision(nextPlayer,
-                    new ArbitraryCardsSelectionDecision(1, _handPlayerId + " revealed card(s) in hand", _cards, Collections.<PhysicalCard>emptySet(), 0, 0) {
+                    new ArbitraryCardsSelectionDecision(1, _handPlayerId + " revealed card(s) in hand", _cards, Collections.emptySet(), 0, 0) {
                         @Override
-                        public void decisionMade(String result) throws DecisionResultInvalidException {
+                        public void decisionMade(String result) {
                         }
                     });
         }

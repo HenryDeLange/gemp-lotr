@@ -5,6 +5,7 @@ import com.gempukku.lotro.cards.build.field.FieldUtils;
 import com.gempukku.lotro.cards.build.field.effect.DefaultActionSource;
 import com.gempukku.lotro.cards.build.field.effect.EffectUtils;
 import com.gempukku.lotro.cards.build.field.effect.appender.AbstractEffectAppender;
+import com.gempukku.lotro.cards.build.field.effect.appender.resolver.PlayerResolver;
 import com.gempukku.lotro.common.Phase;
 import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.LotroGame;
@@ -13,7 +14,6 @@ import com.gempukku.lotro.logic.actions.CostToEffectAction;
 import com.gempukku.lotro.logic.effects.IncrementPhaseLimitEffect;
 import com.gempukku.lotro.logic.effects.IncrementTurnLimitEffect;
 import com.gempukku.lotro.logic.modifiers.AddActionToCardModifier;
-import com.gempukku.lotro.logic.modifiers.Modifier;
 import com.gempukku.lotro.logic.timing.Effect;
 import com.gempukku.lotro.logic.timing.PlayConditions;
 import org.json.simple.JSONObject;
@@ -24,10 +24,12 @@ import java.util.List;
 public class AddActivated implements ModifierSourceProducer {
     @Override
     public ModifierSource getModifierSource(JSONObject object, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
-        FieldUtils.validateAllowedFields(object, "filter", "phase", "condition", "cost", "effect", "limitPerPhase", "limitPerTurn", "text");
+        FieldUtils.validateAllowedFields(object, "filter", "phase", "player", "requires", "cost", "effect", "limitPerPhase", "limitPerTurn", "text");
 
         final String filter = FieldUtils.getString(object.get("filter"), "filter");
         final String text = FieldUtils.getString(object.get("text"), "text");
+        final String playerName = FieldUtils.getString(object.get("player"), "player");
+        final PlayerSource playerSource = playerName != null ? PlayerResolver.resolvePlayer(playerName) : null;
         final String[] phaseArray = FieldUtils.getStringArray(object.get("phase"), "phase");
         final int limitPerPhase = FieldUtils.getInteger(object.get("limitPerPhase"), "limitPerPhase", 0);
         final int limitPerTurn = FieldUtils.getInteger(object.get("limitPerTurn"), "limitPerTurn", 0);
@@ -72,31 +74,38 @@ public class AddActivated implements ModifierSourceProducer {
             actionSources.add(actionSource);
         }
 
-        return new ModifierSource() {
-            @Override
-            public Modifier getModifier(ActionContext actionContext) {
-                return new AddActionToCardModifier(actionContext.getSource(), null, filterableSource.getFilterable(actionContext)) {
-                    @Override
-                    public List<? extends ActivateCardAction> getExtraPhaseAction(LotroGame game, PhysicalCard card) {
-                        LinkedList<ActivateCardAction> result = new LinkedList<>();
-                        for (ActionSource inPlayPhaseAction : actionSources) {
-                            DefaultActionContext actionContext = new DefaultActionContext(card.getOwner(), game, card, null, null);
-                            if (inPlayPhaseAction.isValid(actionContext)) {
-                                ActivateCardAction action = new ActivateCardAction(card);
-                                inPlayPhaseAction.createAction(action, actionContext);
-                                result.add(action);
-                            }
-                        }
+        return actionContext -> {
 
-                        return result;
+            //If the player was provided by the card definition, we will use that (which can be used to give Shadow
+            // and action attached to a Free Peoples card, etc), else we default to whoever owns the card the action
+            // is attached to.
+            var targetPlayer = playerSource != null ? playerSource.getPlayer(actionContext) : null;
+
+			return new AddActionToCardModifier(actionContext.getSource(), null, targetPlayer,
+					filterableSource.getFilterable(actionContext)) {
+				@Override
+				protected List<? extends ActivateCardAction> createExtraPhaseActions(LotroGame game,
+						PhysicalCard card) {
+					LinkedList<ActivateCardAction> result = new LinkedList<>();
+
+                    var player = targetPlayer;
+
+                    if(player == null) {
+                        player = card.getOwner();
                     }
 
-                    @Override
-                    protected ActivateCardAction createExtraPhaseAction(LotroGame game, PhysicalCard matchingCard) {
-                        return null;
-                    }
-                };
-            }
-        };
+					for (ActionSource inPlayPhaseAction : actionSources) {
+						var innerActionContext = new DefaultActionContext(player, game, card, null, null);
+						if (inPlayPhaseAction.isValid(innerActionContext)) {
+							var action = new ActivateCardAction(card, player);
+							inPlayPhaseAction.createAction(action, innerActionContext);
+							result.add(action);
+						}
+					}
+
+					return result;
+				}
+			};
+		};
     }
 }

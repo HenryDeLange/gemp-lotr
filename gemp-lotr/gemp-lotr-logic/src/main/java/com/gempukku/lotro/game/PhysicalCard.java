@@ -4,27 +4,40 @@ import com.gempukku.lotro.common.Filterable;
 import com.gempukku.lotro.common.Zone;
 
 public interface PhysicalCard extends Filterable {
-    public Zone getZone();
+    boolean isFlipped();
+    void setFlipped(boolean flipped);
+    Zone getZone();
+    void setPlayedFromZone(Zone zone);
+    Zone getPlayedFromZone();
 
-    public String getBlueprintId();
+    String getBlueprintId();
 
-    public String getOwner();
+    String getOwner();
 
-    public String getCardController();
+    String getCardController();
 
-    public int getCardId();
+    void setCardId(int cardId);
+    int getCardId();
 
-    public LotroCardBlueprint getBlueprint();
+    LotroCardBlueprint getBlueprint();
 
-    public PhysicalCard getAttachedTo();
+    PhysicalCard getAttachedTo();
 
-    public PhysicalCard getStackedOn();
+    PhysicalCard getStackedOn();
 
-    public void setWhileInZoneData(Object object);
+    void setWhileInZoneData(WhileInZoneData whileInZoneData);
 
-    public Object getWhileInZoneData();
+    WhileInZoneData getWhileInZoneData();
 
-    public void setSiteNumber(Integer number);
+    void setSiteNumber(Integer number);
 
-    public Integer getSiteNumber();
+    Integer getSiteNumber();
+
+    interface WhileInZoneData {
+        String getValue();
+
+        String getHumanReadable();
+    }
+
+    void copyCardStats(PhysicalCard other);
 }

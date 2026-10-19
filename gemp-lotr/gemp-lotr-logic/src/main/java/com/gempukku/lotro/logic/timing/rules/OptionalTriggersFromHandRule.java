@@ -14,7 +14,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class OptionalTriggersFromHandRule {
-    private DefaultActionsEnvironment actionsEnvironment;
+    private final DefaultActionsEnvironment actionsEnvironment;
 
     public OptionalTriggersFromHandRule(DefaultActionsEnvironment actionsEnvironment) {
         this.actionsEnvironment = actionsEnvironment;
@@ -27,7 +27,7 @@ public class OptionalTriggersFromHandRule {
                     public List<? extends OptionalTriggerAction> getOptionalAfterTriggers(String playerId, LotroGame game, EffectResult effectResult) {
                         List<OptionalTriggerAction> result = new LinkedList<>();
                         final Side side = GameUtils.getSide(game, playerId);
-                        for (PhysicalCard responseEvent : Filters.filter(game.getGameState().getHand(playerId), game, side)) {
+                        for (PhysicalCard responseEvent : Filters.filter(game, game.getGameState().getHand(playerId), side)) {
                             final List<OptionalTriggerAction> actions = responseEvent.getBlueprint().getOptionalInHandAfterTriggers(playerId, game, effectResult, responseEvent);
                             if (actions != null)
                                 result.addAll(actions);

@@ -17,7 +17,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class AmbushRule {
-    private DefaultActionsEnvironment _actionsEnvironment;
+    private final DefaultActionsEnvironment _actionsEnvironment;
 
     public AmbushRule(DefaultActionsEnvironment actionsEnvironment) {
         _actionsEnvironment = actionsEnvironment;
@@ -38,7 +38,7 @@ public class AmbushRule {
                                     action.setMessage(playerId + " uses Ambush (" + count + ") from " + GameUtils.getCardLink(assignedCard));
                                     action.setText("Ambush - add " + count);
                                     action.appendEffect(
-                                            new AddTwilightEffect(assignedCard, count));
+                                            new AddTwilightEffect(assignedCard, AddTwilightEffect.Cause.AMBUSH, count));
                                     return Collections.singletonList(action);
                                 }
                             }

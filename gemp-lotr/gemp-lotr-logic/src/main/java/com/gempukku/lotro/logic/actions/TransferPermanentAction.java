@@ -1,5 +1,6 @@
 package com.gempukku.lotro.logic.actions;
 
+import com.gempukku.lotro.common.SpotOverride;
 import com.gempukku.lotro.filters.Filter;
 import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.LotroGame;
@@ -13,10 +14,10 @@ import com.gempukku.lotro.logic.timing.UnrespondableEffect;
 import java.util.Collection;
 
 public class TransferPermanentAction extends ActivateCardAction {
-    private PhysicalCard _transferredCard;
+    private final PhysicalCard _transferredCard;
 
-    public TransferPermanentAction(final PhysicalCard card, Filter filter) {
-        super(card);
+    public TransferPermanentAction(final PhysicalCard card, String performingPlayer, Filter filter) {
+        super(card, performingPlayer);
         _transferredCard = card;
         setText("Transfer " + GameUtils.getFullName(_transferredCard));
 
@@ -29,10 +30,10 @@ public class TransferPermanentAction extends ActivateCardAction {
                     }
                 });
         appendEffect(
-                new ChooseActiveCardsEffect(null, card.getOwner(), "Choose target to attach to", 1, 1, filter) {
+                new ChooseActiveCardsEffect(null, card.getOwner(), "Choose target to attach to", 1, 1, SpotOverride.NONE, filter) {
                     @Override
                     protected void cardsSelected(LotroGame game, Collection<PhysicalCard> target) {
-                        if (target.size() > 0) {
+                        if (!target.isEmpty()) {
                             appendEffect(new TransferPermanentEffect(card, target.iterator().next()));
                         }
                     }

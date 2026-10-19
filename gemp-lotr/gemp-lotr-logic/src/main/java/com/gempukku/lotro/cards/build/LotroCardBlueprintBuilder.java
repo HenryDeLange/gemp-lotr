@@ -14,45 +14,62 @@ import java.util.Map;
 import java.util.Set;
 
 public class LotroCardBlueprintBuilder implements CardGenerationEnvironment {
-    private Map<String, FieldProcessor> fieldProcessors = new HashMap<>();
+    private final Map<String, FieldProcessor> fieldProcessors = new HashMap<>();
 
-    private EffectAppenderFactory effectAppenderFactory = new EffectAppenderFactory();
-    private FilterFactory filterFactory = new FilterFactory();
-    private RequirementFactory requirementFactory = new RequirementFactory();
-    private TriggerCheckerFactory triggerCheckerFactory = new TriggerCheckerFactory();
-    private ModifierSourceFactory modifierSourceFactory = new ModifierSourceFactory();
+    private final EffectAppenderFactory effectAppenderFactory = new EffectAppenderFactory();
+    private final FilterFactory filterFactory = new FilterFactory();
+    private final RequirementFactory requirementFactory = new RequirementFactory();
+    private final TriggerCheckerFactory triggerCheckerFactory = new TriggerCheckerFactory();
+    private final ModifierSourceFactory modifierSourceFactory = new ModifierSourceFactory();
 
     public LotroCardBlueprintBuilder() {
         fieldProcessors.put("title", new TitleFieldProcessor());
         fieldProcessors.put("subtitle", new SubtitleFieldProcessor());
+        fieldProcessors.put("unique", new UniqueFieldProcessor());
         fieldProcessors.put("side", new SideFieldProcessor());
-        fieldProcessors.put("type", new CardTypeFieldProcessor());
         fieldProcessors.put("culture", new CultureFieldProcessor());
+        fieldProcessors.put("type", new CardTypeFieldProcessor());
         fieldProcessors.put("race", new RaceFieldProcessor());
-        fieldProcessors.put("signet", new SignetFieldProcessor());
+        fieldProcessors.put("itemclass", new PossessionClassFieldProcessor());
         fieldProcessors.put("keyword", new KeywordFieldProcessor());
-        fieldProcessors.put("cost", new CostFieldProcessor());
+        fieldProcessors.put("keywords", new KeywordFieldProcessor());
+        fieldProcessors.put("timeword", new TimewordFieldProcessor());
+        fieldProcessors.put("timewords", new TimewordFieldProcessor());
+        fieldProcessors.put("twilight", new TwilightCostFieldProcessor());
+        fieldProcessors.put("intensity", new IntensityFieldProcessor());
         fieldProcessors.put("strength", new StrengthFieldProcessor());
         fieldProcessors.put("vitality", new VitalityFieldProcessor());
         fieldProcessors.put("resistance", new ResistanceFieldProcessor());
+        fieldProcessors.put("canstartwithring", new CanStartWithRing());
+        fieldProcessors.put("signet", new SignetFieldProcessor());
         fieldProcessors.put("block", new SiteBlockFieldProcessor());
         fieldProcessors.put("site", new SiteNumberFieldProcessor());
-        fieldProcessors.put("possession", new PossessionClassFieldProcessor());
-        fieldProcessors.put("direction", new DirectionFieldProcessor());
-        fieldProcessors.put("effects", new EffectFieldProcessor());
-        fieldProcessors.put("target", new TargetFieldProcessor());
-        fieldProcessors.put("condition", new RequirementFieldProcessor());
         fieldProcessors.put("allyhome", new AllyHomeFieldProcessor());
+        fieldProcessors.put("direction", new DirectionFieldProcessor());
+        fieldProcessors.put("target", new TargetFieldProcessor());
+        fieldProcessors.put("effects", new EffectFieldProcessor());
 
-        fieldProcessors.put("text", new NullProcessor());
-        fieldProcessors.put("gametext", new NullProcessor());
-        fieldProcessors.put("lore", new NullProcessor());
-        fieldProcessors.put("promotext", new NullProcessor());
-        fieldProcessors.put("quote", new NullProcessor());
+        fieldProcessors.put("gametext", new GameTextFieldProcessor());
+        fieldProcessors.put("lore", new LoreFieldProcessor());
+        fieldProcessors.put("promotext", new PromoTextFieldProcessor());
+        fieldProcessors.put("helptext", new HelpTextFieldProcessor());
+
+        fieldProcessors.put("cardinfo", new CardInfoFieldProcessor());
+        fieldProcessors.put("alts", new NullProcessor());
     }
 
-    public LotroCardBlueprint buildFromJson(JSONObject json) throws InvalidCardDefinitionException {
-        BuiltLotroCardBlueprint result = new BuiltLotroCardBlueprint();
+    public LotroCardBlueprint buildFromJson(String cardId, JSONObject json) throws InvalidCardDefinitionException {
+        BuiltLotroCardBlueprint result = new BuiltLotroCardBlueprint(json);
+        result.setId(cardId);
+
+        //TODO: Detect a cardinfo without any other fields and add these to a
+        // list of stubs that are processed after the entire "real" blueprint
+        // library is complete.
+
+        //TODO: load up alts/promos and stuff them into the mechanism above
+
+        //TODO: Load up alts/errata and put them in the same mechanism, but have them set up to
+        // clear/replace applicable aspects of the cloned blueprint
 
         Set<Map.Entry<String, Object>> values = json.entrySet();
         for (Map.Entry<String, Object> value : values) {
@@ -71,9 +88,7 @@ public class LotroCardBlueprintBuilder implements CardGenerationEnvironment {
     }
 
     @Override
-    public EffectAppenderFactory getEffectAppenderFactory() {
-        return effectAppenderFactory;
-    }
+    public EffectAppenderFactory getEffectAppenderFactory() { return effectAppenderFactory; }
 
     @Override
     public FilterFactory getFilterFactory() {
@@ -95,9 +110,14 @@ public class LotroCardBlueprintBuilder implements CardGenerationEnvironment {
         return modifierSourceFactory;
     }
 
+    @Override
+    public void recordCardVariant(String parentId, BuiltLotroCardBlueprint card) {
+
+    }
+
     private static class NullProcessor implements FieldProcessor {
         @Override
-        public void processField(String key, Object value, BuiltLotroCardBlueprint blueprint, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
+        public void processField(String key, Object value, BuiltLotroCardBlueprint blueprint, CardGenerationEnvironment environment) {
             // Ignore
         }
     }

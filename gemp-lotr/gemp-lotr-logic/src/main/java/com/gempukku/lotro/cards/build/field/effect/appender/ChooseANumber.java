@@ -6,6 +6,7 @@ import com.gempukku.lotro.cards.build.field.effect.EffectAppender;
 import com.gempukku.lotro.cards.build.field.effect.EffectAppenderProducer;
 import com.gempukku.lotro.cards.build.field.effect.appender.resolver.PlayerResolver;
 import com.gempukku.lotro.cards.build.field.effect.appender.resolver.ValueResolver;
+import com.gempukku.lotro.logic.GameUtils;
 import com.gempukku.lotro.logic.actions.CostToEffectAction;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
 import com.gempukku.lotro.logic.decisions.IntegerAwaitingDecision;
@@ -15,17 +16,19 @@ import org.json.simple.JSONObject;
 
 public class ChooseANumber implements EffectAppenderProducer {
     @Override
-    public EffectAppender createEffectAppender(JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
-        FieldUtils.validateAllowedFields(effectObject, "player", "text", "from", "to", "memorize");
+    public EffectAppender createEffectAppender(boolean cost, JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
+        FieldUtils.validateAllowedFields(effectObject, "player", "text", "from", "to", "default", "memorize");
 
         final String player = FieldUtils.getString(effectObject.get("player"), "player", "you");
         final String displayText = FieldUtils.getString(effectObject.get("text"), "text", "Choose a number");
         final ValueSource fromSource = ValueResolver.resolveEvaluator(effectObject.get("from"), 0, environment);
-        final ValueSource toSource = ValueResolver.resolveEvaluator(effectObject.get("to"), 1, environment);
+        Object to = effectObject.get("to");
+        final ValueSource toSource = to != null ? ValueResolver.resolveEvaluator(to, environment) : null;
+        final ValueSource defaultSource = ValueResolver.resolveEvaluator(effectObject.get("default"), 0, environment);
 
         final String memorize = FieldUtils.getString(effectObject.get("memorize"), "memorize");
 
-        final PlayerSource playerSource = PlayerResolver.resolvePlayer(player, environment);
+        final PlayerSource playerSource = PlayerResolver.resolvePlayer(player);
 
         if (memorize == null)
             throw new InvalidCardDefinitionException("ChooseANumber requires a field to memorize the value");
@@ -33,16 +36,21 @@ public class ChooseANumber implements EffectAppenderProducer {
         return new DelayedAppender() {
             @Override
             protected Effect createEffect(boolean cost, CostToEffectAction action, ActionContext actionContext) {
-                return new PlayoutDecisionEffect(actionContext.getPerformingPlayer(),
-                    new IntegerAwaitingDecision(1, displayText,
-                        fromSource.getEvaluator(actionContext).evaluateExpression(actionContext.getGame(), null),
-                        toSource.getEvaluator(actionContext).evaluateExpression(actionContext.getGame(), null))
-                {
-                    @Override
-                    public void decisionMade(String result) throws DecisionResultInvalidException {
-                        actionContext.setValueToMemory(memorize, String.valueOf(getValidatedResult(result)));
-                    }
-                });
+                int min = fromSource.getEvaluator(actionContext).evaluateExpression(actionContext.getGame(), null);
+                Integer max = toSource != null ? toSource.getEvaluator(actionContext).evaluateExpression(actionContext.getGame(), null) : null;
+                int defaultAmount = defaultSource.getEvaluator(actionContext).evaluateExpression(actionContext.getGame(), null);
+                return new PlayoutDecisionEffect(playerSource.getPlayer(actionContext),
+                        new IntegerAwaitingDecision(1, GameUtils.substituteText(displayText, actionContext),
+                                min, max, defaultAmount) {
+                            @Override
+                            public void decisionMade(String result) throws DecisionResultInvalidException {
+                                final String value = String.valueOf(getValidatedResult(result));
+                                actionContext.getGame().getGameState().sendMessage(actionContext.getPerformingPlayer()
+                                        + " chooses " + value + ".");
+
+                                actionContext.setValueToMemory(memorize, value);
+                            }
+                        });
             }
         };
     }

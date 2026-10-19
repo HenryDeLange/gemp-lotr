@@ -1,26 +1,23 @@
 package com.gempukku.lotro.cards.unofficial.pc.errata.set01;
 
-import com.gempukku.lotro.cards.GenericCardTestHelper;
+import com.gempukku.lotro.framework.VirtualTableScenario;
 import com.gempukku.lotro.common.*;
 import com.gempukku.lotro.filters.Filters;
 import com.gempukku.lotro.game.CardNotFoundException;
 import com.gempukku.lotro.game.PhysicalCardImpl;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
-import com.gempukku.lotro.logic.modifiers.KeywordModifier;
+import com.gempukku.lotro.logic.modifiers.AddKeywordModifier;
 import org.junit.Test;
 
 import java.util.HashMap;
 
-import static junit.framework.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class Card_01_138_ErrataTests
 {
-    protected GenericCardTestHelper GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
-        return new GenericCardTestHelper(
-                new HashMap<String, String>()
-                {{
+    protected VirtualTableScenario GetScenario() throws CardNotFoundException, DecisionResultInvalidException {
+        return new VirtualTableScenario(
+                new HashMap<>() {{
                     put("boromir", "1_97");
                     put("event", "1_116");
 
@@ -48,12 +45,14 @@ public class Card_01_138_ErrataTests
          */
 
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
         PhysicalCardImpl snows = scn.GetFreepsCard("snows");
 
         assertFalse(snows.getBlueprint().isUnique());
         assertEquals(2, snows.getBlueprint().getTwilightCost());
+        assertEquals(Side.SHADOW, snows.getBlueprint().getSide());
+        assertEquals(Culture.ISENGARD, snows.getBlueprint().getCulture());
         assertEquals(CardType.CONDITION, snows.getBlueprint().getCardType());
         assertEquals(Culture.ISENGARD, snows.getBlueprint().getCulture());
         assertTrue(scn.HasKeyword(snows, Keyword.SPELL));
@@ -63,13 +62,13 @@ public class Card_01_138_ErrataTests
     @Test
     public void ExertsMinionWhenPlayed() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
         PhysicalCardImpl snows = scn.GetShadowCard("snows");
         PhysicalCardImpl uruk = scn.GetShadowCard("uruk");
 
-        scn.ShadowMoveCardToHand(snows);
-        scn.ShadowMoveCardToHand(uruk);
+        scn.MoveCardsToHand(snows);
+        scn.MoveCardsToHand(uruk);
 
         scn.StartGame();
 
@@ -92,13 +91,13 @@ public class Card_01_138_ErrataTests
     @Test
     public void DiscardsAtEndOfTurn() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
         PhysicalCardImpl snows = scn.GetShadowCard("snows");
         PhysicalCardImpl uruk = scn.GetShadowCard("uruk");
 
-        scn.ShadowMoveCardToHand(snows);
-        scn.ShadowMoveCharToTable(uruk);
+        scn.MoveCardsToHand(snows);
+        scn.MoveMinionsToTable(uruk);
 
         scn.StartGame();
 
@@ -108,7 +107,7 @@ public class Card_01_138_ErrataTests
         scn.ShadowPlayCard(snows);
         scn.ShadowChoose(scn.ShadowGetCardChoices().get(1));
 
-        scn.ShadowMoveCardToDiscard(uruk);
+        scn.MoveCardsToDiscard(uruk);
         scn.SkipToPhase(Phase.REGROUP);
         scn.FreepsPassCurrentPhaseAction();
         scn.ShadowPassCurrentPhaseAction();
@@ -127,7 +126,7 @@ public class Card_01_138_ErrataTests
     @Test
     public void OnlyBlocksSkirmishStuffAgainstAnIsengardMinion() throws DecisionResultInvalidException, CardNotFoundException {
         //Pre-game setup
-        GenericCardTestHelper scn = GetScenario();
+        VirtualTableScenario scn = GetScenario();
 
         PhysicalCardImpl snows = scn.GetShadowCard("snows");
         PhysicalCardImpl uruk = scn.GetShadowCard("uruk");
@@ -136,12 +135,12 @@ public class Card_01_138_ErrataTests
         PhysicalCardImpl boromir = scn.GetFreepsCard("boromir");
         PhysicalCardImpl event = scn.GetFreepsCard("event");
 
-        scn.ShadowMoveCardToHand(snows);
-        scn.ShadowMoveCharToTable(uruk);
-        scn.ShadowMoveCharToTable(runner);
+        scn.MoveCardsToHand(snows);
+        scn.MoveMinionsToTable(uruk);
+        scn.MoveMinionsToTable(runner);
 
-        scn.FreepsMoveCardToHand(event);
-        scn.FreepsMoveCharToTable(boromir);
+        scn.MoveCardsToHand(event);
+        scn.MoveCompanionsToTable(boromir);
 
         scn.StartGame();
 
@@ -150,14 +149,14 @@ public class Card_01_138_ErrataTests
         scn.FreepsPassCurrentPhaseAction();
         scn.ShadowPlayCard(snows);
         scn.ShadowChoose(String.valueOf(scn.GetCurrentSite().getCardId())); //Should be site 2
-        scn.ApplyAdHocModifier(new KeywordModifier(null, Filters.name("Uruk Savage"), Keyword.FIERCE));
+        scn.ApplyAdHocModifier(new AddKeywordModifier(null, Filters.name("Uruk Savage"), null, Keyword.FIERCE));
 
         scn.SkipToPhase(Phase.ASSIGNMENT);
         scn.PassCurrentPhaseActions();
         scn.FreepsAssignToMinions(boromir, runner);
 
         //skip assigning the uruk
-        scn.PassCurrentPhaseActions();
+        scn.ShadowPass("Assign minions to companions or allies at home");
 
         //start goblin skirmish
         scn.FreepsResolveSkirmish(boromir);

@@ -8,6 +8,7 @@ import com.gempukku.lotro.game.CardCollection;
 import com.gempukku.lotro.game.DefaultCardCollection;
 import com.gempukku.lotro.game.MutableCardCollection;
 import com.gempukku.lotro.packs.PacksStorage;
+import com.gempukku.lotro.packs.ProductLibrary;
 import com.gempukku.lotro.tournament.TournamentCallback;
 
 import java.util.*;
@@ -18,16 +19,16 @@ public class DefaultDraft implements Draft {
     // 35 seconds
     public static final int PICK_TIME = 35 * 1000;
 
-    private CollectionsManager _collectionsManager;
-    private CollectionType _collectionType;
-    private PacksStorage _packsStorage;
-    private DraftPack _draftPack;
-    private List<String> _players;
+    private final CollectionsManager _collectionsManager;
+    private final CollectionType _collectionType;
+    private final ProductLibrary _productLibrary;
+    private final DraftPack _draftPack;
+    private final List<String> _players;
 
-    private List<MutableCardCollection> _cardChoices = new ArrayList<MutableCardCollection>();
-    private Map<String, MutableCardCollection> _cardChoice = new HashMap<String, MutableCardCollection>();
+    private final List<MutableCardCollection> _cardChoices = new ArrayList<>();
+    private final Map<String, MutableCardCollection> _cardChoice = new HashMap<>();
 
-    private int _playerCount;
+    private final int _playerCount;
 
     private long _lastPickStart;
 
@@ -36,13 +37,13 @@ public class DefaultDraft implements Draft {
 
     private boolean _finishedDraft;
 
-    private Map<String, DraftCommunicationChannel> _playerDraftCommunications = new HashMap<String, DraftCommunicationChannel>();
+    private final Map<String, DraftCommunicationChannel> _playerDraftCommunications = new HashMap<>();
     private int _nextChannelNumber = 0;
 
-    public DefaultDraft(CollectionsManager collectionsManager, CollectionType collectionType, PacksStorage packsStorage, DraftPack draftPack, Set<String> players) {
+    public DefaultDraft(CollectionsManager collectionsManager, CollectionType collectionType, ProductLibrary productLibrary, DraftPack draftPack, Set<String> players) {
         _collectionsManager = collectionsManager;
         _collectionType = collectionType;
-        _packsStorage = packsStorage;
+        _productLibrary = productLibrary;
         _draftPack = draftPack;
         _players = new ArrayList(players);
         Collections.shuffle(_players, ThreadLocalRandom.current());
@@ -55,7 +56,7 @@ public class DefaultDraft implements Draft {
     }
 
     @Override
-    public void advanceDraft(TournamentCallback draftCallback) {
+    public void advanceDraft() {
         if (haveAllPlayersPicked()) {
             if (haveAllCardsBeenChosen()) {
                 if (haveMorePacks()) {
@@ -119,7 +120,7 @@ public class DefaultDraft implements Draft {
     }
 
     private void forceRandomCardChoice() {
-        Map<String, MutableCardCollection> cardChoiceCopy = new HashMap<String, MutableCardCollection>(_cardChoice);
+        Map<String, MutableCardCollection> cardChoiceCopy = new HashMap<>(_cardChoice);
 
         for (Map.Entry<String, MutableCardCollection> playerChoices : cardChoiceCopy.entrySet()) {
             String playerName = playerChoices.getKey();
@@ -133,7 +134,7 @@ public class DefaultDraft implements Draft {
         MutableCardCollection cardChoice = _cardChoice.get(playerName);
         if (cardChoice != null) {
             if (cardChoice.removeItem(cardId, 1)) {
-                _collectionsManager.addItemsToPlayerCollection(false, "Pick in draft", playerName, _collectionType, Arrays.asList(CardCollection.Item.createItem(cardId, 1)));
+                _collectionsManager.addItemsToPlayerCollection(false, "Pick in draft", playerName, _collectionType, List.of(CardCollection.Item.createItem(cardId, 1)));
                 _cardChoice.remove(playerName);
             }
         }
@@ -153,7 +154,7 @@ public class DefaultDraft implements Draft {
         for (int i = 0; i < _playerCount; i++) {
             MutableCardCollection cardCollection = new DefaultCardCollection();
             cardCollection.addItem(packId, 1);
-            cardCollection.openPack(packId, null, _packsStorage);
+            cardCollection.openPack(packId, null, _productLibrary);
             _cardChoices.add(cardCollection);
         }
         _nextPackIndex++;

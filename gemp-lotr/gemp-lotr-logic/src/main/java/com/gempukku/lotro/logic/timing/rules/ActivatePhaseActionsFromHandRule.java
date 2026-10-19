@@ -13,7 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class ActivatePhaseActionsFromHandRule {
-    private DefaultActionsEnvironment actionsEnvironment;
+    private final DefaultActionsEnvironment actionsEnvironment;
 
     public ActivatePhaseActionsFromHandRule(DefaultActionsEnvironment actionsEnvironment) {
         this.actionsEnvironment = actionsEnvironment;
@@ -26,7 +26,7 @@ public class ActivatePhaseActionsFromHandRule {
                     public List<? extends Action> getPhaseActions(String playerId, LotroGame game) {
                         List<Action> result = new LinkedList<>();
                         final Side side = GameUtils.getSide(game, playerId);
-                        for (PhysicalCard activableCard : Filters.filter(game.getGameState().getHand(playerId), game, side)) {
+                        for (PhysicalCard activableCard : Filters.filter(game, game.getGameState().getHand(playerId), side)) {
                             List<? extends Action> list = activableCard.getBlueprint().getPhaseActionsInHand(playerId, game, activableCard);
                             if (list != null) {
                                 for (Action action : list) {

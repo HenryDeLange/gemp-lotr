@@ -1,0 +1,59 @@
+package com.gempukku.lotro.logic.modifiers;
+
+import com.gempukku.lotro.common.Filterable;
+import com.gempukku.lotro.common.Keyword;
+import com.gempukku.lotro.common.SpotOverride;
+import com.gempukku.lotro.filters.Filters;
+import com.gempukku.lotro.game.PhysicalCard;
+import com.gempukku.lotro.game.state.LotroGame;
+
+import java.util.HashSet;
+
+public class AddKeywordFromModifier extends AbstractModifier implements KeywordAffectingModifier {
+    private final Filterable from;
+    private final boolean terrainOnly;
+    private final boolean unloadedOnly;
+
+    public AddKeywordFromModifier(PhysicalCard physicalCard, Filterable affectFilter, Condition condition, Filterable from, boolean terrainOnly, boolean unloadedOnly) {
+        super(physicalCard, "Has added keywords from other cards", affectFilter, condition, ModifierEffect.GIVE_KEYWORD_MODIFIER);
+        this.from = from;
+        this.terrainOnly = terrainOnly;
+        this.unloadedOnly = unloadedOnly;
+    }
+
+    @Override
+    public HashSet<Keyword> getKeywords() {
+        return null;
+    }
+
+    @Override
+    public boolean hasKeyword(LotroGame game, PhysicalCard physicalCard, Keyword keyword) {
+        if (terrainOnly && !keyword.isTerrain())
+            return false;
+        if (unloadedOnly && !keyword.isUnloaded())
+            return false;
+
+        //If the card we are copying is active then we use the normal active checking
+        if(Filters.hasActive(game, from, keyword))
+            return true;
+
+        //If the card we are copying is inactive (from a stack or other source), we do not want
+        // to actually copy modifiers, only printed blueprint keywords.
+        var fromCards = Filters.filterActive(game, SpotOverride.INCLUDE_STACKED, from, keyword);
+
+        for(var card : fromCards) {
+            if(card.getBlueprint().hasKeyword(keyword))
+                return true;
+        }
+
+        return false;
+    }
+
+    @Override
+    public int getKeywordCountModifier(LotroGame game, PhysicalCard physicalCard, Keyword keyword) {
+        if (hasKeyword(game, physicalCard, keyword))
+            return 1;
+        else
+            return 0;
+    }
+}

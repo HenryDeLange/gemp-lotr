@@ -8,15 +8,16 @@ import com.gempukku.lotro.logic.timing.AbstractEffect;
 import com.gempukku.lotro.logic.timing.Effect;
 import com.gempukku.lotro.logic.timing.PlayConditions;
 import com.gempukku.lotro.logic.timing.results.DiscardCardsFromPlayResult;
+import com.gempukku.lotro.logic.timing.results.SiteLiberatedResult;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 public class LiberateASiteEffect extends AbstractEffect {
-    private PhysicalCard _source;
-    private String _liberatingPlayer;
-    private String _liberatedSiteController;
+    private final PhysicalCard _source;
+    private final String _liberatingPlayer;
+    private final String _liberatedSiteController;
 
     public LiberateASiteEffect(PhysicalCard source, String liberatingPlayer, String liberatedSiteController) {
         _source = source;
@@ -64,8 +65,8 @@ public class LiberateASiteEffect extends AbstractEffect {
         if (isPlayableInFull(game)) {
             PhysicalCard siteToLiberate = getSiteToLiberate(game);
             if (siteToLiberate != null) {
-                Set<PhysicalCard> cardsToRemove = new HashSet<PhysicalCard>();
-                Set<PhysicalCard> discardedCards = new HashSet<PhysicalCard>();
+                Set<PhysicalCard> cardsToRemove = new HashSet<>();
+                Set<PhysicalCard> discardedCards = new HashSet<>();
 
                 List<PhysicalCard> stackedCards = game.getGameState().getStackedCards(siteToLiberate);
                 cardsToRemove.addAll(stackedCards);
@@ -85,6 +86,7 @@ public class LiberateASiteEffect extends AbstractEffect {
 
                 game.getGameState().sendMessage(_liberatingPlayer + " liberated a " + GameUtils.getCardLink(siteToLiberate) + " using " + GameUtils.getCardLink(_source));
 
+                game.getActionsEnvironment().emitEffectResult(new SiteLiberatedResult(_liberatingPlayer, siteToLiberate));
                 liberatedSiteCallback(siteToLiberate);
 
                 return new FullEffectResult(true);

@@ -1,0 +1,97 @@
+{
+
+	61_114: {
+		cardInfo: {
+			//id: 1_114.1
+			revision: 1
+			image: errata/61_114.jpg
+			collInfo: 11U114
+			rarity: U
+		}
+		title: Demoralized
+		unique: true
+		culture: orc
+		twilight: 1
+		type: condition
+		keyword: support area
+		effects: [
+			{
+				type: toPlay
+				requires: {
+					type: canSpot
+					filter: culture(orc),minion
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: exerted
+					filter: companion
+				}
+				effect: {
+					type: addTwilight
+					amount: {
+						type: Conditional
+						requires: {
+							type: canSpot
+							filter: companion
+							count: 6
+						}
+						true: 2
+						false: 1
+					}
+				}
+			}
+		]
+		gametext: To play, spot an [orc] minion. <br>Each time a companion exerts, you<br> may add (1) (or (2) if you can spot 6 companions).
+		lore: "But soon there were few left in Minas Tirith<br> who had the heart to stand up and defy the hosts of Mordor."
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+
+	61_132: {
+		cardInfo: {
+			//id: 1_132.1
+			revision: 1
+			image: errata/61_132.jpg
+			collInfo: 11C132
+			rarity: C
+		}
+		title: Orkish Smith
+		culture: orc
+		twilight: 2
+		type: minion
+		race: orc
+		strength: 6
+		vitality: 1
+		site: 4
+		effects: {
+			type: Trigger
+			optional: true
+			trigger: {
+				type: played
+				filter: self
+			}
+			effect: {
+				type: shuffleCardsFromDiscardIntoDrawDeck
+				select: choose(culture(orc),condition)
+				count: 0-2
+			}
+		}
+		gametext: When you play this minion, you may shuffle up to 2 [orc] conditions from your discard pile into your draw deck.
+		lore: "'There is always a smoke rising from Isengard these days.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

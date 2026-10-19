@@ -1,0 +1,477 @@
+{
+	30_32: {
+		cardInfo: {
+			image: hobbit/HDG3032.jpg
+			collInfo: 30_32
+			rarity: _
+		}
+		title: Anger
+		culture: gundabad
+		twilight: 1
+		type: event
+		timeword: skirmish
+		effects: {
+			type: event
+			effect: {
+				type: modifyStrength
+				select: choose(minion)
+				memorize: chosenMinion
+				amount: {
+					type: Conditional
+					requires: {
+						type: memoryMatches
+						memory: chosenMinion
+						filter: inSkirmishAgainst(hasAttached(follower))
+					}
+					true: 4
+					false: 2
+				}
+			}
+		}
+	}
+	30_33: {
+		cardInfo: {
+			image: hobbit/HDG3033.jpg
+			collInfo: 30_33
+			rarity: _
+		}
+		title: Fimbul
+		subtitle: Orkish Assassin
+		unique: true
+		culture: gundabad
+		twilight: 2
+		type: minion
+		race: orc
+		strength: 7
+		vitality: 2
+		site: 3
+		keyword: damage+1
+		effects: [
+			{
+				type: extraCost
+				cost: {
+					type: exert
+					select: choose(orc)
+				}
+			}
+			{
+				type: activated
+				phase: shadow
+				cost: {
+					type: discard
+					select: self
+				}
+				effect: {
+					type: playCardFromDrawDeck
+					select: choose(minion)
+					showAll: true
+					shuffle: true
+				}
+			}
+		]
+	}
+	30_34: {
+		cardInfo: {
+			image: hobbit/HDG3034.jpg
+			collInfo: 30_34
+			rarity: _
+		}
+		title: Hatred Rekindled
+		culture: gundabad
+		twilight: 3
+		type: condition
+		keyword: support area
+		effects: {
+			type: activated
+			phase: shadow
+			cost: {
+				type: discardFromHand
+				forced: false
+				select: choose(any)
+				count: 3
+			}
+			effect: {
+				type: playCardFromDiscard
+				select: choose(orc)
+			}
+		}
+	}
+	30_35: {
+		cardInfo: {
+			image: hobbit/HDG3035.jpg
+			collInfo: 30_35
+			rarity: _
+		}
+		title: Host of Thousands
+		culture: gundabad
+		twilight: 0
+		type: event
+		timeword: shadow
+		effects: {
+			type: event
+			effect: {
+				type: playCardFromDiscard
+				select: choose(orc)
+			}
+		}
+	}
+	30_36: {
+		cardInfo: {
+			image: hobbit/HDG3036.jpg
+			collInfo: 30_36
+			rarity: _
+		}
+		title: Narzug
+		subtitle: Orkish Assassin
+		unique: true
+		culture: gundabad
+		twilight: 2
+		type: minion
+		race: orc
+		strength: 6
+		vitality: 2
+		site: 3
+		keyword: archer
+		effects: {
+			type: SelfRemovedFromPlayTrigger
+			optional: true
+			method: discarded
+			requires: [
+				{
+					type: not
+					requires: {
+						type: phase
+						phase: regroup
+					}
+				}
+			]
+			cost: {
+				type: removeTwilight
+				amount: 3
+			}
+			effect: {
+				type: wound
+				select: choose(ally)
+				times: 2
+			}
+		}
+	}
+	30_37: {
+		cardInfo: {
+			image: hobbit/HDG3037.jpg
+			collInfo: 30_37
+			rarity: _
+		}
+		title: Not at Home
+		unique: true
+		culture: gundabad
+		twilight: 2
+		type: condition
+		keyword: support area
+		effects: [
+			{
+				type: Trigger
+				optional: false
+				requires: {
+					type: HasCardInDeadPile
+					filter: culture(dwarven),companion
+				}
+				trigger: {
+					type: played
+					filter: culture(dwarven),companion
+					memorize: playedCompanion
+				}
+				effect: {
+					type: exhaust
+					select: memory(playedCompanion)
+				}
+			}
+			{
+				type: activated
+				phase: regroup
+				effect: [
+					{
+						type: putCardsFromDiscardOnTopOfDeck
+						select: choose(side(shadow),not(name(Smaug)))
+					}
+					{
+						type: discard
+						select: self
+					}
+				]
+			}
+		]
+	}
+	30_38: {
+		cardInfo: {
+			image: hobbit/HDG3038.jpg
+			collInfo: 30_38
+			rarity: _
+		}
+		title: Orkish Marauder
+		culture: gundabad
+		twilight: 3
+		type: minion
+		race: orc
+		strength: 8
+		vitality: 2
+		site: 3
+		effects: [
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: played
+					filter: self
+				}
+				requires: {
+					type: canSpot
+					filter: culture(dwarven),follower
+					count: 4
+				}
+				effect: {
+					type: exhaust
+					select: choose(culture(dwarven),companion)
+				}
+			}
+			{
+				type: activated
+				phase: maneuver
+				requires: {
+					type: canSpot
+					filter: companion
+					count: 7
+				}
+				cost: {
+					type: removeTwilight
+					amount: 2
+				}
+				effect: {
+					type: wound
+					select: choose(companion,not(name(Bilbo)))
+				}
+			}
+		]
+	}
+	30_39: {
+		cardInfo: {
+			image: hobbit/HDG3039.jpg
+			collInfo: 30_39
+			rarity: _
+		}
+		title: Orkish Aggressor
+		culture: gundabad
+		twilight: 2
+		type: minion
+		race: orc
+		strength: 6
+		vitality: 2
+		site: 3
+		effects: {
+			type: activated
+			phase: assignment
+			effect: [
+				{
+					type: assignFpCharacterToSkirmish
+					fpCharacter: choose(name(Bilbo))
+					minion: self
+				}
+				{
+					type: optional
+					player: fp
+					text: Would you like to add a burden to discard {self}?
+					cost: {
+						type: addBurdens
+						amount: 1
+					}
+					effect: {
+						type: discard
+						select: self
+					}
+				}
+			]
+		}
+	}
+	30_40: {
+		cardInfo: {
+			image: hobbit/HDG3040.jpg
+			collInfo: 30_40
+			rarity: _
+		}
+		title: Watchful Orc
+		culture: gundabad
+		twilight: 4
+		type: minion
+		race: orc
+		strength: 8
+		vitality: 3
+		site: 3
+		effects: [
+			{
+				type: Trigger
+				optional: true
+				trigger: {
+					type: played
+					filter: self
+				}
+				effect: {
+					type: playNextSite
+				}
+			}
+			{
+				type: activated
+				phase: shadow
+				cost: {
+					type: exert
+					select: self
+					times: 2
+				}
+				effect: [
+					{
+						type: chooseAKeyword
+						keywords: [
+							Battleground
+							Mountain
+							Forest
+							Underground
+						]
+						memorize: keywordSelected
+					}
+					{
+						type: addKeyword
+						select: all(site)
+						keyword: fromMemory(keywordSelected)
+						until: endOfTurn
+					}
+				]
+			}
+		]
+	}
+	30_41: {
+		cardInfo: {
+			image: hobbit/HDG3041.jpg
+			collInfo: 30_41
+			rarity: _
+		}
+		title: Yazneg
+		subtitle: Orkish Assassin
+		unique: true
+		culture: gundabad
+		twilight: 1
+		type: minion
+		race: orc
+		strength: 5
+		vitality: 2
+		site: 3
+		effects: {
+			type: activated
+			phase: maneuver
+			cost: [
+				{
+					type: removeTwilight
+					amount: 3
+				}
+				{
+					type: discard
+					select: self
+				}
+			]
+			effect: {
+				type: discard
+				select: choose(follower)
+			}
+		}
+	}
+	30_42: {
+		cardInfo: {
+			image: hobbit/HDG3042.jpg
+			collInfo: 30_42
+			rarity: _
+		}
+		title: Goblin Footman
+		culture: moria
+		twilight: 3
+		type: minion
+		race: orc
+		strength: 8
+		vitality: 1
+		site: 4
+		effects: {
+			type: Trigger
+			optional: true
+			trigger: {
+				type: played
+				filter: self
+			}
+			effect: {
+				type: playCardFromDiscard
+				select: choose(possession)
+				on: minion
+			}
+		}
+	}
+	30_66: {
+		cardInfo: {
+			image: hobbit/HDG3066.jpg
+			collInfo: 30_66
+			rarity: _
+		}
+		title: Smaug
+		subtitle: The Golden
+		unique: true
+		culture: smaug
+		twilight: 16
+		type: minion
+		race: dragon
+		strength: 17
+		vitality: 5
+		site: 7
+		keyword: [
+			damage+2
+			fierce
+		]
+		effects: [
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: ConstantlyCheck
+					requires: {
+						type: location
+						filter: not(mountain)
+					}
+				}
+				effect: {
+					type: discard
+					select: self
+				}
+			}
+			{
+				type: modifyOwnCost
+				amount: {
+					type: forEachYouCanSpot
+					filter: or(dwarf,man,elf)
+					multiplier: -1
+				}
+			}
+			{
+				type: activated
+				phase: regroup
+				cost: [
+					{
+						type: exert
+						select: self
+					}
+					{
+						type: discard
+						select: choose(another,minion)
+					}
+				]
+				effect: {
+					type: discard
+					select: choose(side(free people),not(or(companion,name(Bard),ring)))
+				}
+			}
+		]
+	}
+}

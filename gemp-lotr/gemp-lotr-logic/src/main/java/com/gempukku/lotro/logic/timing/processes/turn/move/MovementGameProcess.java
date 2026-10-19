@@ -9,6 +9,7 @@ import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.actions.SystemQueueAction;
 import com.gempukku.lotro.logic.effects.AddTwilightEffect;
 import com.gempukku.lotro.logic.effects.TriggeringResultEffect;
+import com.gempukku.lotro.logic.timing.Effect;
 import com.gempukku.lotro.logic.timing.UnrespondableEffect;
 import com.gempukku.lotro.logic.timing.processes.GameProcess;
 import com.gempukku.lotro.logic.timing.results.WhenMoveFromResult;
@@ -16,7 +17,7 @@ import com.gempukku.lotro.logic.timing.results.WhenMoveToResult;
 import com.gempukku.lotro.logic.timing.results.WhenMovesResult;
 
 public class MovementGameProcess implements GameProcess {
-    private GameProcess _afterMovementGameProcess;
+    private final GameProcess _afterMovementGameProcess;
 
     public MovementGameProcess(GameProcess afterMovementGameProcess) {
         _afterMovementGameProcess = afterMovementGameProcess;
@@ -26,16 +27,9 @@ public class MovementGameProcess implements GameProcess {
     public void process(LotroGame game) {
         PhysicalCard currentSite = game.getGameState().getCurrentSite();
         final SystemQueueAction action = new SystemQueueAction();
-        action.appendEffect(
-                new UnrespondableEffect() {
-                    @Override
-                    protected void doPlayEffect(LotroGame game) {
-                        game.getGameState().setMoving(true);
-                    }
-                });
         game.getFormat().getAdventure().appendNextSiteAction(action);
         action.appendEffect(
-                new TriggeringResultEffect(new WhenMoveFromResult(currentSite), "Fellowship moved from"));
+                new TriggeringResultEffect(Effect.Type.BEFORE_MOVE_FROM, new WhenMoveFromResult(currentSite), "Fellowship moved from"));
         action.appendEffect(
                 new UnrespondableEffect() {
                     @Override
@@ -45,17 +39,21 @@ public class MovementGameProcess implements GameProcess {
                     }
                 });
         action.appendEffect(
-                new TriggeringResultEffect(new WhenMovesResult(), "Fellowship moves"));
+                new TriggeringResultEffect(Effect.Type.BEFORE_MOVE, new WhenMovesResult(), "Fellowship moves"));
         action.appendEffect(
-                new TriggeringResultEffect(new WhenMoveToResult(), "Fellowship moved to"));
+                new TriggeringResultEffect(Effect.Type.BEFORE_MOVE_TO, new WhenMoveToResult(), "Fellowship moved to"));
         action.appendEffect(
                 new UnrespondableEffect() {
                     @Override
                     protected void doPlayEffect(LotroGame game) {
                         GameState gameState = game.getGameState();
 
-                        int siteTwilightCost = game.getModifiersQuerying().getTwilightCost(game, gameState.getCurrentSite(), null, 0, false);
-                        if (!game.getFormat().isOrderedSites()) {
+                        int siteTwilightCost = game.getModifiersQuerying().getTwilightCostToPlay(game, gameState.getCurrentSite(), null, 0, false);
+
+                        //We check both the format and the actual sites being used, because in the case of Race to Mount Doom,
+                        // we can have modifiers that permit the use of Shadows sites in otherwise movie-era formats.
+                        if (!game.getFormat().isOrderedSites()
+                                || gameState.getCurrentSite().getBlueprint().getSiteNumber() == 0) {
                             final int siteNumber = gameState.getCurrentSiteNumber();
                             if (siteNumber > 3 && siteNumber <= 6)
                                 siteTwilightCost += 3;
@@ -70,16 +68,12 @@ public class MovementGameProcess implements GameProcess {
                                     }
                                 });
 
-                        AddTwilightEffect effect = new AddTwilightEffect(null, siteTwilightCost + companionsAddingTwilightForMoveCount);
+                        AddTwilightEffect effect = new AddTwilightEffect(
+                                null,
+                                AddTwilightEffect.Cause.MOVE,
+                                siteTwilightCost + companionsAddingTwilightForMoveCount);
                         effect.setSourceText("Moving");
                         action.insertEffect(effect);
-                    }
-                });
-        action.appendEffect(
-                new UnrespondableEffect() {
-                    @Override
-                    protected void doPlayEffect(LotroGame game) {
-                        game.getGameState().setMoving(false);
                     }
                 });
 

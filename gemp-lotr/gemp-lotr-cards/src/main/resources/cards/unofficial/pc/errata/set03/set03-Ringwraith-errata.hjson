@@ -1,0 +1,366 @@
+{
+	53_82: {
+		cardInfo: {
+			//id: 3_82.1
+			parent: 3_82
+			variant: ERRATA
+			variantPath: promos/pc
+			revision: 1
+			image: errata/LOTR-EN03E082.1.jpg
+			collInfo: 3U82
+			rarity: U
+		}
+		title: News of Mordor
+		culture: wraith
+		twilight: 1
+		type: event
+		timeword: maneuver
+		effects: {
+			type: event
+			effect: [
+				{
+					type: choice
+					texts: [
+						Exert an ISENGARD minion to make a Nazgul damage +1 until the regroup phase
+						Exert a Nazgul to prevent all wounds to an ISENGARD minion until the regroup phase
+					]
+					effects: [
+						{
+							type: costToEffect
+							cost: {
+								type: Exert
+								select: choose(culture(isengard),minion)
+							}
+							effect: {
+								type: addKeyword
+								select: choose(Nazgul)
+								keyword: damage+1
+								until: start(regroup)
+							}
+						}
+						{
+							type: costToEffect
+							cost: {
+								type: Exert
+								select: choose(Nazgul)
+							}
+							effect: [
+								{
+									type: disableWounds
+									select: choose(culture(isengard),minion)
+									until: regroup
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+		gametext: Choose one: exert an [isengard] minion to make a Nazgul damage +1 until the regroup phase, or exert a Nazgul to prevent all wounds to an [isengard] minion until the regroup phase.
+		lore: "'Build me an army worthy of Mordor.'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+	
+	# 53_85: {
+	# 	cardInfo: {
+	# 		imagePath: errata/LOTR-EN03E085.1_card.jpg
+	# 		javaClass: false
+	# 		parent: 3_85
+	# 		parentPath: errata/pc
+	# 		revision: 1
+	# 		collInfo: 3R85
+	# 		rarity: R
+	# 		setNum: "3"
+	# 		cardNum: 85
+	# 		// Standard, Masterwork, Tengwar, FullArt, etc.  Top-level cards are always Standard.
+	# 		style: Standard
+	# 	}
+	# 	title: Too Great and Terrible
+	# 	unique: false
+	# 	side: Shadow
+	# 	culture: Wraith
+	# 	twilight: 1
+	# 	type: Condition
+	# 	target: or(companion,ally)
+	# 	effects: [
+	# 		{
+	# 			type: ExtraCost
+	# 			cost: {
+	# 				type: exert
+	# 				select: choose(culture(ringwraith), minion)
+	# 			}
+	# 		}
+	# 		{
+	# 			type: modifier
+	# 			modifier: {
+	# 				type: CantBeExerted
+	# 				filter: bearer
+	# 				by: side(freeps)
+	# 			}
+	# 		}
+	# 		{
+	# 			type: Trigger
+	# 			trigger: {
+	# 				type: StartOfPhase
+	# 				phase: regroup
+	# 			}
+	# 			effect: [
+	# 				{
+	# 					# We do this just to make the option prompt a
+	# 					# little more elegant.
+	# 					type: Memorize
+	# 					filter: bearer
+	# 					memory: oldBearer
+	# 				}
+	# 				{
+	# 					type: If
+	# 					check: {
+	# 						type: HasCardInHand
+	# 						player: freeps
+	# 						count: 1
+	# 						filter: CultureFromMemory(oldBearer)
+	# 					}
+	# 					true: {
+	# 						type: Optional
+	# 						player: freeps
+	# 						text: Would you like to discard 1 card from hand matching {oldBearer}'s culture to discard Too Great and Terrible?
+	# 						effect: {
+	# 							type: CostToEffect
+	# 							cost: {
+	# 								type: DiscardFromHand
+	# 								player: freeps
+	# 								hand: freeps
+	# 								forced: false
+	# 								count: 1
+	# 								select: choose(CultureFromMemory(oldBearer))
+	# 							}
+	# 							effect: {
+	# 								type: Discard
+	# 								select: self
+	# 							}
+	# 						}
+	# 					}
+	# 				}
+					
+	# 			]
+	# 		}
+	# 	]
+	# 	gametext: To play, exert a [ringwraith] minion.  Bearer must be a companion or ally. Bearer cannot be exerted by Free Peoples cards.<br>At the start of the regroup phase, the Free Peoples player may discard 1 card from hand of bearer's culture to discard this condition.
+	# 	lore: "'I do not wish to become like the Dark Lord himself.'"
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	# 53_85: {
+	# 	cardInfo: {
+	# 		imagePath: errata/LOTR-EN03E085.2_card.jpg
+	# 		javaClass: false
+	# 		parent: 3_85
+	# 		parentPath: errata/pc
+	# 		revision: 2
+	# 		collInfo: 3R85
+	# 		rarity: R
+	# 		setNum: "3"
+	# 		cardNum: 85
+	# 		// Standard, Masterwork, Tengwar, FullArt, etc.  Top-level cards are always Standard.
+	# 		style: Standard
+	# 	}
+	# 	title: Too Great and Terrible
+	# 	unique: false
+	# 	side: Shadow
+	# 	culture: Ringwraith
+	# 	twilight: 0
+	# 	type: event
+	# 	timeword: maneuver
+	# 	effects: {
+	# 		type: event
+	# 		requires: {
+	# 			type: canSpot
+	# 			filter: nazgul
+	# 		}
+	# 		effect: {
+	# 			type: preventable
+	# 			text: Would you like to discard 2 GANDALF cards from hand to prevent wounding Gandalf twice?
+	# 			player: fp
+	# 			cost: {
+	# 				type: discardFromHand
+	# 				forced: false
+	# 				hand: fp
+	# 				player: fp
+	# 				select: choose(culture(gandalf))
+	# 				count: 2
+	# 			}
+	# 			effect: {
+	# 				type: wound
+	# 				select: choose(name(Gandalf))
+	# 				times: 2
+	# 			}
+	# 		}
+	# 	}
+	# 	gametext: Spot a Nazgul to wound Gandalf twice. The Free Peoples player may discard 2 [gandalf] cards from hand to prevent this. 
+	# 	lore: "'I do not wish to become like the Dark Lord himself.'"
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	# 53_85: {
+	# 	cardInfo: {
+	# 		//id: 3_85.3
+	# 		parent: 3_85
+	# 		variant: ERRATA
+	# 		variantPath: errata/pc
+	# 		revision: 3
+	# 		image: errata/LOTR-EN03E085.3_card.jpg
+	# 		collInfo: 3R85
+	# 		rarity: R
+	# 	}
+	# 	title: Too Great and Terrible
+	# 	unique: false
+	# 	side: Shadow
+	# 	culture: Wraith
+	# 	twilight: 1
+	# 	type: Condition
+	# 	target: or(companion,ally),not(hasAttached(name(Too Great and Terrible)))
+	# 	effects: [
+	# 		{
+	# 			type: ExtraCost
+	# 			cost: {
+	# 				type: exert
+	# 				select: choose(culture(ringwraith), minion)
+	# 			}
+	# 		}
+	# 		{
+	# 			type: Trigger
+	# 			optional: false
+	# 			trigger: {
+	# 				type: Exerted
+	# 				filter: bearer
+	# 			}
+	# 			effect: [
+	# 				{
+	# 					# We do this just to make the option prompt a little more elegant.
+	# 					type: Memorize
+	# 					filter: bearer
+	# 					memory: oldBearer
+	# 				}
+	# 				{
+	# 					type: Preventable
+	# 					text: Discard a card from hand sharing a culture with {oldBearer} to prevent exhausting {oldBearer}?
+	# 					player: Freeps
+	# 					cost: {
+	# 						type: DiscardFromHand
+	# 						player: freeps
+	# 						hand: freeps
+	# 						select: choose(CultureFromMemory(oldBearer))
+	# 						forced: false
+	# 					}
+	# 					effect: [
+	# 						{
+	# 							type: Exhaust
+	# 							select: oldBearer
+	# 						}
+	# 					]
+	# 				}					
+	# 			]
+	# 		}
+	# 	]
+	# 	gametext: To play, exert a [ringwraith] minion. Bearer must be a companion or ally. Limit 1 per bearer.<br/>Each time bearer exerts, exhaust bearer unless the Free Peoples player discards a card from hand of bearer's culture.
+	# 	lore: "His eyes flashed and his face was lit as by a fire within. 'Do not tempt me! For I do not wish to become like the Dark Lord himself.'"
+	# 	promotext: ""
+	# 	alts: {
+	# 		promos: {
+	# 		}
+	# 		errata: {
+	# 		}
+	# 	}
+	# }
+	
+	53_85: {
+		cardInfo: {
+			//id: 53_85.4
+			parent: 3_85
+			variant: ERRATA
+			variantPath: errata/pc
+			revision: 4
+			image: errata/LOTR-EN03E085.4_card.jpg
+			collInfo: 3R85
+			rarity: R
+		}
+		title: Too Great and Terrible
+		unique: false
+		side: Shadow
+		culture: Wraith
+		twilight: 1
+		type: Condition
+		target: or(companion,ally),not(Ring-bearer),OnePerBearer
+		effects: [
+			{
+				type: ExtraCost
+				cost: {
+					type: exert
+					select: choose(culture(ringwraith), minion)
+				}
+			}
+			{
+				type: Trigger
+				optional: false
+				trigger: {
+					type: Exerted
+					filter: bearer
+					source: side(freeps)
+				}
+				effect: [
+					{
+						# We do this just to make the option prompt a little more elegant.
+						type: Memorize
+						filter: bearer
+						memory: theBearer
+					}
+					{
+						type: Preventable
+						text: Discard a card from hand sharing a culture with {bearer} to prevent exerting {bearer}?
+						player: Freeps
+						cost: {
+							type: DiscardFromHand
+							player: freeps
+							hand: freeps
+							select: choose(CultureFromMemory(theBearer))
+							forced: false
+						}
+						effect: [
+							{
+								type: Exert
+								select: bearer
+							}
+						]
+					}					
+				]
+			}
+		]
+		gametext: To play, exert a [ringwraith] minion. Bearer must<br>be a companion or ally (except the Ring-bearer). Limit 1 per bearer.<br>Each time bearer is exerted by a Free Peoples card, exert bearer unless the Free Peoples player discards a card from hand of bearer's culture.
+		lore: "'Do not tempt me!'"
+		promotext: ""
+		alts: {
+			promos: {
+			}
+			errata: {
+			}
+		}
+	}
+}

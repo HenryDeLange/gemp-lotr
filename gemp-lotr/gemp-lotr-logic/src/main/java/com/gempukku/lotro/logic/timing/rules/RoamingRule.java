@@ -5,14 +5,12 @@ import com.gempukku.lotro.common.Keyword;
 import com.gempukku.lotro.filters.Filter;
 import com.gempukku.lotro.filters.Filters;
 import com.gempukku.lotro.game.PhysicalCard;
-import com.gempukku.lotro.game.state.GameState;
 import com.gempukku.lotro.game.state.LotroGame;
-import com.gempukku.lotro.logic.modifiers.KeywordModifier;
+import com.gempukku.lotro.logic.modifiers.AddKeywordModifier;
 import com.gempukku.lotro.logic.modifiers.ModifiersLogic;
-import com.gempukku.lotro.logic.modifiers.ModifiersQuerying;
 
 public class RoamingRule {
-    private ModifiersLogic _modifiersLogic;
+    private final ModifiersLogic _modifiersLogic;
 
     public RoamingRule(ModifiersLogic modifiersLogic) {
         _modifiersLogic = modifiersLogic;
@@ -27,6 +25,6 @@ public class RoamingRule {
         });
 
         _modifiersLogic.addAlwaysOnModifier(
-                new KeywordModifier(null, roamingFilter, Keyword.ROAMING));
+                new AddKeywordModifier(null, roamingFilter, null, Keyword.ROAMING));
     }
 }

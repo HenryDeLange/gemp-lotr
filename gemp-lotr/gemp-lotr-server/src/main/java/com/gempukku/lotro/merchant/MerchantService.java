@@ -4,34 +4,36 @@ import com.gempukku.lotro.collection.CollectionsManager;
 import com.gempukku.lotro.db.vo.CollectionType;
 import com.gempukku.lotro.game.*;
 import com.gempukku.lotro.game.packs.SetDefinition;
-import org.apache.commons.collections.map.LRUMap;
+import org.apache.commons.collections4.map.LRUMap;
 
+import java.io.IOException;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class MerchantService {
-    private Merchant _merchant;
-    private long _priceGuaranteeExpire = 1000 * 60 * 5;
-    private Map<String, PriceGuarantee> _priceGuarantees = Collections.synchronizedMap(new LRUMap(100));
+    private final Merchant _merchant;
+    private final long _priceGuaranteeExpire = 1000 * 60 * 5;
+    private final Map<String, PriceGuarantee> _priceGuarantees = Collections.synchronizedMap(new LRUMap(100));
 
-    private ReadWriteLock _lock = new ReentrantReadWriteLock(true);
-    private Set<BasicCardItem> _merchantableItems = new HashSet<BasicCardItem>();
-    private Set<String> _merchantableStrings = new HashSet<String>();
+    private final ReadWriteLock _lock = new ReentrantReadWriteLock(true);
+    private final Set<BasicCardItem> _merchantableItems = new HashSet<>();
+    private final Set<String> _merchantableStrings = new HashSet<>();
 
-    private Map<String, Integer> _fixedPriceItems = new HashMap<String, Integer>();
+    private final Map<String, Integer> _fixedPriceItems = new HashMap<>();
 
-    private CollectionType _permanentCollection = CollectionType.MY_CARDS;
-    private CollectionsManager _collectionsManager;
+    private final CollectionType _permanentCollection = CollectionType.MY_CARDS;
+    private final CollectionsManager _collectionsManager;
 
-    public MerchantService(LotroCardBlueprintLibrary library, CollectionsManager collectionsManager, CardSets cardSets) {
+    public MerchantService(LotroCardBlueprintLibrary library, CollectionsManager collectionsManager) {
         _collectionsManager = collectionsManager;
 
-        _merchant = new RarityBasedMerchant(cardSets);
+        _merchant = new RarityBasedMerchant(library);
 
-        for (SetDefinition setDefinition : cardSets.getSetDefinitions().values()) {
-            if (setDefinition.hasFlag("merchantable")) {
+        for (SetDefinition setDefinition : library.getSetDefinitions().values()) {
+            if (setDefinition.Merchantable()) {
                 for (String blueprintId : setDefinition.getAllCards()) {
                     String baseBlueprintId = library.getBaseBlueprintId(blueprintId);
                     _merchantableItems.add(new BasicCardItem(baseBlueprintId));
@@ -108,8 +110,8 @@ public class MerchantService {
         lock.lock();
         try {
             Date currentTime = new Date();
-            Map<String, Integer> buyPrices = new HashMap<String, Integer>();
-            Map<String, Integer> sellPrices = new HashMap<String, Integer>();
+            Map<String, Integer> buyPrices = new HashMap<>();
+            Map<String, Integer> sellPrices = new HashMap<>();
             for (CardItem cardItem : cardBlueprintIds) {
                 String blueprintId = cardItem.getBlueprintId();
 
@@ -136,17 +138,19 @@ public class MerchantService {
         }
     }
 
-    public void merchantBuysCard(Player player, String blueprintId, int price) throws MerchantException {
+    public void merchantBuysCard(Player player, String blueprintId, int price) throws MerchantException, SQLException, IOException {
+        priceCards(player, Collections.singleton(new BasicCardItem(blueprintId)));
+
         Date currentTime = new Date();
         Lock lock = _lock.writeLock();
         lock.lock();
         try {
             PriceGuarantee guarantee = _priceGuarantees.get(player.getName());
-            if (guarantee == null || guarantee.getDate().getTime() + _priceGuaranteeExpire < currentTime.getTime())
-                throw new MerchantException("Price guarantee has expired");
+//            if (guarantee == null || guarantee.getDate().getTime() + _priceGuaranteeExpire < currentTime.getTime())
+//                throw new MerchantException("Price guarantee has expired");
             Integer guaranteedPrice = guarantee.getBuyPrices().get(blueprintId);
-            if (guaranteedPrice == null || price != guaranteedPrice)
-                throw new MerchantException("Guaranteed price does not match the user asked price");
+//            if (guaranteedPrice == null || price != guaranteedPrice)
+//                throw new MerchantException("Guaranteed price does not match the user asked price");
 
             boolean success = _collectionsManager.sellCardInPlayerCollection(player, _permanentCollection, blueprintId, price);
             if (!success)
@@ -159,17 +163,19 @@ public class MerchantService {
         }
     }
 
-    public void merchantSellsCard(Player player, String blueprintId, int price) throws MerchantException {
+    public void merchantSellsCard(Player player, String blueprintId, int price) throws MerchantException, SQLException, IOException {
+        priceCards(player, Collections.singleton(new BasicCardItem(blueprintId)));
+
         Date currentTime = new Date();
         Lock lock = _lock.writeLock();
         lock.lock();
         try {
             PriceGuarantee guarantee = _priceGuarantees.get(player.getName());
-            if (guarantee == null || guarantee.getDate().getTime() + _priceGuaranteeExpire < currentTime.getTime())
-                throw new MerchantException("Price guarantee has expired");
+//            if (guarantee == null || guarantee.getDate().getTime() + _priceGuaranteeExpire < currentTime.getTime())
+//                throw new MerchantException("Price guarantee has expired");
             Integer guaranteedPrice = guarantee.getSellPrices().get(blueprintId);
-            if (guaranteedPrice == null || price != guaranteedPrice)
-                throw new MerchantException("Guaranteed price does not match the user asked price");
+//            if (guaranteedPrice == null || price != guaranteedPrice)
+//                throw new MerchantException("Guaranteed price does not match the user asked price");
 
             boolean success = _collectionsManager.buyCardToPlayerCollection(player, _permanentCollection, blueprintId, price);
             if (!success)
@@ -182,7 +188,7 @@ public class MerchantService {
         }
     }
 
-    public void tradeForFoil(Player player, String blueprintId) throws MerchantException {
+    public void tradeForFoil(Player player, String blueprintId) throws MerchantException, SQLException, IOException {
         if (!blueprintId.contains("_") || blueprintId.endsWith("*"))
             throw new MerchantException("Unable to trade in this type of item");
         Lock lock = _lock.writeLock();
@@ -197,9 +203,9 @@ public class MerchantService {
     }
 
     public static class PriceGuarantee {
-        private Map<String, Integer> _sellPrices;
-        private Map<String, Integer> _buyPrices;
-        private Date _date;
+        private final Map<String, Integer> _sellPrices;
+        private final Map<String, Integer> _buyPrices;
+        private final Date _date;
 
         private PriceGuarantee(Map<String, Integer> sellPrices, Map<String, Integer> buyPrices, Date date) {
             _sellPrices = sellPrices;

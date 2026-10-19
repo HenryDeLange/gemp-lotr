@@ -1,5 +1,7 @@
 package com.gempukku.lotro.collection;
 
+import com.gempukku.lotro.common.AppConfig;
+import com.gempukku.lotro.common.DBDefs;
 import com.gempukku.lotro.game.CardCollection;
 import com.gempukku.lotro.game.DefaultCardCollection;
 import com.gempukku.lotro.game.MutableCardCollection;
@@ -8,23 +10,17 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public class CollectionSerializer {
-    private List<String> _doubleByteCountItems = new ArrayList<String>();
-    private List<String> _singleByteCountItems = new ArrayList<String>();
+    private final List<String> _doubleByteCountItems = new ArrayList<>();
+    private final List<String> _singleByteCountItems = new ArrayList<>();
 
     public CollectionSerializer() {
-        try {
-            fillDoubleByteItems();
 
-            fillSingleByteItems();
-
-        } catch (IOException exp) {
-            throw new RuntimeException("Problem loading collection data", exp);
-        }
     }
 
     private void fillSingleByteItems() throws IOException {
@@ -103,36 +99,40 @@ public class CollectionSerializer {
         //July 2022 PC Promos
         _singleByteCountItems.add("19_41");
         _singleByteCountItems.add("15_208");
-        
 
+        //August 2022 PC Promos
+        _singleByteCountItems.add("101_65");
+        _singleByteCountItems.add("101_66");
+
+        //September 2022 PC Promos
+        _singleByteCountItems.add("9_53");
+        _singleByteCountItems.add("4_366");
+
+        //October 2022 PC Promos
+        _singleByteCountItems.add("13_204");
+        _singleByteCountItems.add("18_150");
     }
 
     private void fillDoubleByteItems() throws IOException {
-        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(CollectionSerializer.class.getResourceAsStream("/packs.txt"), "UTF-8"));
-        try {
+        try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(AppConfig.getResourceStream("product/old/packs.txt"), StandardCharsets.UTF_8))) {
             String line;
             while ((line = bufferedReader.readLine()) != null)
                 _doubleByteCountItems.add(line);
-        } finally {
-            bufferedReader.close();
         }
     }
 
     private void loadSet(String setId) throws IOException {
-        BufferedReader cardReader = new BufferedReader(new InputStreamReader(CollectionSerializer.class.getResourceAsStream("/set" + setId + "-rarity.txt"), "UTF-8"));
-        try {
+        try (BufferedReader cardReader = new BufferedReader(new InputStreamReader(AppConfig.getResourceStream("rarities/set" + setId + "-rarity.txt"), StandardCharsets.UTF_8))) {
             String line;
 
             while ((line = cardReader.readLine()) != null) {
-                if (!line.substring(0, setId.length()).equals(setId))
+                if (!line.startsWith(setId))
                     throw new IllegalStateException("Seems the rarity is for some other set");
                 // Normal
                 _singleByteCountItems.add(translateToBlueprintId(line));
                 // Foil
                 _singleByteCountItems.add(translateToBlueprintId(line) + "*");
             }
-        } finally {
-            cardReader.close();
         }
     }
 
@@ -190,7 +190,7 @@ public class CollectionSerializer {
         JSONObject json = new JSONObject();
         json.putAll(extraInformation);
 
-        OutputStreamWriter writer = new OutputStreamWriter(outputStream, "UTF-8");
+        OutputStreamWriter writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
         writer.write(json.toJSONString());
         writer.flush();
     }
@@ -210,6 +210,26 @@ public class CollectionSerializer {
         } else {
             throw new IllegalStateException("Unkown version of serialized collection: " + version);
         }
+    }
+
+    public MutableCardCollection deserializeCollection(DBDefs.Collection coll, List<DBDefs.CollectionEntry> entries) throws IOException {
+        DefaultCardCollection newColl = new DefaultCardCollection();
+
+        JSONParser parser = new JSONParser();
+        try {
+            if(coll.extra_info != null) {
+                JSONObject object = (JSONObject) parser.parse(coll.extra_info);
+                newColl.setExtraInformation(object);
+            }
+        } catch (ParseException exp) {
+            throw new IOException(exp);
+        }
+
+        for(var entry : entries) {
+            newColl.addItem(entry.product, entry.quantity);
+        }
+
+        return newColl;
     }
 
     private MutableCardCollection deserializeCollectionVer0(BufferedInputStream inputStream) throws IOException {

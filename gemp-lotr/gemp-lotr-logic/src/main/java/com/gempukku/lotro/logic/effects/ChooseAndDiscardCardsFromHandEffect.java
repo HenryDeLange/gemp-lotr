@@ -18,12 +18,12 @@ import java.util.Collections;
 import java.util.Set;
 
 public class ChooseAndDiscardCardsFromHandEffect extends AbstractSubActionEffect {
-    private Action _action;
-    private String _playerId;
-    private boolean _forced;
-    private Evaluator _minimum;
-    private Evaluator _maximum;
-    private Filterable[] _filter;
+    private final Action _action;
+    private final String _playerId;
+    private final boolean _forced;
+    private final Evaluator _minimum;
+    private final Evaluator _maximum;
+    private final Filterable[] _filter;
     private String _text = "Choose cards to discard";
 
     public ChooseAndDiscardCardsFromHandEffect(Action action, String playerId, boolean forced, Evaluator minimum, Evaluator maximum, Filterable... filters) {
@@ -37,18 +37,6 @@ public class ChooseAndDiscardCardsFromHandEffect extends AbstractSubActionEffect
 
     public ChooseAndDiscardCardsFromHandEffect(Action action, String playerId, boolean forced, int minimum, int maximum, Filterable... filters) {
         this(action, playerId, forced, new ConstantEvaluator(minimum), new ConstantEvaluator(maximum), filters);
-    }
-
-    public ChooseAndDiscardCardsFromHandEffect(Action action, String playerId, boolean forced, int count, Filterable... filters) {
-        this(action, playerId, forced, count, count, filters);
-    }
-
-    public ChooseAndDiscardCardsFromHandEffect(Action action, String playerId, boolean forced, int count) {
-        this(action, playerId, forced, count, Filters.any);
-    }
-
-    public ChooseAndDiscardCardsFromHandEffect(Action action, String playerId, boolean forced) {
-        this(action, playerId, forced, 1);
     }
 
     public void setText(String text) {
@@ -67,7 +55,7 @@ public class ChooseAndDiscardCardsFromHandEffect extends AbstractSubActionEffect
 
     @Override
     public boolean isPlayableInFull(LotroGame game) {
-        return Filters.filter(game.getGameState().getHand(_playerId), game, _filter).size()
+        return Filters.filter(game, game.getGameState().getHand(_playerId), _filter).size()
                 >= _minimum.evaluateExpression(game, null);
     }
 
@@ -76,12 +64,12 @@ public class ChooseAndDiscardCardsFromHandEffect extends AbstractSubActionEffect
         if (_forced && !game.getModifiersQuerying().canDiscardCardsFromHand(game, _playerId, _action.getActionSource()))
             return;
 
-        Collection<PhysicalCard> hand = Filters.filter(game.getGameState().getHand(_playerId), game, _filter);
+        Collection<PhysicalCard> hand = Filters.filter(game, game.getGameState().getHand(_playerId), _filter);
         int maximum = Math.min(_maximum.evaluateExpression(game, null), hand.size());
 
         int minimum = _minimum.evaluateExpression(game, null);
         if (maximum == 0) {
-            cardsBeingDiscardedCallback(Collections.<PhysicalCard>emptySet());
+            cardsBeingDiscardedCallback(Collections.emptySet());
         } else if (hand.size() <= minimum) {
             SubAction subAction = new SubAction(_action);
             subAction.appendEffect(new DiscardCardsFromHandEffect(_action.getActionSource(), _playerId, hand, _forced));

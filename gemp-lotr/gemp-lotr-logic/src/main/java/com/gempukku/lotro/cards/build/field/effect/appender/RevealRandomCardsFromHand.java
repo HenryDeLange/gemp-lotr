@@ -16,7 +16,7 @@ import java.util.List;
 
 public class RevealRandomCardsFromHand implements EffectAppenderProducer {
     @Override
-    public EffectAppender createEffectAppender(JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
+    public EffectAppender createEffectAppender(boolean cost, JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
         FieldUtils.validateAllowedFields(effectObject, "hand", "forced", "count", "memorize");
 
         final String hand = FieldUtils.getString(effectObject.get("hand"), "hand", "you");
@@ -24,7 +24,7 @@ public class RevealRandomCardsFromHand implements EffectAppenderProducer {
         final String memorized = FieldUtils.getString(effectObject.get("memorize"), "memorize", "_temp");
 
         final ValueSource countSource = ValueResolver.resolveEvaluator(effectObject.get("count"), 1, environment);
-        final PlayerSource handSource = PlayerResolver.resolvePlayer(hand, environment);
+        final PlayerSource handSource = PlayerResolver.resolvePlayer(hand);
 
         return new DelayedAppender() {
             @Override

@@ -4,7 +4,7 @@ import com.gempukku.lotro.cards.build.*;
 import com.gempukku.lotro.cards.build.field.FieldUtils;
 import com.gempukku.lotro.cards.build.field.effect.appender.resolver.ValueResolver;
 import com.gempukku.lotro.common.Keyword;
-import com.gempukku.lotro.logic.modifiers.KeywordModifier;
+import com.gempukku.lotro.logic.modifiers.AddKeywordModifier;
 import com.gempukku.lotro.logic.modifiers.Modifier;
 import com.gempukku.lotro.logic.modifiers.evaluator.Evaluator;
 import org.json.simple.JSONObject;
@@ -12,11 +12,13 @@ import org.json.simple.JSONObject;
 public class AddKeyword implements ModifierSourceProducer {
     @Override
     public ModifierSource getModifierSource(JSONObject object, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
-        FieldUtils.validateAllowedFields(object, "filter", "condition", "keyword", "amount");
+        FieldUtils.validateAllowedFields(object, "filter", "requires", "keyword", "amount");
 
-        final JSONObject[] conditionArray = FieldUtils.getObjectArray(object.get("condition"), "condition");
+        final JSONObject[] conditionArray = FieldUtils.getObjectArray(object.get("requires"), "requires");
         final String filter = FieldUtils.getString(object.get("filter"), "filter");
         final String keywordString = FieldUtils.getString(object.get("keyword"), "keyword");
+        if (keywordString == null)
+            throw new InvalidCardDefinitionException("Keyword needs to be defined for 'addKeyword'");
 
         final String[] keywordSplit = keywordString.split("\\+");
         Keyword keyword = FieldUtils.getEnum(Keyword.class, keywordSplit[0], "keyword");
@@ -33,9 +35,9 @@ public class AddKeyword implements ModifierSourceProducer {
                     @Override
                     public Modifier getModifier(ActionContext actionContext) {
                         final Evaluator evaluator = amount.getEvaluator(actionContext);
-                        return new KeywordModifier(actionContext.getSource(),
+                        return new AddKeywordModifier(actionContext.getSource(),
                                 filterableSource.getFilterable(actionContext),
-                                new RequirementCondition(requirements, actionContext), keyword, evaluator);
+                                RequirementCondition.createCondition(requirements, actionContext), keyword, evaluator);
                     }
         };
     }

@@ -25,16 +25,18 @@ import java.util.*;
 
 // Decision is also an Effect.
 public class TurnProcedure {
-    private UserFeedback _userFeedback;
-    private LotroGame _game;
-    private ActionStack _actionStack;
-    private CharacterDeathRule _characterDeathRule;
+    private final UserFeedback _userFeedback;
+    private final LotroGame _game;
+    private final ActionStack _actionStack;
+    private final CharacterDeathRule _characterDeathRule;
     private GameProcess _gameProcess;
     private boolean _playedGameProcess;
-    private GameStats _gameStats;
-    private InitiativeChangeRule _initiativeChangeRule = new InitiativeChangeRule();
+    private final GameStats _gameStats;
+    private final InitiativeChangeRule _initiativeChangeRule = new InitiativeChangeRule();
 
-    public TurnProcedure(LotroGame lotroGame, Set<String> players, final UserFeedback userFeedback, ActionStack actionStack, final PlayerOrderFeedback playerOrderFeedback, CharacterDeathRule characterDeathRule) {
+    public TurnProcedure(LotroGame lotroGame, Set<String> players, final UserFeedback userFeedback, ActionStack actionStack,
+            final PlayerOrderFeedback playerOrderFeedback, final PregameSetupFeedback pregameSetupFeedback,
+            CharacterDeathRule characterDeathRule) {
         _userFeedback = userFeedback;
         _game = lotroGame;
         _actionStack = actionStack;
@@ -42,7 +44,8 @@ public class TurnProcedure {
 
         _gameStats = new GameStats();
 
-        _gameProcess = lotroGame.getFormat().getAdventure().getStartingGameProcess(players, playerOrderFeedback);
+        _gameProcess = lotroGame.getFormat().getAdventure()
+                .getStartingGameProcess(players, playerOrderFeedback, pregameSetupFeedback);
     }
 
     public GameStats getGameStats() {
@@ -56,7 +59,7 @@ public class TurnProcedure {
             _characterDeathRule.checkCharactersZeroVitality(_game);
 
             Set<EffectResult> effectResults = ((DefaultActionsEnvironment) _game.getActionsEnvironment()).consumeEffectResults();
-            if (effectResults.size() > 0) {
+            if (!effectResults.isEmpty()) {
                 _actionStack.stackAction(new PlayOutEffectResults(effectResults));
             } else {
                 if (_actionStack.isEmpty()) {
@@ -92,7 +95,7 @@ public class TurnProcedure {
     }
 
     private class PlayOutEffect extends SystemQueueAction {
-        private Effect _effect;
+        private final Effect _effect;
         private boolean _initialized;
 
         private PlayOutEffect(Effect effect) {
@@ -108,8 +111,8 @@ public class TurnProcedure {
         public Effect nextEffect(LotroGame game) {
             if (!_initialized) {
                 _initialized = true;
-                appendEffect(new PlayoutRequiredBeforeResponsesEffect(this, new HashSet<PhysicalCard>(), _effect));
-                appendEffect(new PlayoutOptionalBeforeResponsesEffect(this, new HashSet<PhysicalCard>(), _game.getGameState().getPlayerOrder().getCounterClockwisePlayOrder(_game.getGameState().getCurrentPlayerId(), true), 0, _effect));
+                appendEffect(new PlayoutRequiredBeforeResponsesEffect(this, new HashSet<>(), _effect));
+                appendEffect(new PlayoutOptionalBeforeResponsesEffect(this, new HashSet<>(), _game.getGameState().getPlayerOrder().getCounterClockwisePlayOrder(_game.getGameState().getCurrentPlayerId(), true), 0, _effect));
                 appendEffect(new PlayEffect(_effect));
             }
 
@@ -118,7 +121,7 @@ public class TurnProcedure {
     }
 
     private class PlayEffect extends UnrespondableEffect {
-        private Effect _effect;
+        private final Effect _effect;
 
         private PlayEffect(Effect effect) {
             _effect = effect;
@@ -135,7 +138,7 @@ public class TurnProcedure {
     }
 
     private class PlayOutEffectResults extends SystemQueueAction {
-        private Set<EffectResult> _effectResults;
+        private final Set<EffectResult> _effectResults;
         private boolean _initialized;
 
         private PlayOutEffectResults(Set<EffectResult> effectResults) {
@@ -147,7 +150,7 @@ public class TurnProcedure {
             if (!_initialized) {
                 _initialized = true;
                 List<Action> requiredResponses = _game.getActionsEnvironment().getRequiredAfterTriggers(_effectResults);
-                if (requiredResponses.size() > 0)
+                if (!requiredResponses.isEmpty())
                     appendEffect(new PlayoutAllActionsIfEffectNotCancelledEffect(this, requiredResponses));
 
                 appendEffect(
@@ -168,8 +171,20 @@ public class TurnProcedure {
             for (EffectResult effectResult : _effectResults) {
                 if (effectResult.getType() == EffectResult.Type.ANY_NUMBER_KILLED) {
                     KilledResult killResult = (KilledResult) effectResult;
-                    if (Filters.filter(killResult.getKilledCards(), _game, Filters.ringBearer).size() > 0)
+
+                    if (Filters.acceptsAny(_game, killResult.getKilledCards(), Filters.ringBearer))
                         return true;
+
+                    //TODO: Make a better filter that keys off of "can become ring-bearer" rather than
+                    // assuming that will always be Sam.
+                    //If Sam is killed as a response to triggering *his* response, then the game flounders
+                    // and never properly evaluates the ring-bearer as dying.  So as a hack, we will check
+                    // for *Sam's* death and see if the Ring-bearer is dead at that time as well.
+                    if (Filters.acceptsAny(_game, killResult.getKilledCards(), Filters.sam)) {
+                        var ringBearer = _game.getGameState().getRingBearer( _game.getGameState().getCurrentPlayerId());
+                        if (ringBearer.getZone() == null || !ringBearer.getZone().isInPlay())
+                            return true;
+                    }
                 }
                 if (effectResult.getType() == EffectResult.Type.FOR_EACH_RETURNED_TO_HAND) {
                     ReturnCardsToHandResult returnResult = (ReturnCardsToHandResult) effectResult;
@@ -187,9 +202,9 @@ public class TurnProcedure {
     }
 
     private class PlayoutRequiredBeforeResponsesEffect extends UnrespondableEffect {
-        private SystemQueueAction _action;
-        private Set<PhysicalCard> _cardTriggersUsed;
-        private Effect _effect;
+        private final SystemQueueAction _action;
+        private final Set<PhysicalCard> _cardTriggersUsed;
+        private final Effect _effect;
 
         private PlayoutRequiredBeforeResponsesEffect(SystemQueueAction action, Set<PhysicalCard> cardTriggersUsed, Effect effect) {
             _action = action;
@@ -201,10 +216,7 @@ public class TurnProcedure {
         protected void doPlayEffect(LotroGame game) {
             final List<Action> requiredBeforeTriggers = game.getActionsEnvironment().getRequiredBeforeTriggers(_effect);
             // Remove triggers already resolved
-            final Iterator<Action> triggersIterator = requiredBeforeTriggers.iterator();
-            while (triggersIterator.hasNext())
-                if (_cardTriggersUsed.contains(triggersIterator.next().getActionSource()))
-                    triggersIterator.remove();
+            requiredBeforeTriggers.removeIf(action -> _cardTriggersUsed.contains(action.getActionSource()));
             
             if (requiredBeforeTriggers.size() == 1) {
                 _game.getActionsEnvironment().addActionToStack(requiredBeforeTriggers.get(0));
@@ -228,11 +240,11 @@ public class TurnProcedure {
     }
 
     private class PlayoutOptionalBeforeResponsesEffect extends UnrespondableEffect {
-        private SystemQueueAction _action;
-        private Set<PhysicalCard> _cardTriggersUsed;
-        private PlayOrder _playOrder;
-        private int _passCount;
-        private Effect _effect;
+        private final SystemQueueAction _action;
+        private final Set<PhysicalCard> _cardTriggersUsed;
+        private final PlayOrder _playOrder;
+        private final int _passCount;
+        private final Effect _effect;
 
         private PlayoutOptionalBeforeResponsesEffect(SystemQueueAction action, Set<PhysicalCard> cardTriggersUsed, PlayOrder playOrder, int passCount, Effect effect) {
             _action = action;
@@ -248,14 +260,11 @@ public class TurnProcedure {
 
             final List<Action> optionalBeforeTriggers = game.getActionsEnvironment().getOptionalBeforeTriggers(activePlayer, _effect);
             // Remove triggers already resolved
-            final Iterator<Action> triggersIterator = optionalBeforeTriggers.iterator();
-            while (triggersIterator.hasNext())
-                if (_cardTriggersUsed.contains(triggersIterator.next().getActionSource()))
-                    triggersIterator.remove();
+            optionalBeforeTriggers.removeIf(action -> _cardTriggersUsed.contains(action.getActionSource()));
 
             final List<Action> optionalBeforeActions = _game.getActionsEnvironment().getOptionalBeforeActions(activePlayer, _effect);
 
-            List<Action> possibleActions = new LinkedList<Action>(optionalBeforeTriggers);
+            List<Action> possibleActions = new LinkedList<>(optionalBeforeTriggers);
             possibleActions.addAll(optionalBeforeActions);
 
             if (possibleActions.size() > 0) {
@@ -285,10 +294,10 @@ public class TurnProcedure {
     }
 
     private class PlayoutOptionalAfterResponsesEffect extends UnrespondableEffect {
-        private SystemQueueAction _action;
-        private PlayOrder _playOrder;
-        private int _passCount;
-        private Collection<? extends EffectResult> _effectResults;
+        private final SystemQueueAction _action;
+        private final PlayOrder _playOrder;
+        private final int _passCount;
+        private final Collection<? extends EffectResult> _effectResults;
 
         private PlayoutOptionalAfterResponsesEffect(SystemQueueAction action, PlayOrder playOrder, int passCount, Collection<? extends EffectResult> effectResults) {
             _action = action;
@@ -305,7 +314,7 @@ public class TurnProcedure {
 
             final List<Action> optionalAfterActions = _game.getActionsEnvironment().getOptionalAfterActions(activePlayer, _effectResults);
 
-            List<Action> possibleActions = new LinkedList<Action>(optionalAfterTriggers.keySet());
+            List<Action> possibleActions = new LinkedList<>(optionalAfterTriggers.keySet());
             possibleActions.addAll(optionalAfterActions);
 
             if (possibleActions.size() > 0) {
@@ -336,8 +345,8 @@ public class TurnProcedure {
     }
 
     private class PlayoutAllActionsIfEffectNotCancelledEffect extends UnrespondableEffect {
-        private SystemQueueAction _action;
-        private List<Action> _actions;
+        private final SystemQueueAction _action;
+        private final List<Action> _actions;
 
         private PlayoutAllActionsIfEffectNotCancelledEffect(SystemQueueAction action, List<Action> actions) {
             _action = action;

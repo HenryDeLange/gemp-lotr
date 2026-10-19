@@ -19,11 +19,11 @@ import java.util.Collection;
 
 public class RevealHand implements EffectAppenderProducer {
     @Override
-    public EffectAppender createEffectAppender(JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
+    public EffectAppender createEffectAppender(boolean cost, JSONObject effectObject, CardGenerationEnvironment environment) throws InvalidCardDefinitionException {
         FieldUtils.validateAllowedFields(effectObject, "hand", "memorize");
 
         final String player = FieldUtils.getString(effectObject.get("hand"), "hand", "you");
-        final PlayerSource playerSource = PlayerResolver.resolvePlayer(player, environment);
+        final PlayerSource playerSource = PlayerResolver.resolvePlayer(player);
 
         final String memorize = FieldUtils.getString(effectObject.get("memorize"), "memorize");
 

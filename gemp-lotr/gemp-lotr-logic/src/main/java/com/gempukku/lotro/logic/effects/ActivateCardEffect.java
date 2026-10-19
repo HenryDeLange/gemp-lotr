@@ -1,6 +1,7 @@
 package com.gempukku.lotro.logic.effects;
 
-import com.gempukku.lotro.common.Phase;
+import com.gempukku.lotro.common.Timeword;
+import com.gempukku.lotro.common.Zone;
 import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.LotroGame;
 import com.gempukku.lotro.logic.GameUtils;
@@ -9,23 +10,25 @@ import com.gempukku.lotro.logic.timing.Effect;
 import com.gempukku.lotro.logic.timing.results.ActivateCardResult;
 
 public class ActivateCardEffect extends AbstractEffect {
-    private PhysicalCard _source;
-    private Phase _actionTimeword;
+    protected final PhysicalCard _source;
+    protected final Timeword _actionTimeword;
 
-    private ActivateCardResult _activateCardResult;
+    private final String _player;
 
-    public ActivateCardEffect(PhysicalCard source, Phase actionTimeword) {
+    protected ActivateCardResult _activateCardResult;
+
+    public ActivateCardEffect(PhysicalCard source, String performingPlayer, Timeword actionTimeword, Zone originalZone) {
         _source = source;
         _actionTimeword = actionTimeword;
-
-        _activateCardResult = new ActivateCardResult(_source, _actionTimeword);
+        _player = performingPlayer;
+        _activateCardResult = new ActivateCardResult(_source, performingPlayer, _actionTimeword, originalZone);
     }
 
     public ActivateCardResult getActivateCardResult() {
         return _activateCardResult;
     }
 
-    public Phase getActionTimeword() {
+    public Timeword getActionTimeword() {
         return _actionTimeword;
     }
 
@@ -52,5 +55,9 @@ public class ActivateCardEffect extends AbstractEffect {
     protected FullEffectResult playEffectReturningResult(LotroGame game) {
         game.getActionsEnvironment().emitEffectResult(_activateCardResult);
         return new FullEffectResult(true);
+    }
+
+    public String getPerformingPlayer() {
+        return _player;
     }
 }
