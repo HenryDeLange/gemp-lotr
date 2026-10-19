@@ -4,12 +4,12 @@ import com.gempukku.lotro.async.HttpProcessingException;
 import com.gempukku.lotro.async.ResponseWriter;
 import com.gempukku.lotro.common.AppConfig;
 import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaders;
 
 import io.netty.handler.codec.http.HttpRequest;
 
 import java.io.File;
 import java.lang.reflect.Type;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Map;
 
@@ -36,8 +36,10 @@ public class WebRequestHandler implements UriRequestHandler {
                 || uri.startsWith(".") || uri.endsWith("."))
             throw new HttpProcessingException(403);
 
-        File file = new File(_root + uri);
-        if (!file.getCanonicalPath().startsWith(_root))
+        File root = new File(_root).getCanonicalFile();
+        File file = new File(root, uri).getCanonicalFile();
+        Path rootPath = root.toPath();
+        if (!file.toPath().startsWith(rootPath))
             throw new HttpProcessingException(403);
 
         if (!file.exists())

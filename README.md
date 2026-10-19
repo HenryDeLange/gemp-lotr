@@ -10,7 +10,7 @@ If the below instructions do not tell you what you need, please contact ketura i
 
 # Overview
 
-GEMP is a server written for Java 18, using MariaDB for a MySQL database instance, and serving raw Javascript and barebones HTML/CSS for the client front-end (although a client rewrite is in progress to modernize the JS to something more palatable to modern developers).  
+GEMP is a server written for Java 27, using MariaDB for a MySQL database instance, and serving raw Javascript and barebones HTML/CSS for the client front-end (although a client rewrite is in progress to modernize the JS to something more palatable to modern developers).
 
 GEMP is divided into several modules which each handle a different aspect of the game, albeit for now they cannot be hosted separately (tho this is a future improvement we would like to make)
 
@@ -68,9 +68,25 @@ This is also the home for the unit tests for the server, which will fail compila
 Old card unit tests were scattershot and stored in the /at subfolder as needed.  Do not add to this subfolder; instead use the cards subfolder mentioned above.
 
 
+# Development
+
+Use JDK 27 and Maven 3.9.16 or newer. From the repository root, build the project and run its tests with:
+
+```sh
+mvn -B -f gemp-lotr/pom.xml verify
+```
+
+### Run from VS Code with H2
+
+Open the repository root in VS Code and choose **Run GEMP LotR** in Run and Debug. This launch uses an in-memory H2 database, seeds a local `dev` / `dev` account and starter deck, and serves the site at [http://localhost:17001/gemp-lotr/](http://localhost:17001/gemp-lotr/). No Docker database is needed; the database is reset when the server stops.
+
+The default `gemp-lotr.properties` selects MariaDB/MySQL for the Docker test and production deployments. The VS Code launch overrides only the configuration: both modes use the same application artifact and the same `database-init-tables.sql`; H2 additionally loads `database-init-dev-h2.sql`. The MariaDB container's existing dump and user setup scripts still run only when its data directory is first initialized.
+
 # Hosting
 
 GEMP includes tools for hosting within [Docker](https://docker-curriculum.com/), which makes setting up a local host a breeze (assuming the maintainers have kept the database scripts up-to-date).  See the readme in the [/docker](/gemp-lotr/docker) subfolder for more advanced details and instructions on the organization, but the following are basic instructions on how to start a local copy of GEMP.  Make sure to follow the advanced instructions if hosting a production instance, as it will give steps for updating the default ports and credentials for db accounts and such.
+
+The database image is now MariaDB 11.8.9. Back up existing database data and follow MariaDB's supported upgrade procedure before reusing a data directory from an older image.
 
 1. Install Docker (Docker Desktop if on Windows).  If you are on Windows, make sure that when you install it you check all boxes that have Docker behave like it's on Linux. 
 
@@ -131,6 +147,4 @@ We recommend editing GEMP server code in [IntelliJ IDEA](https://www.jetbrains.c
 Follow the instructions [in this document](https://docs.google.com/document/d/1mKAm9jCAttcU_M6yWCsjU33Hg98FmhWPchEa5fCG-fs/edit) to enable "remote" debugging into a local active instance of GEMP for debugging tricky issues.  Because of the way Maven is configured, you cannot have the remote debugging flag active *and* be able to compile GEMP within the Docker container, so this flag is mostly only useful for local debugging (where you can recompile through your IDE).  If you are in a production environment, be sure to undo the changes mentioned before you need to recompile remotely.
 
 (If anyone has insight into how this could be changed, please let us know.)
-
-
 

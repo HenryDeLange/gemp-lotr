@@ -8,7 +8,7 @@
     <packaging>pom</packaging>
 
     <name>gemp-lotr</name>
-    <url>http://maven.apache.org</url>
+    <url>https://play.lotrtcgpc.net/gemp-lotr/</url>
 
     <modules>
         <module>gemp-lotr-server</module>
@@ -21,7 +21,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <java.version>21</java.version>
+        <java.version>27</java.version>
     </properties>
 
     <build>
@@ -29,21 +29,35 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.15.0</version>
+                <version>3.16.0</version>
                 <configuration>
                     <release>${java.version}</release>
                     <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.6.3</version>
+                <executions>
+                    <execution>
+                        <id>enforce-build-tools</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>[3.9.16,)</version>
+                                </requireMavenVersion>
+                                <requireJavaVersion>
+                                    <version>[27,)</version>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
-    <repositories>
-        <repository>
-            <id>maven2-repository.java.net</id>
-            <name>Java.net Repository for Maven</name>
-            <url>http://download.java.net/maven/2/</url>
-            <layout>default</layout>
-        </repository>
-
-    </repositories>
 </project>

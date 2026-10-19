@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Run GEMP LotR",
+      "request": "launch",
+      "mainClass": "com.gempukku.lotro.async.LotroAsyncServer",
+      "projectName": "gemp-lotr-async",
+      "cwd": "${workspaceFolder}/gemp-lotr/gemp-lotr-async",
+      "vmArgs": "-Dgemp-lotr.override=/gemp-lotr-h2.properties"
+    }
+  ]
+}

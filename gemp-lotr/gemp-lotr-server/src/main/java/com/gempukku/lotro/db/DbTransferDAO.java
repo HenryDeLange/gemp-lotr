@@ -521,9 +521,7 @@ public class DbTransferDAO implements TransferDAO {
 
     // Patch note announcements
 
-    /** GET_LOCK name (per database; MySQL caps it at 64 characters) guarding addServerAnnouncementIfAbsent */
-    private static final String ANNOUNCEMENT_LOCK = "CONCAT(IFNULL(DATABASE(), ''), '.announcements')";
-    private static final int ANNOUNCEMENT_LOCK_TIMEOUT_SECONDS = 10;
+    private static final String ANNOUNCEMENT_LOCK_NAME = "patch-note-announcements";
 
     @Override
     public int addServerAnnouncementIfAbsent(String marker, String title, String markdown, ZonedDateTime start, ZonedDateTime until) {
@@ -532,44 +530,46 @@ public class DbTransferDAO implements TransferDAO {
         try {
             var db = _dbAccess.openDB();
 
-            // A named lock rather than a transaction: announcements has no unique key to insert against, and the lock
-            // is released explicitly (a pooled connection would otherwise keep holding it).  Autocommit is on, so the
-            // insert is committed before the lock is released.
-            try (org.sql2o.Connection conn = db.open()) {
-                Integer locked = conn.createQuery("SELECT GET_LOCK(" + ANNOUNCEMENT_LOCK + ", "
-                                + ANNOUNCEMENT_LOCK_TIMEOUT_SECONDS + ")")
-                        .executeScalar(Integer.class);
-                if (locked == null || locked != 1)
-                    throw new RuntimeException("Timed out waiting for the announcements lock");
-                try {
-                    String sql = """
+            try (org.sql2o.Connection conn = db.beginTransaction()) {
+                String lockName = conn.createQuery("""
+                                SELECT lock_name
+                                FROM application_lock
+                                WHERE lock_name = :lockName
+                                FOR UPDATE
+                                """)
+                        .addParameter("lockName", ANNOUNCEMENT_LOCK_NAME)
+                        .executeScalar(String.class);
+                if (!ANNOUNCEMENT_LOCK_NAME.equals(lockName))
+                    throw new IllegalStateException("Announcement lock row is missing from application_lock");
+
+                String sql = """
                         SELECT id
                         FROM announcements
                         WHERE LOCATE(:marker, content) > 0
                         ORDER BY id
                         LIMIT 1
                         """;
-                    Integer existing = conn.createQuery(sql)
-                            .addParameter("marker", marker)
-                            .executeScalar(Integer.class);
-                    if (existing != null)
-                        return -1;
+                Integer existing = conn.createQuery(sql)
+                        .addParameter("marker", marker)
+                        .executeScalar(Integer.class);
+                if (existing != null) {
+                    conn.commit();
+                    return -1;
+                }
 
-                    sql = """
+                sql = """
                         INSERT INTO announcements (title, content, start, until)
                         VALUES (:title, :content, :start, :until)
                         """;
-                    return conn.createQuery(sql, true)
-                            .addParameter("title", title)
-                            .addParameter("content", markdown)
-                            .addParameter("start", DateUtils.FormatDateTime(start))
-                            .addParameter("until", DateUtils.FormatDateTime(until))
-                            .executeUpdate()
-                            .getKey(Integer.class);
-                } finally {
-                    conn.createQuery("SELECT RELEASE_LOCK(" + ANNOUNCEMENT_LOCK + ")")
-                            .executeScalar(Integer.class);
-                }
+                int id = conn.createQuery(sql, true)
+                        .addParameter("title", title)
+                        .addParameter("content", markdown)
+                        .addParameter("start", DateUtils.FormatDateTime(start))
+                        .addParameter("until", DateUtils.FormatDateTime(until))
+                        .executeUpdate()
+                        .getKey(Integer.class);
+                conn.commit();
+                return id;
             }
         } catch (Exception ex) {
             throw new RuntimeException("Unable to insert patch note announcement", ex);

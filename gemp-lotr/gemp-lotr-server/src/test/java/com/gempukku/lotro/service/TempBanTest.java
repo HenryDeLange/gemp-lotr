@@ -9,14 +9,12 @@ import com.gempukku.lotro.game.Player;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.sql2o.Sql2o;
 import org.sql2o.quirks.NoQuirks;
-import org.sql2o.reflection.Pojo;
-import org.sql2o.reflection.PojoMetadata;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Date;
-import java.util.Map;
 
 import static org.junit.Assert.*;
 
@@ -33,11 +31,14 @@ public class TempBanTest {
 
     /** Maps one column value onto DBDefs.Player exactly the way DbPlayerDAO.loginUser's sql2o query does. */
     private static DBDefs.Player mapBannedUntilLikeSql2o(Object columnValue) {
-        PojoMetadata metadata = new PojoMetadata(DBDefs.Player.class, false, false, Map.of(), true);
-        Pojo pojo = new Pojo(metadata, false);
-        pojo.setProperty("banned_until", columnValue, new NoQuirks(DbAccess.CustomMappers));
-        pojo.setProperty("type", "u", new NoQuirks(DbAccess.CustomMappers));
-        return (DBDefs.Player) pojo.getObject();
+        Sql2o sql2o = new Sql2o("jdbc:h2:mem:temp-ban;DB_CLOSE_DELAY=-1", "sa", "",
+                new NoQuirks(DbAccess.CustomMappers));
+        try (var connection = sql2o.open()) {
+            return connection.createQuery(
+                            "SELECT CAST(:banned_until AS DECIMAL(20,0)) AS banned_until, 'u' AS type")
+                    .addParameter("banned_until", columnValue)
+                    .executeAndFetchFirst(DBDefs.Player.class);
+        }
     }
 
     @Test
