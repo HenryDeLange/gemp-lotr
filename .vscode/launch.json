@@ -7,8 +7,20 @@
       "request": "launch",
       "mainClass": "com.gempukku.lotro.async.LotroAsyncServer",
       "projectName": "gemp-lotr-async",
+      "preLaunchTask": "Build GEMP Projects",
       "cwd": "${workspaceFolder}/gemp-lotr/gemp-lotr-async",
-      "vmArgs": "-Dgemp-lotr.override=/gemp-lotr-h2.properties"
+      "vmArgs": "-Dgemp-lotr.override=/gemp-lotr-h2.properties -Dgemp.lotr.bot.modelDir=${workspaceFolder}/gemp-lotr/bot-models"
+    },
+    {
+      "type": "java",
+      "name": "Run Bot Model Training",
+      "request": "launch",
+      "mainClass": "com.gempukku.lotro.bots.training.BotModelTrainingMain",
+      "projectName": "gemp-lotr-server",
+      "preLaunchTask": "Build GEMP Projects",
+      "cwd": "${workspaceFolder}",
+      "args": "--config=${workspaceFolder}/gemp-lotr/bot-training.properties",
+      "vmArgs": "-Xms16g -Xmx32g"
     }
   ]
 }

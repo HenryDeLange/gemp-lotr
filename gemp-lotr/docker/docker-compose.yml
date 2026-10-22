@@ -47,6 +47,33 @@ services:
     tty: true
     command: nohup java -jar -Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector /etc/gemp-lotr/gemp-lotr-async/target/web.jar &> /logs/nohup.out &
 
+  bot-training:
+    profiles:
+      - training
+    build:
+      context: .
+      dockerfile: gemp_app.Dockerfile
+    image: gemp_bot_training
+    working_dir: /etc/gemp-lotr
+    environment:
+      GEMP_BOT_TRAINING_CONFIG: /etc/gemp-lotr/bot-training.properties
+      GEMP_BOT_TRAINING_DASHBOARD_HOST: 0.0.0.0
+    ports:
+      - "127.0.0.1:8765:8765"
+    volumes:
+      - type: bind
+        source: ../../gemp-lotr
+        target: /etc/gemp-lotr
+        consistency: consistent
+      - bot-training-maven-cache:/root/.m2
+    command:
+      - bash
+      - -lc
+      - >-
+        mvn -f /etc/gemp-lotr/pom.xml -pl gemp-lotr-server -am -Dmaven.test.skip=true install &&
+        mvn -f /etc/gemp-lotr/gemp-lotr-server/pom.xml
+        org.codehaus.mojo:exec-maven-plugin:3.5.0:java
+
 
   db:
     env_file:
@@ -78,3 +105,6 @@ networks:
       config:
         - subnet: 172.28.${SERVID}.0/24
     attachable: true
+
+volumes:
+  bot-training-maven-cache:

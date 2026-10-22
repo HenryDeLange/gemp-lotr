@@ -20,6 +20,7 @@ import java.util.stream.Stream;
 public class GameState {
     private static final Logger _log = LogManager.getLogger(GameState.class);
     private static final int LAST_MESSAGE_STORED_COUNT = 50;
+    private final List<String> _playerNames;
     private PlayerOrder _playerOrder;
 
     private LotroFormat _format;
@@ -90,12 +91,24 @@ public class GameState {
     private boolean _isInit = false;
     private Map<String, LotroDeck> _lotroDecks;
 
+    public GameState() {
+        this(List.of());
+    }
+
+    public GameState(Collection<String> playerNames) {
+        _playerNames = List.copyOf(playerNames);
+    }
+
     public void setGame(LotroGame game) {
         _lotroGame = game;
     }
 
-    private boolean isHandRevealed(String playerId) {
+    public boolean isHandRevealed(String playerId) {
         return _lotroGame != null && _lotroGame.getModifiersQuerying().isHandRevealed(_lotroGame, playerId);
+    }
+
+    public boolean isDiscardPilePublic() {
+        return _format != null && _format.discardPileIsPublic();
     }
 
     private int nextCardId() {
@@ -275,7 +288,11 @@ public class GameState {
     }
 
     public List<String> getPlayerNames() {
-        return _preGameInfo.participants();
+        if (_preGameInfo != null)
+            return _preGameInfo.participants();
+        if (_playerOrder != null)
+            return _playerOrder.getAllPlayers();
+        return _playerNames;
     }
 
     public void addGameStateListener(String playerId, GameStateListener gameStateListener, GameStats gameStats) {
@@ -1122,7 +1139,7 @@ public class GameState {
     }
 
     public List<? extends PhysicalCard> getDeadPile(String playerId) {
-        return Collections.unmodifiableList(_deadPiles.get(playerId));
+        return Collections.unmodifiableList(_deadPiles.getOrDefault(playerId, Collections.emptyList()));
     }
 
     public List<? extends PhysicalCard> getAdventureDeck(String playerId) {
@@ -1246,11 +1263,11 @@ public class GameState {
     }
 
     public int getPlayerThreats(String playerId) {
-        return _playerThreats.get(playerId);
+        return _playerThreats.getOrDefault(playerId, 0);
     }
 
     public int getThreats() {
-        return _playerThreats.get(getCurrentPlayerId());
+        return getPlayerThreats(getCurrentPlayerId());
     }
 
     public void removeBurdens(int burdens) {

@@ -17,6 +17,7 @@ public class RandomLearningBot extends RandomDecisionBot implements LearningBotP
     private final RLGameStateFeatures features;
     private final List<LearningStep> episodeSteps = new ArrayList<>();
     private final ReplayBuffer replayBuffer;
+    private String gameId;
 
 
     public RandomLearningBot(RLGameStateFeatures features, String playerId, ReplayBuffer replayBuffer) {
@@ -36,8 +37,10 @@ public class RandomLearningBot extends RandomDecisionBot implements LearningBotP
 
         SemanticAction action = pickSemanticAction(decision, gameState, legality);
 
-        // Store temporarily — reward comes later
-        episodeSteps.add(new LearningStep(stateVector, action, getName().equals(gameState.getCurrentPlayerId()), decision));
+        if (replayBuffer != null) {
+            episodeSteps.add(new LearningStep(
+                    stateVector, action, getName().equals(gameState.getCurrentPlayerId()), decision, gameId));
+        }
 
         return action.toDecisionString(decision, gameState);
     }
@@ -69,11 +72,28 @@ public class RandomLearningBot extends RandomDecisionBot implements LearningBotP
     }
 
     @Override
+    public void beginEpisode(String gameId) {
+        this.gameId = gameId;
+    }
+
+    @Override
     public void endEpisode(double reward) {
         episodeSteps.forEach(learningStep -> learningStep.reward = reward);
         if (replayBuffer != null) {
             replayBuffer.addEpisode(new ArrayList<>(episodeSteps));
         }
         episodeSteps.clear();
+    }
+
+    @Override
+    public void abortEpisode() {
+        episodeSteps.clear();
+        gameId = null;
+    }
+
+    @Override
+    public void discardLastDecision() {
+        if (!episodeSteps.isEmpty())
+            episodeSteps.remove(episodeSteps.size() - 1);
     }
 }

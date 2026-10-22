@@ -15,9 +15,14 @@ public class CardSelectionAssignedAction extends CardSelectionAction {
 
     public CardSelectionAssignedAction(String answer, AwaitingDecision decision, GameState gameState) {
         super(answer, decision, gameState);
+        if (answer.isEmpty())
+            return;
+
         String[] individualCards = answer.split(",");
 
         for (String individualCard : individualCards) {
+            if (individualCard.isEmpty())
+                continue;
             for (Assignment assignment : gameState.getAssignments()) {
                 if (assignment.getFellowshipCharacter().getCardId() == Integer.parseInt(individualCard)) {
                     minionsOnChosen.add(assignment.getShadowCharacters().size());

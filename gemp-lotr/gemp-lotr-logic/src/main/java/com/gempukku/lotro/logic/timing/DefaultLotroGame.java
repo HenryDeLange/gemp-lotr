@@ -44,6 +44,7 @@ public class DefaultLotroGame implements LotroGame {
     private final Map<String, Set<Phase>> _autoPassConfiguration = new HashMap<>();
 
     private String _winnerPlayerId;
+    private String _winnerReason;
     private final Map<String, String> _losers = new HashMap<>();
 
     private final Set<GameResultListener> _gameResultListeners = new HashSet<>();
@@ -119,7 +120,7 @@ public class DefaultLotroGame implements LotroGame {
             formatInfo.append(LotroFormat.PCSummary);
         }
 
-        _gameState = new GameState();
+        _gameState = new GameState(decks.keySet());
         _gameState.setGame(this);
 
         CharacterDeathRule characterDeathRule = new CharacterDeathRule(_actionsEnvironment);
@@ -215,6 +216,14 @@ public class DefaultLotroGame implements LotroGame {
         return _winnerPlayerId;
     }
 
+    public String getWinnerReason() {
+        return _winnerReason;
+    }
+
+    public Map<String, String> getLoserReasons() {
+        return Map.copyOf(_losers);
+    }
+
     public boolean isFinished() {
         return _finished;
     }
@@ -270,6 +279,7 @@ public class DefaultLotroGame implements LotroGame {
 
     private void gameWon(String winner, String reason) {
         _winnerPlayerId = winner;
+        _winnerReason = reason;
 
         if (_gameState != null)
             _gameState.sendMessage(_winnerPlayerId + " is the winner due to: " + reason);

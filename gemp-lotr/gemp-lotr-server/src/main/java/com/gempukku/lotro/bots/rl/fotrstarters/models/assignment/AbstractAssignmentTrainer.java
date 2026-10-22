@@ -14,7 +14,7 @@ import com.gempukku.lotro.game.CardNotFoundException;
 import com.gempukku.lotro.game.state.GameState;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.AwaitingDecisionType;
-import smile.classification.SoftClassifier;
+import smile.classification.Classifier;
 
 import java.util.*;
 import java.util.function.Function;
@@ -98,7 +98,7 @@ public abstract class AbstractAssignmentTrainer extends AbstractTrainer {
 
         List<AssignmentInfo> allAssignments = generateAllAssignments(alreadyAssignedMap, freeChars, minions, gameState);
         double[] stateVector = features.extractFeatures(gameState, decision, playerName);
-        SoftClassifier<double[]> model = modelRegistry.getModel(getClass());
+        Classifier<double[]> model = modelRegistry.getModel(getClass());
 
         Side side = isForFp() ? Side.FREE_PEOPLE : Side.SHADOW;
         double bestScore = Double.NEGATIVE_INFINITY;
@@ -188,10 +188,12 @@ public abstract class AbstractAssignmentTrainer extends AbstractTrainer {
 
             if (step.reward > 0) {
                 // Chosen: good
-                addLabeledPoints(data, assignmentMap, numberOfUnassignedMinions, strengthOfUnassignedMinions, action.getWoundsOnFp(), step.state, 1);
+                addLabeledPoints(data, assignmentMap, numberOfUnassignedMinions, strengthOfUnassignedMinions,
+                        action.getWoundsOnFp(), step.state, step.gameId, step.trainingWeight, 1);
             } else {
                 // Chosen: bad
-                addLabeledPoints(data, assignmentMap, numberOfUnassignedMinions, strengthOfUnassignedMinions, action.getWoundsOnFp(), step.state, 0);
+                addLabeledPoints(data, assignmentMap, numberOfUnassignedMinions, strengthOfUnassignedMinions,
+                        action.getWoundsOnFp(), step.state, step.gameId, step.trainingWeight, 0);
             }
         }
 
@@ -200,13 +202,14 @@ public abstract class AbstractAssignmentTrainer extends AbstractTrainer {
 
     private void addLabeledPoints(List<LabeledPoint> data, Map<String, List<String>> assignmentMap,
                                   int numberOfUnassignedMinions, int strengthOfUnassignedMinions,
-                                  Map<String, Integer> woundsMap, double[] state, int label) {
+                                  Map<String, Integer> woundsMap, double[] state, String gameId,
+                                  double trainingWeight, int label) {
         try {
             double[] assignmentVector = CardFeatures.getAssignmentFeatures(assignmentMap, woundsMap,
                     numberOfUnassignedMinions, strengthOfUnassignedMinions);
             double[] extended = Arrays.copyOf(state, state.length + assignmentVector.length);
             System.arraycopy(assignmentVector, 0, extended, state.length, assignmentVector.length);
-            data.add(new LabeledPoint(label, extended));
+            data.add(new LabeledPoint(label, extended, gameId, trainingWeight));
         } catch (CardNotFoundException ignore) {
         }
     }

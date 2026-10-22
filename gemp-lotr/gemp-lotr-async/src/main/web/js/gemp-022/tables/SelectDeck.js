@@ -24,13 +24,13 @@ class SelectDeck {
 	pendingRestore = false;
 	restoreKey = null;
 	fixedFirstOption = null;
+	fixedOptions = null;
 	// true while the current deck is one the player picked by hand (rather than restored or defaulted by the flow)
 	chosenByUser = false;
 
 	static MAX_REMEMBERED = 12;
 
-	// cookie: the flow's name ("unranked-table", "join-table", ...); options.fixedFirstOption: an option kept at the
-	// top of the player dropdown (the bot's "Random FotR Starter").
+	// cookie: the flow's name ("unranked-table", "join-table", ...); fixed options are kept above saved decks.
 	constructor(comm, div, deckManager, cookie, options) {
 		var that = this;
 		options = options || {};
@@ -38,6 +38,7 @@ class SelectDeck {
 		this.mainDiv = $(div);
 		this.deckManager = deckManager;
 		this.fixedFirstOption = options.fixedFirstOption || null;
+		this.fixedOptions = Array.isArray(options.fixedOptions) ? options.fixedOptions : null;
 
 		this.playerDeckDropdown = this.mainDiv.find(".player-deck-dropdown");
 		this.libraryDeckDropdown = this.mainDiv.find(".library-deck-dropdown");
@@ -78,7 +79,10 @@ class SelectDeck {
 		var previousChosenByUser = this.chosenByUser;
 
 		this.playerDeckDropdown.empty();
-		if (this.fixedFirstOption != null) {
+		if (this.fixedOptions != null) {
+			for (const option of this.fixedOptions)
+				this.playerDeckDropdown.append($("<option/>").attr("value", option.id).text(option.label));
+		} else if (this.fixedFirstOption != null) {
 			this.playerDeckDropdown.append($("<option/>").attr("value", "").text(this.fixedFirstOption));
 		} else {
 			var ownsDecks = this.deckManager.playerDecks.length > 0;
@@ -114,7 +118,7 @@ class SelectDeck {
 	// Nothing chosen: a player with no decks gets a library deck; otherwise their first deck (as the dropdown used
 	// to show).  The bot's selector keeps its fixed first option.
 	selectDefault() {
-		if (this.fixedFirstOption != null) {
+		if (this.fixedFirstOption != null || this.fixedOptions != null) {
 			this.playerDeckDropdown.val("");
 			this.playerDeckDropdown.trigger("change");
 			return;
@@ -186,6 +190,12 @@ class SelectDeck {
 	// Whether the current deck is one the player picked by hand in this flow.
 	hasUserChoice() {
 		return this.chosenByUser && this.getSelection() != null;
+	}
+
+	setFixedOptions(options) {
+		this.fixedOptions = Array.isArray(options) ? options : [];
+		if (this.deckManager.loaded)
+			this.rebuild();
 	}
 
 	// As requestRestore, but leaves a deck the player picked by hand alone: picking a format or league then brings back

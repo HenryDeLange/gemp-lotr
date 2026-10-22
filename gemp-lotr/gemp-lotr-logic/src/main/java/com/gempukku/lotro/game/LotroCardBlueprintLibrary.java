@@ -408,33 +408,33 @@ public class LotroCardBlueprintLibrary {
 
         try {
             collectionReady.acquire();
+        } catch (InterruptedException exp) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("LotroCardBlueprintLibrary.getLotroCardBlueprint() interrupted: ", exp);
+        }
+
+        try {
             if (_blueprints.containsKey(blueprintId)) {
                 bp = _blueprints.get(blueprintId);
             }
 
-            if(bp == null) {
-                if(_blueprintMapping.containsKey(blueprintId)) {
+            if (bp == null) {
+                if (_blueprintMapping.containsKey(blueprintId)) {
                     bp = _blueprints.get(_blueprintMapping.get(blueprintId));
-                }
-                else if (isPlaceholderId(blueprintId)) {
+                } else if (isPlaceholderId(blueprintId)) {
                     bp = getPlaceholderBlueprint(blueprintId);
-                }
-                else {
-                    collectionReady.release();
+                } else {
                     throw new CardNotFoundException(blueprintId);
                 }
-
             }
-
+        } finally {
             collectionReady.release();
-
-            if(bp == null)
-                throw new CardNotFoundException(blueprintId + " was somehow null");
-
-            return bp;
-        } catch (InterruptedException exp) {
-            throw new RuntimeException("LotroCardBlueprintLibrary.getLotroCardBlueprint() interrupted: ", exp);
         }
+
+        if (bp == null)
+            throw new CardNotFoundException(blueprintId + " was somehow null");
+
+        return bp;
     }
 
     /**

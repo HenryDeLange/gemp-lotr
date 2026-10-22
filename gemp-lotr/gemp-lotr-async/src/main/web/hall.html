@@ -293,13 +293,12 @@
 		<h1>Open Bot Table</h1>
 		<div id="bot-table-options" class="inner-table-form">
 			<div class="flex-vert table-blurb">
-				Welcome to the future!  Here you may open a match against a neural-net bot trained on playing the LOTR-TCG.  This is an experimental feature, and so can go wrong in many ways.
-				Remember:
+				Play an experimental LOTR-TCG bot with learned decision and deck-building policies. Generated decks are format-validated; until a deck-builder model is trained, it falls back to random legal construction.
 				<ul>
-					<li>Bots will concede if they get confused or have an error.
-					<li>Bots will sometimes make dumb decisions that a human never would.  Don't give them the blue ATAR ring or they <i>will</i> self-corrupt, for example.</li>
+					<li>Supported trained formats are Fellowship, Two Towers, King, and combined Movie Block.</li>
+					<li>The policy is experimental and can still make weak or unexpected choices.</li>
 				</ul>
-				Please report a bug for any matches where you encounter a crash or other concession by the bot.  But don't bother reporting bad gameplay; we already know they are dumb. :)
+				Please report matches where the bot crashes or the game becomes stuck.
 			</div>
 
 			<div class="flex-horiz">
@@ -312,7 +311,7 @@
 			<div class="bot-deck flex-horiz">
 					<div class="label-column">Bot Deck: </div>
 					<select class="player-deck-dropdown flex-fill">
-						<option value="" selected>Random FotR Starter</option>
+						<option value="" selected>Random fixed bot deck</option>
 					</select>
 			</div>
 

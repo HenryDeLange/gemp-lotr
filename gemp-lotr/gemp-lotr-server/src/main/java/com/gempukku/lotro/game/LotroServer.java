@@ -57,6 +57,10 @@ public class LotroServer extends AbstractServer {
         _packOpener = packOpener;
     }
 
+    public List<BotService.BotDeckOption> getBotDeckOptions(String formatCode) {
+        return _botService.getBotDeckOptions(formatCode);
+    }
+
     protected void cleanup() {
         _lock.writeLock().lock();
         try {
@@ -251,4 +255,3 @@ public class LotroServer extends AbstractServer {
         }
     }
 }
-

@@ -21,6 +21,8 @@ import static com.gempukku.lotro.common.Timeword.*;
 public class CardFeatures {
     private static LotroCardBlueprintLibrary library = null;
     public static final String PASS = "pass";
+    private static final int FP_ASSIGNED_BASE_FEATURE_COUNT = 8;
+    public static final int SKIRMISH_PLAY_CARD_BASE_FEATURE_COUNT = 5;
 
     private CardFeatures() {
 
@@ -28,6 +30,7 @@ public class CardFeatures {
 
     public static void init(LotroCardBlueprintLibrary library) {
         CardFeatures.library = library;
+        CardStrategyFeatures.clearCache();
     }
 
     public static double[] getCardFeatures(String blueprintId, int woundsPlaced) throws CardNotFoundException {
@@ -61,11 +64,12 @@ public class CardFeatures {
                 features.add((double) blueprint.getSiteNumber());
 
                 features.add((double) woundsPlaced);
+                appendStrategyFeatures(features, blueprint);
 
                 return features.stream().mapToDouble(Double::doubleValue).toArray();
             } catch (CardNotFoundException e) {
                 if (blueprintId.equals(PASS)) {
-                    return new double[22];
+                    return new double[22 + CardStrategyFeatures.FEATURE_COUNT];
                 } else {
                     throw e;
                 }
@@ -91,6 +95,7 @@ public class CardFeatures {
 
             features.add(((double) numberOfMinions));
             features.add(((double) minionStrength));
+            appendStrategyFeatures(features, blueprint);
 
             return features.stream().mapToDouble(Double::doubleValue).toArray();
         } else {
@@ -118,11 +123,12 @@ public class CardFeatures {
                 features.add((double) holderBlueprint.getStrength());
                 features.add((double) holderBlueprint.getVitality());
                 features.add((double) woundsPlaced);
+                appendStrategyFeatures(features, blueprint);
 
                 return features.stream().mapToDouble(Double::doubleValue).toArray();
             } catch (CardNotFoundException e) {
                 if (blueprintId.equals(PASS)) {
-                    return new double[11];
+                    return new double[11 + CardStrategyFeatures.FEATURE_COUNT];
                 } else {
                     throw e;
                 }
@@ -180,7 +186,8 @@ public class CardFeatures {
             }
             companionsAdded[0]++;
             if (companion.equals(PASS)) {
-                double[] nullVector = new double[8];
+                double[] nullVector = new double[FP_ASSIGNED_BASE_FEATURE_COUNT
+                        + CardStrategyFeatures.FEATURE_COUNT];
                 tbr.addAll(Arrays.stream(nullVector).boxed().collect(Collectors.toList()));
             } else {
                 int strength = assignmentMap.get(companion).stream().mapToInt(value -> {
@@ -196,7 +203,8 @@ public class CardFeatures {
                     double[] thisAssignment = getFpAssignedCardFeatures(companion, woundsMap.get(companion), assignmentMap.get(companion).size(), strength);
                     tbr.addAll(Arrays.stream(thisAssignment).boxed().collect(Collectors.toList()));
                 } catch (CardNotFoundException e) {
-                    double[] nullVector = new double[8];
+                    double[] nullVector = new double[FP_ASSIGNED_BASE_FEATURE_COUNT
+                            + CardStrategyFeatures.FEATURE_COUNT];
                     tbr.addAll(Arrays.stream(nullVector).boxed().collect(Collectors.toList()));
                 }
             }
@@ -209,7 +217,8 @@ public class CardFeatures {
             }
             alliesAdded[0]++;
             if (ally.equals(PASS)) {
-                double[] nullVector = new double[8];
+                double[] nullVector = new double[FP_ASSIGNED_BASE_FEATURE_COUNT
+                        + CardStrategyFeatures.FEATURE_COUNT];
                 tbr.addAll(Arrays.stream(nullVector).boxed().collect(Collectors.toList()));
             } else {
                 int strength = assignmentMap.get(ally).stream().mapToInt(value -> {
@@ -225,7 +234,8 @@ public class CardFeatures {
                     double[] thisAssignment = getFpAssignedCardFeatures(ally, woundsMap.get(ally), assignmentMap.get(ally).size(), strength);
                     tbr.addAll(Arrays.stream(thisAssignment).boxed().collect(Collectors.toList()));
                 } catch (CardNotFoundException e) {
-                    double[] nullVector = new double[8];
+                    double[] nullVector = new double[FP_ASSIGNED_BASE_FEATURE_COUNT
+                            + CardStrategyFeatures.FEATURE_COUNT];
                     tbr.addAll(Arrays.stream(nullVector).boxed().collect(Collectors.toList()));
                 }
             }
@@ -260,11 +270,13 @@ public class CardFeatures {
                     }
                 }
                 features.add(canCardAffectTarget(cardBlueprintId, fpBlueprintId, sourceInSkirmish, fpCanExert) || shadowCanAffect ? 1.0 : 0.0);
+                features.add(cardBlueprint.getCardType() == CardType.EVENT ? 1.0 : 0.0);
+                appendStrategyFeatures(features, cardBlueprint);
 
                 return features.stream().mapToDouble(Double::doubleValue).toArray();
             } catch (CardNotFoundException e) {
                 if (cardBlueprintId.equals(PASS)) {
-                    return new double[4];
+                    return new double[SKIRMISH_PLAY_CARD_BASE_FEATURE_COUNT + CardStrategyFeatures.FEATURE_COUNT];
                 } else {
                     throw e;
                 }
@@ -272,6 +284,11 @@ public class CardFeatures {
         } else {
             throw new IllegalStateException("Blueprint library not initialized");
         }
+    }
+
+    private static void appendStrategyFeatures(List<Double> features, LotroCardBlueprint blueprint) {
+        for (double feature : CardStrategyFeatures.extract(blueprint))
+            features.add(feature);
     }
 
     private static boolean canCardAffectTarget(String sourceBlueprintId, String targetBlueprintId, boolean sourceInSkirmish, boolean targetCanExert) {

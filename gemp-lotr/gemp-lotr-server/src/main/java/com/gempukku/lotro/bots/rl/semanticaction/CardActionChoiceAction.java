@@ -11,7 +11,10 @@ import java.util.Arrays;
 import java.util.List;
 
 public class CardActionChoiceAction implements SemanticAction {
+    private static final String IN_PLAY_BLUEPRINT = "inPlay";
+
     private final String actionText;
+    private final int selectedActionIndex;
     private final String sourceBlueprint;
     private int woundsOnSource;
     private String holderBlueprint;
@@ -26,6 +29,7 @@ public class CardActionChoiceAction implements SemanticAction {
     public CardActionChoiceAction(String answer, AwaitingDecision decision, GameState gameState) {
         if (answer == null || answer.isEmpty()) {
             actionText = null;
+            selectedActionIndex = -1;
             sourceBlueprint = null;
             woundsOnSource = 0;
             holderBlueprint = null;
@@ -35,16 +39,18 @@ public class CardActionChoiceAction implements SemanticAction {
             String[] actionTexts = decision.getDecisionParameters().get("actionText");
             for (int i = 0; i < actionTexts.length; i++) {
                 notChosenActions.add(actionTexts[i]);
-                notChosenBlueprints.add(gameState.getBlueprintId(Integer.parseInt(decision.getDecisionParameters().get("cardId")[i])));
+                notChosenBlueprints.add(resolveSourceBlueprint(gameState, decision, i));
             }
         } else {
             String[] actionTexts = decision.getDecisionParameters().get("actionText");
-            actionText = actionTexts[Integer.parseInt(answer)];
-            sourceBlueprint = gameState.getBlueprintId(Integer.parseInt(decision.getDecisionParameters().get("cardId")[Integer.parseInt(answer)]));
+            int selectedIndex = Integer.parseInt(answer);
+            selectedActionIndex = selectedIndex;
+            actionText = actionTexts[selectedIndex];
+            sourceBlueprint = resolveSourceBlueprint(gameState, decision, selectedIndex);
             woundsOnSource = 0;
             holderBlueprint = null;
             for (PhysicalCard physicalCard : gameState.getInPlay()) {
-                if (physicalCard.getCardId() == Integer.parseInt(decision.getDecisionParameters().get("cardId")[Integer.parseInt(answer)])) {
+                if (physicalCard.getCardId() == Integer.parseInt(decision.getDecisionParameters().get("cardId")[selectedIndex])) {
                     woundsOnSource = gameState.getWounds(physicalCard);
                     if (physicalCard.getAttachedTo() != null) {
                         holderBlueprint = physicalCard.getAttachedTo().getBlueprintId();
@@ -54,9 +60,9 @@ public class CardActionChoiceAction implements SemanticAction {
                 }
             }
             for (int i = 0; i < actionTexts.length; i++) {
-                if (!actionText.equals(actionTexts[i])) {
+                if (i != selectedIndex) {
                     notChosenActions.add(actionTexts[i]);
-                    notChosenBlueprints.add(gameState.getBlueprintId(Integer.parseInt(decision.getDecisionParameters().get("cardId")[i])));
+                    notChosenBlueprints.add(resolveSourceBlueprint(gameState, decision, i));
                 }
             }
 
@@ -83,11 +89,29 @@ public class CardActionChoiceAction implements SemanticAction {
         }
     }
 
+    public static String resolveSourceBlueprint(GameState gameState, AwaitingDecision decision, int actionIndex) {
+        String[] blueprintIds = decision.getDecisionParameters().get("blueprintId");
+        if (blueprintIds != null && actionIndex >= 0 && actionIndex < blueprintIds.length) {
+            String blueprintId = blueprintIds[actionIndex];
+            if (blueprintId != null && !IN_PLAY_BLUEPRINT.equals(blueprintId))
+                return blueprintId;
+        }
+
+        String[] cardIds = decision.getDecisionParameters().get("cardId");
+        if (cardIds == null || actionIndex < 0 || actionIndex >= cardIds.length) {
+            throw new IllegalArgumentException("Missing card ID for card action at index " + actionIndex);
+        }
+        PhysicalCard sourceCard = gameState.findCardById(Integer.parseInt(cardIds[actionIndex]));
+        return sourceCard == null ? null : sourceCard.getBlueprintId();
+    }
+
     public CardActionChoiceAction(String actionText, String sourceBlueprint, int woundsOnSource, String holderBlueprint,
                                   String[] notChosenActions, String[] notChosenBlueprintIds,
                                   String skirmishingFpBlueprintId, String[] skirmishingMinionBlueprintIds,
-                                  boolean sourceInSkirmish, int remainingVitalityOnSkirmishFp, Integer[] remainingVitalityOnSkirmishingMinions) {
+                                  boolean sourceInSkirmish, int remainingVitalityOnSkirmishFp, Integer[] remainingVitalityOnSkirmishingMinions,
+                                  int selectedActionIndex) {
         this.actionText = actionText;
+        this.selectedActionIndex = selectedActionIndex;
         this.sourceBlueprint = sourceBlueprint;
         this.woundsOnSource = woundsOnSource;
         this.holderBlueprint = holderBlueprint;
@@ -102,6 +126,10 @@ public class CardActionChoiceAction implements SemanticAction {
 
     public String getActionText() {
         return actionText;
+    }
+
+    public int getSelectedActionIndex() {
+        return selectedActionIndex;
     }
 
     public String getSourceBlueprint() {
@@ -155,6 +183,13 @@ public class CardActionChoiceAction implements SemanticAction {
         }
 
         String[] actionTexts = decision.getDecisionParameters().get("actionText");
+        if (selectedActionIndex >= 0) {
+            if (selectedActionIndex >= actionTexts.length || !actionText.equals(actionTexts[selectedActionIndex])) {
+                throw new IllegalArgumentException("Selected option not found.");
+            }
+            return String.valueOf(selectedActionIndex);
+        }
+
         for (int i = 0; i < actionTexts.length; i++) {
             if (actionTexts[i].equals(actionText)) {
                 return String.valueOf(i);
@@ -168,6 +203,7 @@ public class CardActionChoiceAction implements SemanticAction {
         JSONObject obj = new JSONObject();
         obj.put("type", "CardActionChoiceAction");
         obj.put("actionText", actionText);
+        obj.put("selectedActionIndex", selectedActionIndex);
         obj.put("sourceBlueprint", sourceBlueprint);
         obj.put("woundsOnSource", woundsOnSource);
         obj.put("holderBlueprint", holderBlueprint);
@@ -193,8 +229,10 @@ public class CardActionChoiceAction implements SemanticAction {
         int remainingVitalityOnSkirmishFp = obj.getIntValue("remainingVitalityOnSkirmishFp");
         Integer[] remainingVitalityOnSkirmishingMinions = obj.getObject("remainingVitalityOnSkirmishingMinions", Integer[].class);
         boolean sourceInSkirmish = obj.getBoolean("sourceInSkirmish");
+        Integer selectedActionIndex = obj.getInteger("selectedActionIndex");
         return new CardActionChoiceAction(actionText, sourceBlueprint, woundsOnSource, holderBlueprint, notChosenActions,
                 notChosenBlueprints, skirmishingFpBlueprintId, skirmishingMinionBlueprintIds, sourceInSkirmish,
-                remainingVitalityOnSkirmishFp, remainingVitalityOnSkirmishingMinions);
+                remainingVitalityOnSkirmishFp, remainingVitalityOnSkirmishingMinions,
+                selectedActionIndex == null ? -1 : selectedActionIndex);
     }
 }

@@ -25,11 +25,13 @@ public class SanctuaryTrainer extends AbstractCardSelectionTrainer {
             CardSelectionAction action = (CardSelectionAction) step.action;
 
             // Add positives for chosen cards
-            addLabeledPoints(data, action.getChosenBlueprintIds(), action.getWoundsOnChosen(), step.state, 1);
+            addLabeledPoints(data, action.getChosenBlueprintIds(), action.getWoundsOnChosen(),
+                    step.state, step.gameId, step.trainingWeight, 1);
 
             // Add negatives for not chosen only if this is the last heal decision
             if (step.decision.getText().contains(LAST_HEAL)) {
-                addLabeledPoints(data, action.getNotChosenBlueprintIds(), action.getWoundsOnNotChosen(), step.state, 0);
+                addLabeledPoints(data, action.getNotChosenBlueprintIds(), action.getWoundsOnNotChosen(),
+                        step.state, step.gameId, step.trainingWeight, 0);
             }
         }
 

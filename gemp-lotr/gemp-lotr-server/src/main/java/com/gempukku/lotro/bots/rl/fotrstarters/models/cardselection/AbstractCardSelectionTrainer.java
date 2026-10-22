@@ -4,6 +4,7 @@ import com.gempukku.lotro.bots.rl.LearningStep;
 import com.gempukku.lotro.bots.rl.RLGameStateFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.CardFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.AbstractTrainer;
+import com.gempukku.lotro.bots.rl.fotrstarters.models.CardCandidateFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.LabeledPoint;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelRegistry;
 import com.gempukku.lotro.bots.rl.semanticaction.CardSelectionAction;
@@ -12,7 +13,7 @@ import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.GameState;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.AwaitingDecisionType;
-import smile.classification.SoftClassifier;
+import smile.classification.Classifier;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,7 +61,7 @@ public abstract class AbstractCardSelectionTrainer extends AbstractTrainer {
         int max = Integer.parseInt(decision.getDecisionParameters().get("max")[0]);
         List<String> cardIds = Arrays.stream(decision.getDecisionParameters().get("cardId")).toList();
 
-        SoftClassifier<double[]> model = modelRegistry.getModel(getClass());
+        Classifier<double[]> model = modelRegistry.getModel(getClass());
         double[] stateVector = features.extractFeatures(gameState, decision, playerName);
         List<ScoredCard> scoredCards = new ArrayList<>();
 
@@ -74,8 +75,7 @@ public abstract class AbstractCardSelectionTrainer extends AbstractTrainer {
                     }
                 }
                 double[] cardVector = CardFeatures.getCardFeatures(blueprintId, wounds);
-                double[] extended = Arrays.copyOf(stateVector, stateVector.length + cardVector.length);
-                System.arraycopy(cardVector, 0, extended, stateVector.length, cardVector.length);
+                double[] extended = CardCandidateFeatures.append(stateVector, cardVector);
 
                 double[] probs = new double[2];
                 model.predict(extended, probs);
@@ -126,15 +126,18 @@ public abstract class AbstractCardSelectionTrainer extends AbstractTrainer {
 
             if (step.reward > 0) {
                 // Chosen: good
-                addLabeledPoints(data, action.getChosenBlueprintIds(), action.getWoundsOnChosen(), step.state, 1);
+                addLabeledPoints(data, action.getChosenBlueprintIds(), action.getWoundsOnChosen(),
+                        step.state, step.gameId, step.trainingWeight, 1);
 
                 if (useNotChosen()) {
                     // Not chosen: bad
-                    addLabeledPoints(data, action.getNotChosenBlueprintIds(), action.getWoundsOnNotChosen(), step.state, 0);
+                    addLabeledPoints(data, action.getNotChosenBlueprintIds(), action.getWoundsOnNotChosen(),
+                            step.state, step.gameId, step.trainingWeight, 0);
                 }
             } else {
                 // Chosen: bad
-                addLabeledPoints(data, action.getChosenBlueprintIds(), action.getWoundsOnChosen(), step.state, 0);
+                addLabeledPoints(data, action.getChosenBlueprintIds(), action.getWoundsOnChosen(),
+                        step.state, step.gameId, step.trainingWeight, 0);
 
                 // Not chosen: ambiguous → skip
             }
@@ -144,13 +147,12 @@ public abstract class AbstractCardSelectionTrainer extends AbstractTrainer {
     }
 
     protected void addLabeledPoints(List<LabeledPoint> data, List<String> blueprintIds, List<Integer> wounds,
-                                  double[] state, int label) {
+                                  double[] state, String gameId, double trainingWeight, int label) {
         for (int i = 0; i < blueprintIds.size(); i++) {
             try {
                 double[] cardVector = getCardVector(blueprintIds.get(i), wounds.get(i));
-                double[] extended = Arrays.copyOf(state, state.length + cardVector.length);
-                System.arraycopy(cardVector, 0, extended, state.length, cardVector.length);
-                data.add(new LabeledPoint(label, extended));
+                double[] extended = CardCandidateFeatures.append(state, cardVector);
+                data.add(new LabeledPoint(label, extended, gameId, trainingWeight));
             } catch (CardNotFoundException ignore) {
             }
         }

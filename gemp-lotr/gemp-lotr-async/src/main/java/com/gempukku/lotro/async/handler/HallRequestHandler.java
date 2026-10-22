@@ -71,6 +71,8 @@ public class HallRequestHandler extends LotroServerRequestHandler implements Uri
             getFormats(request, responseWriter);
         } else if (uri.equals("/formats/json") && request.method() == HttpMethod.GET) {
             getFormatDefinitions(responseWriter);
+        } else if (uri.startsWith("/bot-decks/") && request.method() == HttpMethod.GET) {
+            getBotDeckOptions(uri.substring("/bot-decks/".length()), responseWriter);
         } else if (uri.equals("/errata/json") && request.method() == HttpMethod.GET) {
             getErrataInfo(request, responseWriter);
         } else if (uri.equals("/players") && request.method() == HttpMethod.GET) {
@@ -328,7 +330,7 @@ public class HallRequestHandler extends LotroServerRequestHandler implements Uri
             if(!IgnoreError(ex)) {
                 _log.error("Error response for " + request.uri(), ex);
             }
-            responseWriter.writeXmlResponse(marshalException(new HallException("Failed to create table. The bot only supports Fellowship Block format.")));
+            responseWriter.writeXmlResponse(marshalException(new HallException("Failed to create table. Please try again later.")));
         }
         finally {
             postDecoder.destroy();
@@ -535,6 +537,10 @@ public class HallRequestHandler extends LotroServerRequestHandler implements Uri
     private void getFormatDefinitions(ResponseWriter responseWriter) {
         responseWriter.writeJsonResponse(JsonUtils.Serialize(
                 FormatDefinitions.describeAll(_formatLibrary.getHallFormats().values(), _library)));
+    }
+
+    private void getBotDeckOptions(String formatCode, ResponseWriter responseWriter) {
+        responseWriter.writeJsonResponse(JsonUtils.Serialize(_lotroServer.getBotDeckOptions(formatCode)));
     }
 
     private void appendFormat(StringBuilder result, LotroFormat lotroFormat) throws CardNotFoundException {

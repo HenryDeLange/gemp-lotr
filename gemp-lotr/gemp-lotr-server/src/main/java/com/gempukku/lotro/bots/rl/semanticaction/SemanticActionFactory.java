@@ -6,6 +6,7 @@ public class SemanticActionFactory {
     public static SemanticAction fromJson(JSONObject obj) {
         String type = obj.getString("type");
         return switch (type) {
+            case "ActionChoiceAction" -> ActionChoiceAction.fromJson(obj);
             case "MultipleChoiceAction" -> MultipleChoiceAction.fromJson(obj);
             case "IntegerChoiceAction" -> IntegerChoiceAction.fromJson(obj);
             case "CardSelectionAssignedAction" -> CardSelectionAssignedAction.fromJson(obj);

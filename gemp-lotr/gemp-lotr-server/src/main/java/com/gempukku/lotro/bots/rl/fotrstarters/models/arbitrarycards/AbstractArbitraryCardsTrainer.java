@@ -4,6 +4,7 @@ import com.gempukku.lotro.bots.rl.LearningStep;
 import com.gempukku.lotro.bots.rl.RLGameStateFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.CardFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.AbstractTrainer;
+import com.gempukku.lotro.bots.rl.fotrstarters.models.CardCandidateFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.LabeledPoint;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelRegistry;
 import com.gempukku.lotro.bots.rl.semanticaction.ChooseFromArbitraryCardsAction;
@@ -11,7 +12,7 @@ import com.gempukku.lotro.game.CardNotFoundException;
 import com.gempukku.lotro.game.state.GameState;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.AwaitingDecisionType;
-import smile.classification.SoftClassifier;
+import smile.classification.Classifier;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,14 +21,23 @@ import java.util.List;
 
 public abstract class AbstractArbitraryCardsTrainer extends AbstractTrainer {
 
-    protected abstract String getTextTrigger();
+    protected String getTextTrigger() {
+        return null;
+    }
+
     protected boolean useNotChosen() { return false; }
 
     @Override
     public boolean appliesTo(GameState gameState, AwaitingDecision decision, String playerName) {
+        return matchesDecision(decision);
+    }
+
+    protected boolean matchesDecision(AwaitingDecision decision) {
         if (decision.getDecisionType() != AwaitingDecisionType.ARBITRARY_CARDS)
             return false;
-        return decision.getText().toLowerCase().contains(getTextTrigger().toLowerCase());
+        String textTrigger = getTextTrigger();
+        return textTrigger == null
+                || decision.getText().toLowerCase().contains(textTrigger.toLowerCase());
     }
 
     @Override
@@ -46,7 +56,7 @@ public abstract class AbstractArbitraryCardsTrainer extends AbstractTrainer {
             }
         }
 
-        SoftClassifier<double[]> model = modelRegistry.getModel(getClass());
+        Classifier<double[]> model = modelRegistry.getModel(getClass());
         double[] stateVector = features.extractFeatures(gameState, decision, playerName);
         List<ScoredCard> scoredCards = new ArrayList<>();
 
@@ -54,8 +64,7 @@ public abstract class AbstractArbitraryCardsTrainer extends AbstractTrainer {
             try {
                 String blueprintId = selectableBlueprints.get(i);
                 double[] cardVector = getCardVector(blueprintId);
-                double[] extended = Arrays.copyOf(stateVector, stateVector.length + cardVector.length);
-                System.arraycopy(cardVector, 0, extended, stateVector.length, cardVector.length);
+                double[] extended = CardCandidateFeatures.append(stateVector, cardVector);
 
                 double[] probs = new double[2];
                 model.predict(extended, probs);
@@ -74,13 +83,8 @@ public abstract class AbstractArbitraryCardsTrainer extends AbstractTrainer {
 
     @Override
     public boolean isStepRelevant(LearningStep step) {
-        if (step.decision.getDecisionType() != AwaitingDecisionType.ARBITRARY_CARDS)
-            return false;
-
-        if (!(step.action instanceof ChooseFromArbitraryCardsAction))
-            return false;
-
-        return step.decision.getText().toLowerCase().contains(getTextTrigger().toLowerCase());
+        return step.action instanceof ChooseFromArbitraryCardsAction
+                && matchesDecision(step.decision);
     }
 
     @Override
@@ -94,15 +98,18 @@ public abstract class AbstractArbitraryCardsTrainer extends AbstractTrainer {
 
             if (step.reward > 0) {
                 // Chosen: good
-                addLabeledPoints(data, action.getChosenBlueprintIds(), step.state, 1);
+                addLabeledPoints(data, action.getChosenBlueprintIds(), step.state, step.gameId,
+                        step.trainingWeight, 1);
 
                 if (useNotChosen()) {
                     // Not chosen: bad
-                    addLabeledPoints(data, action.getNotChosenBlueprintIds(), step.state, 0);
+                    addLabeledPoints(data, action.getNotChosenBlueprintIds(), step.state, step.gameId,
+                            step.trainingWeight, 0);
                 }
             } else {
                 // Chosen: bad
-                addLabeledPoints(data, action.getChosenBlueprintIds(), step.state, 0);
+                addLabeledPoints(data, action.getChosenBlueprintIds(), step.state, step.gameId,
+                        step.trainingWeight, 0);
 
                 // Not chosen: ambiguous → skip
             }
@@ -112,13 +119,12 @@ public abstract class AbstractArbitraryCardsTrainer extends AbstractTrainer {
     }
 
     protected void addLabeledPoints(List<LabeledPoint> data, List<String> blueprintIds,
-                                    double[] state, int label) {
+                                    double[] state, String gameId, double trainingWeight, int label) {
         for (String blueprintId : blueprintIds) {
             try {
                 double[] cardVector = getCardVector(blueprintId);
-                double[] extended = Arrays.copyOf(state, state.length + cardVector.length);
-                System.arraycopy(cardVector, 0, extended, state.length, cardVector.length);
-                data.add(new LabeledPoint(label, extended));
+                double[] extended = CardCandidateFeatures.append(state, cardVector);
+                data.add(new LabeledPoint(label, extended, gameId, trainingWeight));
             } catch (CardNotFoundException ignore) {
                 System.out.println(ignore.getMessage());
             }

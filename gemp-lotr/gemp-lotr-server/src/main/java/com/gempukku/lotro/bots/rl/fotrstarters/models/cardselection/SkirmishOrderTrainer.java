@@ -5,6 +5,7 @@ import com.gempukku.lotro.bots.rl.RLGameStateFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.CardFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.FotrStarterBot;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.AbstractTrainer;
+import com.gempukku.lotro.bots.rl.fotrstarters.models.CardCandidateFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.LabeledPoint;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelRegistry;
 import com.gempukku.lotro.bots.rl.semanticaction.CardSelectionAssignedAction;
@@ -14,7 +15,7 @@ import com.gempukku.lotro.game.state.Assignment;
 import com.gempukku.lotro.game.state.GameState;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.AwaitingDecisionType;
-import smile.classification.SoftClassifier;
+import smile.classification.Classifier;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,12 +36,11 @@ public class SkirmishOrderTrainer extends AbstractTrainer {
             for (int i = 0; i < action.getChosenBlueprintIds().size(); i++) {
                 try {
                     double[] blueprintVector = CardFeatures.getFpAssignedCardFeatures(action.getChosenBlueprintIds().get(i), action.getWoundsOnChosen().get(i), action.getMinionsOnChosen().get(i), action.getStrengthOfMinionsOnChosen().get(i));
-                    double[] extended = Arrays.copyOf(step.state, step.state.length + blueprintVector.length);
-                    System.arraycopy(blueprintVector, 0, extended, step.state.length, blueprintVector.length);
+                    double[] extended = CardCandidateFeatures.append(step.state, blueprintVector);
 
                     int label = step.reward > 0 ? 1 : 0;
 
-                    data.add(new LabeledPoint(label, extended));
+                    data.add(new LabeledPoint(label, extended, step.gameId, step.trainingWeight));
                 } catch (CardNotFoundException ignore) {
 
                 }
@@ -68,7 +68,7 @@ public class SkirmishOrderTrainer extends AbstractTrainer {
     public String getAnswer(GameState gameState, AwaitingDecision decision, String playerName, RLGameStateFeatures features, ModelRegistry modelRegistry) {
         List<String> cardIds = Arrays.stream(decision.getDecisionParameters().get("cardId")).toList();
 
-        SoftClassifier<double[]> model = modelRegistry.getModel(SkirmishOrderTrainer.class);
+        Classifier<double[]> model = modelRegistry.getModel(SkirmishOrderTrainer.class);
         double[] stateVector = features.extractFeatures(gameState, decision, playerName);
         List<ScoredCard> scoredCards = new ArrayList<>();
 
@@ -84,8 +84,7 @@ public class SkirmishOrderTrainer extends AbstractTrainer {
                             }
                         }
                         double[] cardVector = CardFeatures.getFpAssignedCardFeatures(blueprintId, wounds, assignment.getShadowCharacters().size(), assignment.getShadowCharacters().stream().mapToInt(value -> value.getBlueprint().getStrength()).sum());
-                        double[] extended = Arrays.copyOf(stateVector, stateVector.length + cardVector.length);
-                        System.arraycopy(cardVector, 0, extended, stateVector.length, cardVector.length);
+                        double[] extended = CardCandidateFeatures.append(stateVector, cardVector);
 
                         double[] probs = new double[2];
                         model.predict(extended, probs);

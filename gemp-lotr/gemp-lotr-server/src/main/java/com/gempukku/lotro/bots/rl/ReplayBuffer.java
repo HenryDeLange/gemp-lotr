@@ -45,6 +45,12 @@ public class ReplayBuffer {
         return batch;
     }
 
+    public List<LearningStep> drain() {
+        List<LearningStep> drained = new ArrayList<>(buffer);
+        buffer.clear();
+        return drained;
+    }
+
     public int size() {
         return buffer.size();
     }

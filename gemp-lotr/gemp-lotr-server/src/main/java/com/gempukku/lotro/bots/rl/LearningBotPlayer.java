@@ -6,5 +6,8 @@ import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 
 public interface LearningBotPlayer extends BotPlayer {
     void observe(GameState gameState, AwaitingDecision decision, String playerId, String chosenAction, double reward, boolean terminal);
+    void beginEpisode(String gameId);
     void endEpisode(double reward); // call after each game ends
+    void abortEpisode();
+    void discardLastDecision();
 }

@@ -105,6 +105,7 @@ public class LotroGameMediator {
                         BotService.BotWithDeck bot = botService.getBotForDeck(deck);
                         tmpBot = bot.getBotPlayer();
                         tmpDeck = bot.getLotroDeck();
+                        _playerDecks.put(participantId, tmpDeck);
                     }
                 }
                 _botPlayer = tmpBot;

@@ -1,0 +1,1078 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171a20">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <title>GEMP LOTR Bot Training</title>
+  <style>
+    body { background: #171a20; color: #e6e8ec; font: 15px system-ui, sans-serif; margin: 2rem auto; max-width: 1320px; padding: 0 1rem; }
+    h1, h2 { color: #fff; }
+    .panel { background: #222731; border: 1px solid #3a414e; border-radius: 8px; margin: 1rem 0; padding: 1rem; }
+    .muted { color: #aab2c0; }
+    .page-intro { color: #aab2c0; margin: -.4rem 0 1.4rem; }
+    .panel h2 { margin: 0 0 .25rem; }
+    .panel > .muted { line-height: 1.5; margin: .35rem 0 1rem; }
+    .status-layout { align-items: start; display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr) minmax(12rem, 17rem); }
+    .generation-card { background: #171a20; border: 1px solid #3a414e; border-radius: 8px; display: grid; gap: .3rem; padding: .9rem 1rem; }
+    .generation-card strong { color: #9ecbff; font-size: 1.25rem; }
+    .generation-card span:last-child { color: #aab2c0; }
+    .eyebrow { color: #aab2c0; font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .progress-caption { align-items: baseline; display: flex; flex-wrap: wrap; gap: .35rem 1rem; justify-content: space-between; }
+    .progress-caption strong { color: #fff; }
+    .progress-caption span { color: #aab2c0; }
+    .progress { background: #101318; border-radius: 99px; height: 12px; margin: .5rem 0 1rem; overflow: hidden; }
+    .bar { background: #54a6ff; height: 100%; transition: width .25s ease; width: 0; }
+    .overall-progress { height: 14px; }
+    .overall-segments { display: flex; gap: 2px; height: 100%; width: 100%; }
+    .overall-segment { background: #34283f; border-right: 2px solid #101318; flex-basis: 0; flex-grow: 1; min-width: 0; overflow: hidden; }
+    .overall-segment:last-child { border-right: 0; }
+    .overall-segment-fill { background: #a855f7; display: block; height: 100%; transition: width .25s ease; width: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border-bottom: 1px solid #3a414e; padding: .55rem; text-align: left; }
+    th { color: #aab2c0; position: sticky; top: 0; background: #222731; }
+    td { vertical-align: top; }
+    tbody tr.running { background: #263447; }
+    tbody tr.failed { color: #ff9999; }
+    .table-wrap { max-height: 360px; overflow: auto; }
+    .result { color: #aab2c0; }
+    #error { color: #ff9999; }
+    .status-text { border-radius: 999px; display: inline-block; font-size: .85rem; font-weight: 650; padding: .18rem .55rem; white-space: nowrap; }
+    .status-text.running, .status-text.training { background: #263447; color: #9ecbff; }
+    .status-text.completed, .status-text.trained { background: #173d30; color: #8ee0b2; }
+    .status-text.failed { background: #4b2528; color: #ffaaaa; }
+    .status-text.pending, .status-text.queued { background: #343944; color: #d3d9e3; }
+    .status-text.partial, .status-text.skipped { background: #3c3526; color: #f2d58b; }
+    .numeric { white-space: nowrap; }
+    .table-note { min-width: 14rem; max-width: 30rem; }
+    .empty-state { padding: .75rem 0; }
+    #batches-table { min-width: 780px; }
+    .status-banner { border-radius: 6px; display: inline-block; font-weight: 700; margin: .25rem 0; padding: .45rem .7rem; }
+    .status-banner.starting, .status-banner.running { background: #263447; color: #9ecbff; }
+    .status-banner.completed { background: #173d30; color: #8ee0b2; }
+    .status-banner.failed { background: #4b2528; color: #ffaaaa; }
+    .event-summary { background: #171a20; border: 1px solid #3a414e; border-radius: 8px; margin: 1rem 0; padding: .8rem; }
+    .event-counts { display: flex; flex-wrap: wrap; gap: .6rem; }
+    .event-count { align-items: center; background: #222731; border: 1px solid #586273; border-radius: 6px; color: #e6e8ec; cursor: pointer; display: inline-flex; gap: .65rem; min-width: 7rem; padding: .45rem .7rem; }
+    .event-count:hover { border-color: #9ecbff; }
+    .event-count:focus-visible { outline: 2px solid #54a6ff; outline-offset: 2px; }
+    .event-count strong { font-size: 1.2rem; }
+    .event-count.success strong { color: #8ee0b2; }
+    .event-count.warning strong { color: #f2bd65; }
+    .event-count.error strong { color: #ff9999; }
+    #event-dialog { background: #222731; border: 1px solid #586273; border-radius: 10px; box-shadow: 0 12px 40px #000b; color: #e6e8ec; max-height: 85vh; max-width: min(900px, calc(100vw - 2rem)); padding: 1rem; width: 900px; }
+    #event-dialog::backdrop { background: #000a; }
+    .event-dialog-header, .event-pagination { align-items: center; display: flex; flex-wrap: wrap; gap: .75rem; justify-content: space-between; }
+    .event-dialog-header h2 { margin: 0; }
+    .event-dialog-header button, .event-pagination button { background: #263447; border: 1px solid #586273; border-radius: 5px; color: #e6e8ec; cursor: pointer; font: inherit; padding: .4rem .7rem; }
+    .event-dialog-header button:focus-visible, .event-pagination button:focus-visible { outline: 2px solid #54a6ff; outline-offset: 2px; }
+    .event-pagination button:disabled { cursor: not-allowed; opacity: .5; }
+    .event-list { display: grid; gap: .75rem; margin: 1rem 0; max-height: 60vh; overflow: auto; }
+    .event-entry { background: #171a20; border: 1px solid #3a414e; border-left-width: 4px; border-radius: 6px; padding: .75rem; }
+    .event-entry.success { border-left-color: #54bd88; }
+    .event-entry.warning { border-left-color: #e0a43a; }
+    .event-entry.error { border-left-color: #e35d6a; }
+    .event-entry-heading { align-items: baseline; display: flex; flex-wrap: wrap; gap: .25rem 1rem; justify-content: space-between; }
+    .event-entry-context { color: #aab2c0; font-size: .9rem; margin: .35rem 0; }
+    .event-entry-message { margin: .4rem 0; white-space: pre-wrap; }
+    .event-entry details { margin-top: .5rem; }
+    .event-entry pre { background: #101318; border-radius: 4px; max-height: 22rem; overflow: auto; padding: .7rem; white-space: pre-wrap; word-break: break-word; }
+    .help-control { display: inline-flex; margin-left: .45rem; position: relative; vertical-align: middle; z-index: 1; }
+    .help { align-items: center; background: #171a20; border: 1px solid #778398; border-radius: 50%; box-sizing: border-box; color: #d3d9e3; cursor: pointer; display: inline-flex; font: 600 .85rem/1 system-ui, sans-serif; height: 1.65rem; justify-content: center; line-height: 1; padding: .1rem; width: 1.65rem; }
+    .help:hover, .help[aria-expanded="true"] { background: #263447; border-color: #9ecbff; color: #fff; }
+    .help:focus-visible { outline: 2px solid #54a6ff; outline-offset: 2px; }
+    .help-popover { background: #101318; border: 1px solid #586273; border-radius: 6px; box-shadow: 0 8px 24px #0009; color: #e6e8ec; font-size: .9rem; font-weight: 400; left: 50%; line-height: 1.45; max-width: calc(100vw - 2rem); padding: .7rem .85rem; position: absolute; top: calc(100% + .5rem); transform: translateX(-50%); width: min(26rem, calc(100vw - 2rem)); z-index: 20; }
+    .comparison-controls { align-items: center; display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: .5rem; }
+    .comparison-generation-toggle { align-items: center; border: 0; display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; min-width: 0; padding: 0; }
+    .comparison-generation-toggle legend { color: #aab2c0; float: left; margin-right: .25rem; }
+    .comparison-generation-toggle label { align-items: center; display: inline-flex; gap: .3rem; white-space: nowrap; }
+    .comparison-generation-toggle input { accent-color: #a855ff; }
+    .generation-controls { align-items: center; background: #171a20; border: 1px solid #3a414e; border-radius: 6px; display: flex; flex-wrap: wrap; gap: .75rem; justify-content: space-between; padding: .75rem; }
+    .sticky-generation-controls { box-shadow: 0 8px 12px #171a20; margin: 0 0 1rem; position: sticky; top: 0; z-index: 10; }
+    .generation-controls button { background: #263447; border: 1px solid #586273; border-radius: 5px; color: #e6e8ec; cursor: pointer; font: inherit; padding: .45rem .75rem; }
+    .generation-controls button:hover:not(:disabled) { border-color: #9ecbff; }
+    .generation-controls button:focus-visible { outline: 2px solid #54a6ff; outline-offset: 2px; }
+    .generation-controls button:disabled { cursor: not-allowed; opacity: .5; }
+    .generation-choice { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem .75rem; }
+    .generation-choice strong { color: #9ecbff; font-size: 1.05rem; }
+    select { background: #171a20; border: 1px solid #586273; border-radius: 4px; color: #e6e8ec; padding: .4rem; }
+    @media (max-width: 720px) {
+      body { margin-top: 1rem; }
+      .status-layout { grid-template-columns: 1fr; }
+      th, td { padding: .45rem; }
+    }
+  </style>
+</head>
+<body>
+  <h1>GEMP bot training</h1>
+  <p class="page-intro">See what is running now, what each generation has completed, and whether a new model was kept.</p>
+  <div class="generation-controls sticky-generation-controls" role="group" aria-label="Choose the generation shown in generation-specific sections">
+    <button id="previous-generation" type="button" aria-label="View previous generation">Previous</button>
+    <div class="generation-choice" aria-live="polite">
+      <span class="eyebrow">Viewing</span>
+      <strong id="generation-view-label">Waiting for training plan</strong>
+      <span id="generation-view-state" class="status-text pending"></span>
+    </div>
+    <button id="next-generation" type="button" aria-label="View next generation">Next</button>
+  </div>
+  <section class="panel">
+    <div class="status-layout">
+      <div>
+        <p id="completion-status" class="status-banner starting">Connecting to trainer...</p>
+        <h2 id="summary">Connecting to trainer...</h2>
+        <p class="muted" id="current-detail">Waiting for training status.</p>
+      </div>
+      <aside class="generation-card" aria-live="polite">
+        <span class="eyebrow">Active generation</span>
+        <strong id="active-generation">Preparing</strong>
+        <span id="active-format">Setting up formats</span>
+      </aside>
+    </div>
+    <div class="progress-caption"><strong>Whole run</strong><span id="overall-detail"></span></div>
+    <div class="progress overall-progress" id="overall-progress" role="progressbar" aria-label="Whole run progress by setup and generation" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="overall-segments" id="overall-bar"></div>
+    </div>
+    <div class="progress-caption"><strong>Current work item</strong><span id="current-progress-detail"></span></div>
+    <div class="progress" aria-label="Current work item progress"><div class="bar" id="current-bar"></div></div>
+    <p id="run-time" class="muted">Elapsed: 0s</p>
+    <div class="event-summary" aria-label="Training event counts">
+      <span class="eyebrow">Run events · select a count for details</span>
+      <div class="event-counts">
+        <button class="event-count success" type="button" data-event-severity="success" aria-label="Show successful training events">
+          <span>Success</span><strong id="success-count" aria-live="polite">0</strong>
+        </button>
+        <button class="event-count warning" type="button" data-event-severity="warning" aria-label="Show training warnings">
+          <span>Warnings</span><strong id="warning-count" aria-live="polite">0</strong>
+        </button>
+        <button class="event-count error" type="button" data-event-severity="error" aria-label="Show training errors">
+          <span>Errors</span><strong id="error-count" aria-live="polite">0</strong>
+        </button>
+      </div>
+    </div>
+    <p class="muted" id="updated"></p>
+    <p id="error"></p>
+  </section>
+  <section class="panel">
+    <h2>Training roadmap
+      <span class="help-control"><button class="help" type="button" data-help="The run finishes deck setup for every selected format first. It then completes every format's generation 1 stages before any generation 2 stage starts, and repeats that order for later generations. Formats run one at a time within each generation. Progress units are games or model-training tasks, so the whole-run percentage is a task count, not a time estimate." aria-label="About training order and progress" aria-expanded="false">?</button></span>
+    </h2>
+    <p class="muted">Choose a generation to inspect its progress and results across formats. Live run status above always shows the active work; deck setup below is shared setup before generation 1.</p>
+    <p class="muted" id="generation-view-summary" aria-live="polite"></p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Format</th><th>Generation</th><th>Work step</th><th>Status</th><th>Progress</th><th>Outcome</th></tr></thead>
+        <tbody id="stages"></tbody>
+      </table>
+      <p id="stages-empty" class="muted empty-state" hidden></p>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Deck builder: options and ranking model
+      <span class="help-control"><button class="help" type="button" data-help="Before game generations begin, the deck builder tests legal deck options against reference decks. Some complete deck comparisons are kept out of learning and used to check whether the ranking model learned a useful ordering. A new ranking is selected only when it is ready and improves on the existing one; otherwise the existing ranking or random deck sampling remains in use." aria-label="About deck choices and ranking results" aria-expanded="false">?</button></span>
+    </h2>
+    <p class="muted">The deck builder evaluates legal deck options in each generation. "New ranking selected" means the new deck-ranking model replaces the previous one for choosing training decks.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Format</th><th>Generation</th><th>Ranking method</th><th>Deck options</th><th>Games played</th><th>Skipped</th><th>Deck results</th><th title="The total number of deck comparisons, then how many were used for learning and how many were kept aside for a separate check.">Examples (total / learning / check)</th><th>New ranking: check match</th><th title="How often the existing ranking matched the outcomes of deck comparisons kept aside from its learning examples.">Current ranking: check match</th><th>Choice</th></tr></thead>
+        <tbody id="deck-builders"></tbody>
+      </table>
+      <p id="deck-builder-empty" class="muted empty-state">Deck setup has not finished yet.</p>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Individual policy changes: game evaluation and promotion
+      <span class="help-control"><button class="help" type="button" data-help="Each row tests one decision model change by itself against the current working policy, using the same deck pairs from both seats in every format. A model is promoted only if the paired cross-format confidence and skip safeguards pass. Accepted models become the opponent for later tests and are used by the next generation; changes accepted in the last generation are included in the final release. Rejected changes leave the current policy unchanged." aria-label="About individual policy evaluation and promotion" aria-expanded="false">?</button></span>
+    </h2>
+    <p class="muted">Models are evaluated one at a time, not bundled together. "Promoted" means that specific model was selected; "Current policy kept" means the trained candidate did not replace it.</p>
+    <div class="comparison-controls">
+      <label for="comparison-format">Format</label>
+      <select id="comparison-format"></select>
+      <fieldset class="comparison-generation-toggle">
+        <legend>Show generations</legend>
+        <label><input type="radio" name="comparison-generation-scope" value="selected" checked>Selected generation</label>
+        <label><input type="radio" name="comparison-generation-scope" value="all">All generations</label>
+      </fieldset>
+      <span id="policy-comparison-detail" class="muted">No individual policy evaluations yet.</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Format</th><th>Generation</th><th>Decision model</th><th>Game result</th><th>Format win rate</th><th>Aggregate 95% lower bound</th><th>Validation match (candidate / current)</th><th>Skipped</th><th>Promotion</th></tr></thead>
+        <tbody id="policy-comparisons"></tbody>
+      </table>
+      <p id="policy-comparison-empty" class="muted empty-state">No individual policy evaluations have finished yet.</p>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Decision models
+      <span class="help-control"><button class="help" type="button" data-help="A decision model handles one kind of game choice. The learning match rate tells how often it predicts the recorded choices in examples used for learning. The check match rate uses examples from whole games kept out of learning. These scores measure how well it repeats recorded choices, not whether the bot wins; the game comparison above measures that. Example counts are decisions, not games; positive and negative are the two labels being learned." aria-label="About decision model progress and results" aria-expanded="false">?</button></span>
+    </h2>
+    <p class="muted" id="model-activity">No decision models are being trained yet.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Format</th><th>Generation</th><th>Decision area</th><th>What it is doing</th><th title="The first number is every labeled example; the next two are used for learning and for a separate check.">Examples (total / learning / check)</th><th title="The two example labels used to teach this decision model.">Positive / negative</th><th>Learning choices matched</th><th>Check choices matched</th><th>Training time</th></tr></thead>
+        <tbody id="models"></tbody>
+      </table>
+      <p id="models-empty" class="muted empty-state" hidden></p>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Game results
+      <span class="help-control"><button class="help" type="button" data-help="These rows summarize completed batches. 'Learning bot vs random bot' checks the learner against random choices. 'Self-play' puts the same policy in both seats. Individual policy checks compare one trained decision model against the current working policy, swapping seats on the same deck pairs. Seat 1 and seat 2 are player identities, not fixed Fellowship or Shadow roles. The extra game details are diagnostics, not additional training rewards." aria-label="About completed game comparisons" aria-expanded="false">?</button></span>
+    </h2>
+    <p class="muted">Results below are for the selected generation. Each individual model is checked in both seats so the comparison is not decided by starting position. The selection label says whether the candidate replaced the current working model.</p>
+    <div class="table-wrap">
+      <table id="batches-table">
+        <thead><tr><th>Format</th><th>Generation</th><th>What was compared</th><th>Games</th><th>Result</th><th>Win rate</th><th>Game details</th></tr></thead>
+        <tbody id="batches"></tbody>
+      </table>
+      <p id="batch-empty" class="muted empty-state">No game comparisons have finished yet. The active batch is shown above.</p>
+    </div>
+  </section>
+  <dialog id="event-dialog" aria-labelledby="event-dialog-title">
+    <div class="event-dialog-header">
+      <div>
+        <h2 id="event-dialog-title">Training events</h2>
+        <p id="event-dialog-summary" class="muted">Events are shown newest first.</p>
+      </div>
+      <button id="event-dialog-close" type="button">Close</button>
+    </div>
+    <div id="event-list" class="event-list" aria-live="polite"></div>
+    <div class="event-pagination">
+      <button id="event-page-previous" type="button">Previous page</button>
+      <span id="event-page-label" class="muted"></span>
+      <button id="event-page-next" type="button">Next page</button>
+    </div>
+  </dialog>
+  <script>
+    const text = (id, value) => { document.getElementById(id).textContent = value; };
+    const statusLabels = {
+      starting: "Preparing training",
+      running: "Training in progress",
+      completed: "SUCCESS — training complete; final bot model release published",
+      failed: "FAILED — training did not complete successfully"
+    };
+    const formatLabels = {
+      fotr_block: "Fellowship of the Ring",
+      ttt_block: "The Two Towers",
+      king_block: "The Return of the King",
+      movie: "Movie block"
+    };
+    const shortFormatLabels = {
+      fotr_block: "FOTR",
+      ttt_block: "TTT",
+      king_block: "King",
+      movie: "Movie"
+    };
+    const formatOrder = Object.keys(formatLabels);
+    const formatRank = format => {
+      const index = formatOrder.indexOf(format);
+      return index < 0 ? formatOrder.length : index;
+    };
+    const stageStateLabels = {
+      pending: "Not started",
+      running: "Working now",
+      completed: "Done",
+      partial: "Stopped early",
+      failed: "Failed",
+      skipped: "Not needed"
+    };
+    const modelStateLabels = {
+      queued: "Waiting for a worker",
+      training: "Training now",
+      trained: "Candidate ready for game check",
+      "selected-for-next-generation": "Promoted: active next generation",
+      "selected-for-final-release": "Promoted: included in final release",
+      "retained-after-individual-evaluation": "Not promoted: current policy kept",
+      "retained-below-accuracy-threshold": "Previous kept: check score below target",
+      "retained-no-examples": "Previous kept: no examples yet",
+      "retained-insufficient-independent-games": "Previous kept: needs more separate games",
+      "retained-insufficient-training-class-examples": "Previous kept: needs more varied examples"
+    };
+    const modelStateHelp = {
+      trained: "This model was trained and passed its data checks. It still needs to pass the game comparison before it can replace the shared model.",
+      "selected-for-next-generation": "This individual model change passed paired game checks and will be active in the next generation.",
+      "selected-for-final-release": "This individual model change passed paired game checks and is included in the final published release.",
+      "retained-after-individual-evaluation": "This individual model change did not pass paired game checks; the current working model remains active.",
+      "retained-below-accuracy-threshold": "The candidate did not reach the configured check-example target, so the previous model remains in use.",
+      "retained-no-examples": "No examples for this decision were available yet, so the previous model remains in use.",
+      "retained-insufficient-independent-games": "There were not enough examples from separate games to check this model fairly, so the previous model remains in use.",
+      "retained-insufficient-training-class-examples": "There were not enough examples of both outcomes to train this model reliably, so the previous model remains in use."
+    };
+    let terminalStatusReceived = false;
+    let pollingTimer = null;
+    let lastStatus = null;
+    let selectedGeneration = null;
+    let generationSelectionChanged = false;
+    let showAllGenerations = false;
+
+    function formatName(code) {
+      if (code === "shared-policy")
+        return "Shared policy";
+      return formatLabels[code] || code || "Preparing";
+    }
+
+    function shortFormatName(code) {
+      return shortFormatLabels[code] || code || "";
+    }
+
+    function modelName(name) {
+      return String(name || "")
+        .replace(/Trainer$/, "")
+        .replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+    }
+
+    function stageName(name) {
+      if (name === "preparing")
+        return "Preparing this format";
+      if (name === "deck-builder-evaluation")
+        return "Choose and test deck options";
+      if (name === "decision-model-fitting")
+        return "Train decision models";
+      if (name.endsWith("vs-random"))
+        return "Learning bot vs random bot";
+      if (name.endsWith("self-play"))
+        return "Learning bot self-play";
+      const policyChange = name.match(/evaluation policy-change-(\d+)-(candidate-first|candidate-second)$/);
+      if (policyChange)
+        return `Test policy change ${policyChange[1]} against current policy (${policyChange[2] === "candidate-first" ? "candidate first" : "candidate second"})`;
+      return name || "Preparing";
+    }
+
+    function stageUnit(name) {
+      return name === "decision-model-fitting" ? "models" : "games";
+    }
+
+    function generationForView(data) {
+      const count = Number(data.generationCount) || 0;
+      if (count <= 0)
+        return 0;
+      if (!generationSelectionChanged || selectedGeneration == null)
+        return Math.min(count, Math.max(1, Number(data.generation) || 1));
+      selectedGeneration = Math.min(count, Math.max(1, selectedGeneration));
+      return selectedGeneration;
+    }
+
+    function generationViewState(data, generation) {
+      const activeGeneration = Number(data.generation) || 0;
+      if (data.status === "completed")
+        return "Completed";
+      if (data.status === "failed") {
+        if (activeGeneration > 0 && generation < activeGeneration)
+          return "Completed";
+        return activeGeneration > 0 && generation === activeGeneration ? "Stopped early" : "Not started";
+      }
+      if (generation === activeGeneration)
+        return "Active";
+      if (generation < activeGeneration)
+        return "Completed";
+      return activeGeneration === 0 && generation === 1 ? "Up next" : "Not started";
+    }
+
+    function updateGenerationControls(data, generation, generationCount) {
+      const previous = document.getElementById("previous-generation");
+      const next = document.getElementById("next-generation");
+      previous.disabled = generation <= 1;
+      next.disabled = generationCount <= 0 || generation >= generationCount;
+      text("generation-view-label", generationCount > 0
+        ? `Generation ${generation} of ${generationCount}`
+        : "No generations planned");
+      const state = generationCount > 0 ? generationViewState(data, generation) : "Waiting";
+      const stateElement = document.getElementById("generation-view-state");
+      stateElement.className = `status-text ${
+        state === "Active" ? "running"
+          : state === "Completed" ? "completed"
+            : state === "Stopped early" ? "failed" : "pending"}`;
+      text("generation-view-state", state);
+
+      const stages = (data.stages || []).filter(stage => Number(stage.generation) === generation);
+      const completed = stages.reduce((sum, stage) => sum
+        + Math.min(Number(stage.total) || 0, Number(stage.completed) || 0), 0);
+      const total = stages.reduce((sum, stage) => sum + (Number(stage.total) || 0), 0);
+      const formats = new Set(stages.map(stage => stage.format)).size;
+      const models = (data.models || []).filter(model => Number(model.generation) === generation).length;
+      const batches = (data.batches || []).filter(batch => Number(batch.generation) === generation).length;
+      text("generation-view-summary", generationCount > 0
+        ? `${completed.toLocaleString()} of ${total.toLocaleString()} work items complete across ${formats} format${formats === 1 ? "" : "s"} · `
+          + `${models} decision-model result${models === 1 ? "" : "s"} recorded · ${batches} game comparison${batches === 1 ? "" : "s"} recorded.`
+        : "The training plan has not listed any generations yet.");
+    }
+
+    function renderOverallProgress(data, overallPercent) {
+      const progressBar = document.getElementById("overall-bar");
+      const workByGeneration = new Map();
+      for (const stage of data.stages || []) {
+        const generation = Number(stage.generation) || 0;
+        const total = Math.max(0, Number(stage.total) || 0);
+        if (total === 0)
+          continue;
+        const work = workByGeneration.get(generation) || {completed: 0, total: 0};
+        const stageCompleted = stage.state === "completed" || stage.state === "skipped"
+          ? total : Math.min(total, Math.max(0, Number(stage.completed) || 0));
+        work.completed += stageCompleted;
+        work.total += total;
+        workByGeneration.set(generation, work);
+      }
+
+      progressBar.replaceChildren();
+      const generations = [...workByGeneration.entries()].sort(([first], [second]) => first - second);
+      if (generations.length === 0) {
+        const segment = document.createElement("span");
+        segment.className = "overall-segment";
+        segment.title = `Whole run: ${overallPercent.toFixed(1)}% complete`;
+        const fill = document.createElement("span");
+        fill.className = "overall-segment-fill";
+        fill.style.width = `${overallPercent}%`;
+        segment.appendChild(fill);
+        progressBar.appendChild(segment);
+      } else {
+        for (const [generation, work] of generations) {
+          const label = generation === 0 ? "Setup" : `Generation ${generation}`;
+          const segment = document.createElement("span");
+          segment.className = "overall-segment";
+          segment.style.flexGrow = String(work.total);
+          segment.title = `${label}: ${work.completed.toLocaleString()} of ${work.total.toLocaleString()} planned work items`;
+          const fill = document.createElement("span");
+          fill.className = "overall-segment-fill";
+          fill.style.width = `${Math.min(100, work.completed * 100 / work.total)}%`;
+          segment.appendChild(fill);
+          progressBar.appendChild(segment);
+        }
+      }
+      const progress = document.getElementById("overall-progress");
+      progress.setAttribute("aria-valuenow", String(overallPercent));
+      progress.setAttribute("aria-valuetext",
+        `${overallPercent.toFixed(1)}% of planned work complete, partitioned by setup and generation`);
+    }
+
+    function modelStateName(state) {
+      if (modelStateLabels[state])
+        return modelStateLabels[state];
+      if (String(state || "").startsWith("retained-"))
+        return "Previous model kept";
+      return state || "Not started";
+    }
+
+    function modelStateDescription(state) {
+      return modelStateHelp[state] || "";
+    }
+
+    function currentActivity(data) {
+      if (data.stage === "decision-model-fitting") {
+        const currentModels = (data.models || []).filter(model =>
+          model.format === data.format && model.generation === data.generation);
+        const active = currentModels.filter(model => model.state === "training");
+        const queued = currentModels.filter(model => model.state === "queued");
+        if (active.length > 0) {
+            const names = active.map(model => modelName(model.name)).join(", ");
+            const waiting = queued.length === 1 ? "; 1 other model is waiting for a worker"
+              : queued.length > 1 ? `; ${queued.length} other models are waiting for a worker` : "";
+            return `Training now: ${names}${waiting}.`;
+        }
+        if (queued.length > 0)
+          return `${queued.length} decision models are waiting for an available worker.`;
+        if (data.total && data.completed >= data.total)
+          return "Model training is finished; recording the results.";
+      }
+
+      const activity = stageName(data.stage);
+      if (!data.total)
+        return activity;
+      const unit = stageUnit(data.stage);
+      if (data.status === "running" && data.completed >= data.total)
+        return `${activity} is finished; recording the results.`;
+      return `${activity}: ${Number(data.completed || 0).toLocaleString()} of ${Number(data.total).toLocaleString()} ${unit} complete.`;
+    }
+
+    function stageOutcome(stage) {
+      const result = String(stage.result || "");
+      const record = result.match(/^(\d+) wins \/ (\d+) losses(?: \/ (\d+) skipped)?$/);
+      if (!record)
+        return result || (stage.state === "running" ? "In progress" : "—");
+
+      const firstWins = Number(record[1]);
+      const secondWins = Number(record[2]);
+      const skipped = Number(record[3]) || 0;
+      let outcome;
+      if (stage.name.endsWith("vs-random"))
+        outcome = `Learning bot ${firstWins}–${secondWins} random bot`;
+      else if (stage.name.endsWith("self-play"))
+        outcome = `Seat 1 ${firstWins}–${secondWins} seat 2`;
+      else if (stage.name.includes("evaluation policy-change-") && stage.name.endsWith("candidate-first"))
+        outcome = `Candidate ${firstWins}–${secondWins} current model`;
+      else if (stage.name.includes("evaluation policy-change-") && stage.name.endsWith("candidate-second"))
+        outcome = `Candidate ${secondWins}–${firstWins} current model`;
+      else
+        outcome = `${firstWins} wins / ${secondWins} losses`;
+      return skipped ? `${outcome}; ${skipped} skipped` : outcome;
+    }
+
+    function describeBatch(batch) {
+      const label = String(batch.label || "");
+      const firstWins = Number(batch.wins) || 0;
+      const secondWins = Number(batch.losses) || 0;
+      const skipped = Number(batch.skippedGames) || 0;
+      const includeSkipped = result => skipped ? `${result}; ${skipped} skipped` : result;
+      if (label.endsWith("vs-random")) {
+        return {
+          comparison: "Learning bot vs random bot",
+          result: includeSkipped(`Learning bot ${firstWins}–${secondWins} random bot`),
+          winRate: firstWins + secondWins ? firstWins * 100 / (firstWins + secondWins) : 0,
+          winRateLabel: "Learning bot"
+        };
+      }
+      if (label.endsWith("self-play")) {
+        return {
+          comparison: "Same learned policy in both seats",
+          result: includeSkipped(`Seat 1 ${firstWins}–${secondWins} seat 2`),
+          winRate: firstWins + secondWins ? firstWins * 100 / (firstWins + secondWins) : 0,
+          winRateLabel: "Seat 1"
+        };
+      }
+
+      const candidateFirst = label.endsWith("candidate-first");
+      const candidateSecond = label.endsWith("candidate-second");
+      if (candidateFirst || candidateSecond) {
+        const candidateWins = candidateFirst ? firstWins : secondWins;
+        const currentWins = candidateFirst ? secondWins : firstWins;
+        const policyChange = label.match(/policy-change-(\d+)-candidate-(?:first|second)$/);
+        return {
+          comparison: `Individual policy change ${policyChange ? policyChange[1] : ""} vs working policy (candidate in seat ${candidateFirst ? 1 : 2})`,
+          result: includeSkipped(`Candidate model ${candidateWins}–${currentWins} working policy`
+            + (batch.selection ? ` · ${batch.selection}` : "")),
+          winRate: candidateWins + currentWins ? candidateWins * 100 / (candidateWins + currentWins) : 0,
+          winRateLabel: "Candidate model"
+        };
+      }
+      return {
+        comparison: label || "Game comparison",
+        result: includeSkipped(`Seat 1 ${firstWins}–${secondWins} seat 2`),
+        winRate: firstWins + secondWins ? firstWins * 100 / (firstWins + secondWins) : 0,
+        winRateLabel: "Seat 1"
+      };
+    }
+
+    function batchDetails(batch) {
+      const metrics = batch.tacticalMetrics;
+      if (!metrics || !metrics.gamesMeasured)
+        return "No game-end details recorded.";
+      const average = total => (total / metrics.gamesMeasured).toFixed(1);
+      return `Endings: final site ${metrics.siteNineWins}; Ring-bearer corrupted ${metrics.ringBearerCorruptionWins}; `
+        + `Ring-bearer died ${metrics.ringBearerDeathWins}; other ${metrics.otherWins}. `
+        + `Average site reached: seat 1 ${average(metrics.p1SitePositionTotal)}/9, `
+        + `seat 2 ${average(metrics.p2SitePositionTotal)}/9. `
+        + `Overwhelming skirmishes: ${metrics.overwhelmingSkirmishes}.`;
+    }
+
+    function formatTrainingDuration(milliseconds) {
+      const duration = Number(milliseconds) || 0;
+      return duration >= 1000 ? `${(duration / 1000).toFixed(1)} s` : `${duration} ms`;
+    }
+
+    function formatDuration(milliseconds) {
+      const totalSeconds = Math.max(0, Math.floor((Number(milliseconds) || 0) / 1000));
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      if (hours > 0)
+        return `${hours}h ${minutes}m ${seconds}s`;
+      if (minutes > 0)
+        return `${minutes}m ${seconds}s`;
+      return `${seconds}s`;
+    }
+
+    function formatTimestamp(timestamp) {
+      if (!timestamp)
+        return "";
+      const date = new Date(timestamp);
+      return Number.isNaN(date.getTime()) ? String(timestamp) : date.toLocaleString();
+    }
+
+    function updateEventCounts(counts) {
+      text("success-count", Number(counts.success || 0).toLocaleString());
+      text("warning-count", Number(counts.warning || 0).toLocaleString());
+      text("error-count", Number(counts.error || 0).toLocaleString());
+    }
+
+    let eventSeverity = "error";
+    let eventPageNumber = 1;
+    let eventPageCount = 1;
+    let eventRequestId = 0;
+    const eventPageSize = 10;
+
+    function renderEventPage(data) {
+      const list = document.getElementById("event-list");
+      list.replaceChildren();
+      const events = data.events || [];
+      for (const event of events) {
+        const entry = document.createElement("article");
+        entry.className = `event-entry ${event.severity}`;
+        const heading = document.createElement("div");
+        heading.className = "event-entry-heading";
+        const title = document.createElement("strong");
+        title.textContent = `${event.type || "Training event"} · ${event.severity}`;
+        const timestamp = document.createElement("time");
+        timestamp.dateTime = event.timestamp || "";
+        timestamp.textContent = formatTimestamp(event.timestamp);
+        heading.append(title, timestamp);
+        entry.appendChild(heading);
+
+        const context = [
+          event.format ? formatName(event.format) : "",
+          event.generation ? `Generation ${event.generation}` : "Setup",
+          event.model ? `Model: ${event.model}` : "",
+          event.step ? `Step: ${stageName(event.step)}` : ""
+        ].filter(Boolean);
+        const contextLine = document.createElement("p");
+        contextLine.className = "event-entry-context";
+        contextLine.textContent = context.join(" · ");
+        entry.appendChild(contextLine);
+
+        const message = document.createElement("p");
+        message.className = "event-entry-message";
+        message.textContent = event.message || "";
+        entry.appendChild(message);
+
+        if (event.stackTrace) {
+          const details = document.createElement("details");
+          const summary = document.createElement("summary");
+          summary.textContent = "Stack trace";
+          const stack = document.createElement("pre");
+          stack.textContent = event.stackTrace;
+          details.append(summary, stack);
+          entry.appendChild(details);
+        } else if (event.severity !== "success") {
+          const noTrace = document.createElement("p");
+          noTrace.className = "event-entry-context";
+          noTrace.textContent = "No stack trace was recorded for this event.";
+          entry.appendChild(noTrace);
+        }
+        list.appendChild(entry);
+      }
+      if (events.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "muted";
+        empty.textContent = `No ${eventSeverity} events have been recorded.`;
+        list.appendChild(empty);
+      }
+
+      eventPageNumber = Number(data.page) || 1;
+      eventPageCount = Math.max(1, Number(data.pageCount) || 1);
+      text("event-dialog-title", `${eventSeverity[0].toUpperCase()}${eventSeverity.slice(1)} events`);
+      text("event-dialog-summary",
+        `${Number(data.total || 0).toLocaleString()} events · newest first. Open a stack trace for details.`);
+      text("event-page-label", `Page ${eventPageNumber} of ${eventPageCount}`);
+      document.getElementById("event-page-previous").disabled = eventPageNumber <= 1;
+      document.getElementById("event-page-next").disabled = eventPageNumber >= eventPageCount;
+    }
+
+    async function loadEventPage() {
+      const requestId = ++eventRequestId;
+      const list = document.getElementById("event-list");
+      list.replaceChildren();
+      const loading = document.createElement("p");
+      loading.className = "muted";
+      loading.textContent = "Loading training events...";
+      list.appendChild(loading);
+      try {
+        const query = new URLSearchParams({
+          severity: eventSeverity,
+          page: String(eventPageNumber),
+          pageSize: String(eventPageSize)
+        });
+        const response = await fetch(`/api/events?${query}`, {cache: "no-store"});
+        if (!response.ok)
+          throw new Error(`Event endpoint returned HTTP ${response.status}`);
+        const data = await response.json();
+        if (requestId === eventRequestId)
+          renderEventPage(data);
+      } catch (error) {
+        if (requestId !== eventRequestId)
+          return;
+        list.replaceChildren();
+        const message = document.createElement("p");
+        message.className = "event-entry error";
+        message.textContent = `Unable to load training events: ${error.message}`;
+        list.appendChild(message);
+      }
+    }
+
+    const eventDialog = document.getElementById("event-dialog");
+    document.querySelectorAll("[data-event-severity]").forEach(button => {
+      button.addEventListener("click", () => {
+        eventSeverity = button.dataset.eventSeverity;
+        eventPageNumber = 1;
+        if (!eventDialog.open)
+          eventDialog.showModal();
+        loadEventPage();
+      });
+    });
+    document.getElementById("event-dialog-close").addEventListener("click", () => eventDialog.close());
+    document.getElementById("event-page-previous").addEventListener("click", () => {
+      if (eventPageNumber > 1) {
+        eventPageNumber--;
+        loadEventPage();
+      }
+    });
+    document.getElementById("event-page-next").addEventListener("click", () => {
+      if (eventPageNumber < eventPageCount) {
+        eventPageNumber++;
+        loadEventPage();
+      }
+    });
+    eventDialog.addEventListener("close", () => {
+      eventRequestId++;
+    });
+
+    let helpPopoverCounter = 0;
+    function closeHelpPopover(button) {
+      const popoverId = button.getAttribute("aria-controls");
+      if (popoverId)
+        document.getElementById(popoverId)?.remove();
+      button.removeAttribute("aria-controls");
+      button.removeAttribute("aria-describedby");
+      button.setAttribute("aria-expanded", "false");
+    }
+    function openHelpPopover(button) {
+      const popover = document.createElement("span");
+      popover.className = "help-popover";
+      popover.id = `help-popover-${++helpPopoverCounter}`;
+      popover.setAttribute("role", "tooltip");
+      popover.textContent = button.dataset.help;
+      button.parentElement.appendChild(popover);
+      button.setAttribute("aria-controls", popover.id);
+      button.setAttribute("aria-describedby", popover.id);
+      button.setAttribute("aria-expanded", "true");
+    }
+    document.addEventListener("click", event => {
+      const button = event.target.closest(".help");
+      const openButton = document.querySelector('.help[aria-expanded="true"]');
+      if (button) {
+        if (button === openButton) {
+          closeHelpPopover(button);
+        } else {
+          if (openButton)
+            closeHelpPopover(openButton);
+          openHelpPopover(button);
+        }
+      } else if (openButton && !event.target.closest(".help-popover")) {
+        closeHelpPopover(openButton);
+      }
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") {
+        const openButton = document.querySelector('.help[aria-expanded="true"]');
+        if (openButton) {
+          closeHelpPopover(openButton);
+          openButton.focus();
+        }
+      }
+    });
+
+    function renderPolicyComparisonTable(comparisons, generation) {
+      const select = document.getElementById("comparison-format");
+      const previousSelection = select.value;
+      const formats = [...new Set(comparisons.map(comparison => comparison.format))]
+        .sort((first, second) => formatRank(first) - formatRank(second));
+      select.replaceChildren();
+      for (const format of formats) {
+        const option = document.createElement("option");
+        option.value = format;
+        option.textContent = formatName(format);
+        select.appendChild(option);
+      }
+      select.disabled = formats.length === 0;
+      select.value = formats.includes(previousSelection) ? previousSelection : formats[0] || "";
+
+      const table = document.getElementById("policy-comparisons");
+      table.replaceChildren();
+      const measurements = comparisons.filter(comparison =>
+        comparison.format === select.value
+        && (showAllGenerations || Number(comparison.generation) === generation)
+        && Number.isFinite(comparison.candidateWinRate))
+        .sort((first, second) => Number(first.generation) - Number(second.generation)
+          || Number(first.evaluationSlot || 0) - Number(second.evaluationSlot || 0));
+      for (const comparison of measurements) {
+        const validation = Number.isFinite(comparison.validationAccuracy)
+          ? `${comparison.validationAccuracy.toFixed(1)}%`
+          : "Not measured";
+        const incumbentValidation = Number.isFinite(comparison.incumbentValidationAccuracy)
+          ? `${comparison.incumbentValidationAccuracy.toFixed(1)}%`
+          : "No incumbent model";
+        const selection = comparison.selection || (comparison.candidateSelected
+          ? "Promoted" : "Current policy kept");
+        addRow(table, [
+          formatName(comparison.format),
+          `Generation ${comparison.generation}`,
+          modelName(comparison.modelName || "All decision models"),
+          `${Number(comparison.candidateWins || 0).toLocaleString()} / ${Number(comparison.games || 0).toLocaleString()} wins`,
+          `${comparison.candidateWinRate.toFixed(1)}%`,
+          Number.isFinite(comparison.aggregateLowerConfidenceBound)
+            ? `${comparison.aggregateLowerConfidenceBound.toFixed(1)}%`
+            : "Not measured",
+          `${validation} / ${incumbentValidation}`,
+          Number(comparison.skippedGames || 0).toLocaleString(),
+          selection
+        ], comparison.candidateSelected ? "completed" : "pending");
+      }
+      document.getElementById("policy-comparison-empty").hidden = measurements.length > 0;
+      text("policy-comparison-detail", measurements.length > 0
+        ? `${measurements.length} individual policy result${measurements.length === 1 ? "" : "s"} shown.`
+        : formats.length ? "No individual policy results for this generation."
+          : "No individual policy evaluations have finished yet.");
+    }
+
+    function addRow(body, values, state, titles = []) {
+      const row = document.createElement("tr");
+      if (state)
+        row.className = state;
+      for (let index = 0; index < values.length; index++) {
+        const cell = document.createElement("td");
+        cell.textContent = values[index] == null ? "" : String(values[index]);
+        if (titles[index])
+          cell.title = titles[index];
+        row.appendChild(cell);
+      }
+      body.appendChild(row);
+    }
+    function render(data) {
+      lastStatus = data;
+      const status = statusLabels[data.status] ? data.status : "running";
+      const statusBanner = document.getElementById("completion-status");
+      statusBanner.className = `status-banner ${status}`;
+      text("completion-status", statusLabels[status]);
+      document.title = `GEMP LOTR Bot Training | ${status.toUpperCase()}`;
+
+      const overallPercent = Math.min(100, Math.max(0, Number(data.overallPercent) || 0));
+      renderOverallProgress(data, overallPercent);
+      const currentPercent = data.total ? data.completed * 100 / data.total : 0;
+      document.getElementById("current-bar").style.width = Math.min(100, currentPercent) + "%";
+      const generationCount = Number(data.generationCount) || 0;
+      const viewGeneration = generationForView(data);
+      updateGenerationControls(data, viewGeneration, generationCount);
+      const isSetup = !data.generation || data.stage === "deck-builder-evaluation";
+      const generationLabel = isSetup
+        ? "Setup before generation 1"
+        : `Generation ${data.generation} of ${generationCount || data.generation}`;
+      text("active-generation", status === "completed" ? "Complete" : generationLabel);
+      text("active-format", status === "completed" ? "All selected formats" : formatName(data.format));
+      text("summary", status === "completed"
+        ? "All planned training and model checks are complete"
+        : `${stageName(data.stage)}${data.format ? ` · ${formatName(data.format)}` : ""}`);
+      text("overall-detail",
+      `${Number(data.overallCompleted || 0).toLocaleString()} of ${Number(data.overallTotal || 0).toLocaleString()} planned work items · `
+        + `${data.completedStages}/${data.totalStages} stages finished (${overallPercent.toFixed(1)}%). `
+      + "Each item is one game or one model-training task; this percentage counts completed work, not elapsed time.");
+      text("current-detail", status === "completed" ? "Models were published successfully."
+        : currentActivity(data));
+      text("current-progress-detail", data.total
+        ? `${Number(data.completed || 0).toLocaleString()} of ${Number(data.total).toLocaleString()} ${stageUnit(data.stage)}`
+        : "Waiting for the next counted step");
+      text("updated", `Last updated ${formatTimestamp(data.updatedAt)}`);
+      const timestamps = [];
+      if (data.startedAt)
+        timestamps.push(`Started ${formatTimestamp(data.startedAt)}`);
+      if (data.completedAt)
+        timestamps.push(`Completed ${formatTimestamp(data.completedAt)}`);
+      text("run-time", `Elapsed ${formatDuration(data.elapsedMillis)}`
+        + (timestamps.length ? ` · ${timestamps.join(" · ")}` : ""));
+      updateEventCounts(data.eventCounts || {});
+
+      const stages = document.getElementById("stages");
+      stages.replaceChildren();
+      const visibleStages = (data.stages || []).filter(stage =>
+        Number(stage.generation) === 0 || Number(stage.generation) === viewGeneration)
+        .sort((first, second) => formatRank(first.format) - formatRank(second.format)
+          || Number(first.generation) - Number(second.generation)
+          || first.name.localeCompare(second.name));
+      for (const [index, stage] of visibleStages.entries()) {
+        const stageGeneration = stage.generation
+          ? `Generation ${stage.generation} of ${generationCount || stage.generation}`
+          : "Setup";
+        addRow(stages, [
+          index + 1,
+          formatName(stage.format),
+          stageGeneration,
+          stageName(stage.name),
+          stageStateLabels[stage.state] || stage.state,
+          `${Number(stage.completed || 0).toLocaleString()} / ${Number(stage.total || 0).toLocaleString()} ${stageUnit(stage.name)}`,
+          stageOutcome(stage)
+        ], stage.state);
+      }
+      const stagesEmpty = document.getElementById("stages-empty");
+      stagesEmpty.hidden = visibleStages.length > 0;
+      text("stages-empty", generationCount > 0
+        ? `No planned work is listed for Generation ${viewGeneration}.`
+        : "No training stages have been planned yet.");
+
+      const models = document.getElementById("models");
+      models.replaceChildren();
+      const modelRows = [...(data.models || [])]
+        .filter(model => Number(model.generation) === viewGeneration)
+        .sort((first, second) => formatRank(first.format) - formatRank(second.format)
+          || first.name.localeCompare(second.name));
+      for (const model of modelRows) {
+        const learningMatchRate = Number.isFinite(model.trainingAccuracy)
+          ? model.trainingAccuracy.toFixed(1) + "%"
+          : "Not measured";
+        const checkMatchRate = Number.isFinite(model.validationAccuracy)
+          ? model.validationAccuracy.toFixed(1) + "%"
+          : "Not measured";
+        addRow(models, [
+          formatName(model.format),
+          `Generation ${model.generation} of ${generationCount || model.generation}`,
+          modelName(model.name),
+          modelStateName(model.state),
+          `${Number(model.examples || 0).toLocaleString()} total · ${Number(model.trainingExamples || 0).toLocaleString()} learning / ${Number(model.validationExamples || 0).toLocaleString()} check`,
+          `${Number(model.positiveExamples || 0).toLocaleString()} / ${Number(model.negativeExamples || 0).toLocaleString()}`,
+          learningMatchRate,
+          checkMatchRate,
+          formatTrainingDuration(model.trainingMillis)
+        ], model.state, [null, null, null, modelStateDescription(model.state)]);
+      }
+      document.getElementById("models-empty").hidden = modelRows.length > 0;
+      text("models-empty", `No decision-model results have been recorded for Generation ${viewGeneration} yet.`);
+      const activeModels = modelRows.filter(model =>
+        model.format === data.format && model.state === "training");
+      const queuedModels = modelRows.filter(model =>
+        model.format === data.format && model.state === "queued");
+      const viewingActiveGeneration = status === "running" && viewGeneration === Number(data.generation);
+      if (viewingActiveGeneration && activeModels.length > 0) {
+        const waiting = queuedModels.length === 1 ? "1 other model is waiting for a worker."
+          : queuedModels.length > 1 ? `${queuedModels.length} other models are waiting for a worker.` : "";
+        text("model-activity",
+          `Training now: ${activeModels.map(model => modelName(model.name)).join(", ")}. `
+          + waiting);
+      } else if (viewingActiveGeneration && queuedModels.length > 0) {
+        text("model-activity", `${queuedModels.length} decision models are waiting for a worker.`);
+      } else if (viewingActiveGeneration && data.stage === "decision-model-fitting") {
+        text("model-activity", "Decision-model training is finishing or its results are being recorded.");
+      } else if (modelRows.length > 0) {
+        const ready = modelRows.filter(model => model.state === "trained").length;
+        const promoted = modelRows.filter(model => String(model.state).startsWith("selected-for-")).length;
+        const kept = modelRows.filter(model => String(model.state).startsWith("retained-")).length;
+        text("model-activity", `Generation ${viewGeneration}: ${modelRows.length} decision-model result${modelRows.length === 1 ? "" : "s"} recorded · `
+          + `${ready} candidate${ready === 1 ? "" : "s"} awaiting game checks · `
+          + `${promoted} individual model${promoted === 1 ? "" : "s"} promoted · `
+          + `${kept} candidate${kept === 1 ? "" : "s"} retained.`);
+      } else {
+        text("model-activity", `No decision-model results have been recorded for Generation ${viewGeneration} yet.`);
+      }
+      renderPolicyComparisonTable(data.policyComparisons || [], viewGeneration);
+
+      const deckBuilderRows = document.getElementById("deck-builders");
+      deckBuilderRows.replaceChildren();
+      const deckBuilders = [...(data.deckBuilders || [])]
+        .filter(deck => Number(deck.generation) === viewGeneration)
+        .sort((first, second) => formatRank(first.format) - formatRank(second.format));
+      for (const deck of deckBuilders) {
+        const checkMatchRate = Number.isFinite(deck.validationAccuracy)
+          ? deck.validationAccuracy.toFixed(1) + "%"
+          : "Not measured";
+        const currentCheckMatchRate = Number.isFinite(deck.incumbentAccuracy)
+          ? deck.incumbentAccuracy.toFixed(1) + "%"
+          : "Not measured";
+        const games = Number(deck.wins || 0) + Number(deck.losses || 0);
+        const deckWinRate = games ? (Number(deck.wins) * 100 / games).toFixed(1) : "0.0";
+        const choice = deck.algorithm === "not-ready"
+          ? "No ranking ready; use existing or random choices"
+          : deck.promoted ? "New ranking selected" : "Previous ranking kept";
+        addRow(deckBuilderRows, [
+          formatName(deck.format),
+          `Generation ${deck.generation}`,
+          String(deck.algorithm || "").toLowerCase().includes("logistic") ? "Logistic ranking" : deck.algorithm,
+          Number(deck.candidates || 0).toLocaleString(),
+          Number(deck.games || 0).toLocaleString(),
+          Number(deck.skippedGames || 0).toLocaleString(),
+          `${deck.wins} wins / ${deck.losses} losses (${deckWinRate}%)`,
+          `${Number(deck.accumulatedExamples || 0).toLocaleString()} total · ${Number(deck.trainingExamples || 0).toLocaleString()} learning / ${Number(deck.validationExamples || 0).toLocaleString()} check`,
+          checkMatchRate,
+          currentCheckMatchRate,
+          choice
+        ]);
+      }
+      document.getElementById("deck-builder-empty").hidden = deckBuilders.length > 0;
+
+      const batches = document.getElementById("batches");
+      batches.replaceChildren();
+      const batchRows = (data.batches || []).filter(batch =>
+        Number(batch.generation) === viewGeneration)
+        .sort((first, second) => formatRank(first.format) - formatRank(second.format)
+          || first.label.localeCompare(second.label));
+      for (const batch of batchRows) {
+        const description = describeBatch(batch);
+        const games = Number(batch.wins || 0) + Number(batch.losses || 0);
+        addRow(batches, [
+          formatName(batch.format),
+          `Generation ${batch.generation} of ${generationCount || batch.generation}`,
+          description.comparison,
+          games.toLocaleString(),
+          description.result,
+          `${description.winRateLabel}: ${description.winRate.toFixed(1)}%`,
+          batchDetails(batch)
+        ]);
+      }
+      const batchEmpty = document.getElementById("batch-empty");
+      batchEmpty.hidden = batchRows.length > 0;
+      text("batch-empty", `No game comparisons have finished for Generation ${viewGeneration} yet. Live work status is shown above.`);
+      if (status === "completed" || status === "failed") {
+        terminalStatusReceived = true;
+        if (pollingTimer !== null)
+          clearInterval(pollingTimer);
+      }
+    }
+    async function refresh() {
+      if (terminalStatusReceived)
+        return;
+      try {
+        const response = await fetch("/api/status", {cache: "no-store"});
+        if (!response.ok)
+          throw new Error(`Status endpoint returned HTTP ${response.status}`);
+        render(await response.json());
+        text("error", "");
+      } catch (error) {
+        if (!terminalStatusReceived)
+          text("error", error.message);
+      }
+    }
+    document.getElementById("comparison-format").addEventListener("change", () => {
+      if (lastStatus) {
+        const generation = generationForView(lastStatus);
+        renderPolicyComparisonTable(lastStatus.policyComparisons || [], generation);
+      } else {
+        refresh();
+      }
+    });
+    document.querySelectorAll('input[name="comparison-generation-scope"]').forEach(toggle => {
+      toggle.addEventListener("change", () => {
+        showAllGenerations = document.querySelector(
+          'input[name="comparison-generation-scope"]:checked').value === "all";
+        if (lastStatus)
+          renderPolicyComparisonTable(lastStatus.policyComparisons || [], generationForView(lastStatus));
+      });
+    });
+    document.getElementById("previous-generation").addEventListener("click", () => {
+      if (!lastStatus)
+        return;
+      const generation = generationForView(lastStatus);
+      if (generation > 1) {
+        selectedGeneration = generation - 1;
+        generationSelectionChanged = true;
+        render(lastStatus);
+      }
+    });
+    document.getElementById("next-generation").addEventListener("click", () => {
+      if (!lastStatus)
+        return;
+      const generation = generationForView(lastStatus);
+      if (generation < (Number(lastStatus.generationCount) || 0)) {
+        selectedGeneration = generation + 1;
+        generationSelectionChanged = true;
+        render(lastStatus);
+      }
+    });
+    refresh();
+    pollingTimer = setInterval(refresh, 2000);
+  </script>
+</body>
+</html>

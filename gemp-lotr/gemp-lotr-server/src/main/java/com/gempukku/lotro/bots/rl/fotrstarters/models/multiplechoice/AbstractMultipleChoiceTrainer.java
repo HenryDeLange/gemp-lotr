@@ -9,7 +9,7 @@ import com.gempukku.lotro.bots.rl.semanticaction.MultipleChoiceAction;
 import com.gempukku.lotro.game.state.GameState;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.AwaitingDecisionType;
-import smile.classification.SoftClassifier;
+import smile.classification.Classifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +30,7 @@ public abstract class AbstractMultipleChoiceTrainer extends AbstractTrainer {
 
     @Override
     public String getAnswer(GameState gameState, AwaitingDecision decision, String playerName, RLGameStateFeatures features, ModelRegistry modelRegistry) {
-        SoftClassifier<double[]> model = modelRegistry.getModel(getClass());
+        Classifier<double[]> model = modelRegistry.getModel(getClass());
         double[] stateVector = features.extractFeatures(gameState, decision, playerName);
         double[] probs = new double[2];
         model.predict(stateVector, probs);
@@ -46,7 +46,7 @@ public abstract class AbstractMultipleChoiceTrainer extends AbstractTrainer {
             boolean chosePositive = chosen.equalsIgnoreCase(getPositiveOption());
 
             int label = step.reward > 0 ? (chosePositive ? 1 : 0) : (chosePositive ? 0 : 1);
-            data.add(new LabeledPoint(label, step.state));
+            data.add(new LabeledPoint(label, step.state, step.gameId, step.trainingWeight));
         }
         return data;
     }

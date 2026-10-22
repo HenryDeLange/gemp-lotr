@@ -10,11 +10,10 @@
     <artifactId>gemp-lotr-server</artifactId>
     <packaging>jar</packaging>
     <dependencies>
-        <!-- Rebuild the checked-in serialized bot models before upgrading Smile's major version. -->
         <dependency>
             <groupId>com.github.haifengl</groupId>
             <artifactId>smile-core</artifactId>
-            <version>2.6.0</version>
+            <version>7.0.0</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -114,4 +113,17 @@
             <scope>compile</scope>
         </dependency>
     </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <mainClass>com.gempukku.lotro.bots.training.BotModelTrainingMain</mainClass>
+                    <workingDirectory>${project.basedir}/../gemp-lotr-async</workingDirectory>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

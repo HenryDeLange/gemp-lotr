@@ -1046,6 +1046,18 @@ var GempLotrCommunication = Class.extend({
             dataType:"html"
         });
     },
+    getBotDeckOptions:function (formatCode, callback, errorMap) {
+        $.ajax({
+            type:"GET",
+            url:this.url + "/hall/bot-decks/" + encodeURIComponent(formatCode),
+            cache:false,
+            data:{
+                participantId:getUrlParam("participantId")},
+            success:callback,
+            error:this.errorCheck(errorMap),
+            dataType:"json"
+        });
+    },
     getFormatRules:function (callback, errorMap) {
         $.ajax({
             type:"GET",

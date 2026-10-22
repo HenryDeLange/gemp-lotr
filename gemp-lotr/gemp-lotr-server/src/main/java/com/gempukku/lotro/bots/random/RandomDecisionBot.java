@@ -10,6 +10,8 @@ import com.gempukku.lotro.logic.decisions.AwaitingDecisionType;
 import java.util.*;
 
 public class RandomDecisionBot implements BotPlayer {
+    private static final long MAX_INTEGER_RANDOM_SPAN = 20;
+
     private final String botName;
     private final Random random = new Random();
 
@@ -60,13 +62,20 @@ public class RandomDecisionBot implements BotPlayer {
             max = Integer.parseInt(params.get("max")[0]);
         }
 
-        if (min > max) {
-            // Fallback safety
-            return String.valueOf(min);
+        if (min > max)
+            throw new IllegalArgumentException("Invalid integer decision range: " + min + ".." + max);
+
+        long safeMin = min;
+        long safeMax = max;
+        long range = safeMax - safeMin + 1;
+        if (range > MAX_INTEGER_RANDOM_SPAN) {
+            long center = Math.max(safeMin, Math.min(safeMax, 0));
+            safeMin = Math.max(safeMin, center - MAX_INTEGER_RANDOM_SPAN / 2);
+            safeMax = Math.min(safeMax, center + MAX_INTEGER_RANDOM_SPAN / 2);
+            range = safeMax - safeMin + 1;
         }
 
-        int range = Math.min(max - min + 1, 1);
-        int choice = random.nextInt(range) + min;
+        long choice = safeMin + random.nextLong(range);
         return String.valueOf(choice);
     }
 

@@ -66,6 +66,9 @@ public class MarkdownParser {
     }
 
     public String renderMarkdown(String markdown, boolean shredLinks) {
+        if (markdown == null || markdown.isBlank())
+            return "";
+
         String newMsg = markdown.trim().replaceAll("\n\n\n+", "\n\n\n");
         newMsg = QuoteExtender.matcher(newMsg).replaceAll("$1\n");
 

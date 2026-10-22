@@ -39,8 +39,15 @@ public class ActionChoiceAction implements SemanticAction {
         throw new IllegalArgumentException("Option not found.");
     }
 
+    public static ActionChoiceAction fromJson(JSONObject obj) {
+        return new ActionChoiceAction(obj.getString("actionText"));
+    }
+
     @Override
     public JSONObject toJson() {
-        return null;
+        JSONObject obj = new JSONObject();
+        obj.put("type", "ActionChoiceAction");
+        obj.put("actionText", actionText);
+        return obj;
     }
 }

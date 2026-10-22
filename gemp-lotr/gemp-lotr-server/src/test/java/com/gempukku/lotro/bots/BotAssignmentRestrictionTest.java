@@ -3,7 +3,8 @@ package com.gempukku.lotro.bots;
 import com.gempukku.lotro.bots.random.RandomDecisionBot;
 import com.gempukku.lotro.bots.rl.fotrstarters.CardFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.FotrStarterBot;
-import com.gempukku.lotro.bots.rl.fotrstarters.FotrStartersRLGameStateFeatures;
+import com.gempukku.lotro.bots.rl.fotrstarters.MovieTrilogyRLGameStateFeatures;
+import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelIO;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelRegistry;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.assignment.FpAssignmentTrainer;
 import com.gempukku.lotro.bots.rl.semanticaction.AssignMinionsAction;
@@ -17,7 +18,7 @@ import com.gempukku.lotro.logic.decisions.AwaitingDecisionType;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import smile.classification.SoftClassifier;
+import smile.classification.Classifier;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -25,6 +26,7 @@ import java.io.ObjectInputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.nio.file.Path;
 
 import static org.junit.Assert.*;
 import static org.junit.Assume.assumeTrue;
@@ -117,7 +119,17 @@ public class BotAssignmentRestrictionTest {
      * features of (character strength x assigned minion strength).
      */
     private static ModelRegistry strongestOnStrongestModel() {
-        SoftClassifier<double[]> model = new SoftClassifier<>() {
+        Classifier<double[]> model = new Classifier<>() {
+            @Override
+            public int numClasses() {
+                return 2;
+            }
+
+            @Override
+            public int[] classes() {
+                return new int[] {0, 1};
+            }
+
             @Override
             public int predict(double[] x, double[] posteriori) {
                 int slots = 9 + 4, perSlot = 8;
@@ -141,7 +153,8 @@ public class BotAssignmentRestrictionTest {
     }
 
     private static FotrStarterBot modelBot(ModelRegistry registry) {
-        return new FotrStarterBot(new FotrStartersRLGameStateFeatures(), VirtualTableScenario.P1, registry, null);
+        return new FotrStarterBot(
+                new MovieTrilogyRLGameStateFeatures("fotr_block"), VirtualTableScenario.P1, registry, null);
     }
 
     @Test
@@ -319,14 +332,12 @@ public class BotAssignmentRestrictionTest {
 
     @Test
     public void shippedModelRespectsTheRestriction() throws Exception {
-        File modelFile = new File("../bot-models/FpAssignmentTrainer.model");
-        if (!modelFile.exists())
-            modelFile = new File("bot-models/FpAssignmentTrainer.model");
+        File modelFile = ModelIO.resolveModelDirectory(Path.of("..", "bot-models"), "fotr_block")
+                .resolve("FpAssignmentTrainer.model").toFile();
         assumeTrue("trained model not found", modelFile.exists());
-        SoftClassifier<double[]> model;
+        Classifier<double[]> model;
         try (var in = new ObjectInputStream(new FileInputStream(modelFile))) {
-            //noinspection unchecked
-            model = (SoftClassifier<double[]>) in.readObject();
+            model = (Classifier<double[]>) in.readObject();
         }
         ModelRegistry registry = new ModelRegistry();
         registry.registerModel(FpAssignmentTrainer.class, model);

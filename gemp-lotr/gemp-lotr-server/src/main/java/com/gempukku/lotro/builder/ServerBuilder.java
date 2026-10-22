@@ -203,7 +203,8 @@ public class ServerBuilder {
                 new BotService(
                         extract(objectMap, LotroCardBlueprintLibrary.class),
                         extract(objectMap, LotroFormatLibrary.class),
-                        extract(objectMap, PlayerDAO.class)
+                        extract(objectMap, PlayerDAO.class),
+                        extract(objectMap, ProductLibrary.class)
                 ));
 
         objectMap.put(LotroServer.class,

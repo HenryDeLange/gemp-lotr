@@ -64,9 +64,10 @@ public class Card_92_013_Tests
 		var mod = scn.GetShadowCard("mod");
 		var hides = scn.GetShadowCard("hides");
 		var aragorn = scn.GetFreepsCard("aragorn");
+		var gimli = scn.GetFreepsCard("gimli");
 
 		scn.MoveCardsToHand(hides);
-		scn.MoveCompanionsToTable(aragorn);
+		scn.MoveCompanionsToTable(aragorn, gimli);
 
 		scn.StartGame();
 		scn.SetTwilight(10);
@@ -92,9 +93,10 @@ public class Card_92_013_Tests
 		var mod = scn.GetFreepsCard("mod");
 		var hides = scn.GetShadowCard("hides");
 		var aragorn = scn.GetFreepsCard("aragorn");
+		var gimli = scn.GetFreepsCard("gimli");
 
 		scn.MoveCardsToHand(hides);
-		scn.MoveCompanionsToTable(aragorn);
+		scn.MoveCompanionsToTable(aragorn, gimli);
 
 		scn.StartGame();
 		scn.SetTwilight(10);

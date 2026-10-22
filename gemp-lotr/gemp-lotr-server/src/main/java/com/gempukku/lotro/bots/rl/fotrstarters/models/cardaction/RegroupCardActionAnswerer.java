@@ -3,6 +3,7 @@ package com.gempukku.lotro.bots.rl.fotrstarters.models.cardaction;
 public class RegroupCardActionAnswerer extends AbstractCardActionAnswerer {
     private static final String TRIGGER = "Play Regroup action or Pass";
     private final RegroupPlayCardTrainer playTrainer = new RegroupPlayCardTrainer();
+    private final RegroupUseCardTrainer useTrainer = new RegroupUseCardTrainer();
     @Override
     protected String getTextTrigger() {
         return TRIGGER;
@@ -15,7 +16,7 @@ public class RegroupCardActionAnswerer extends AbstractCardActionAnswerer {
 
     @Override
     protected AbstractPlayUseCardTrainer getUseTrainer() {
-        return null; // No card has regroup ability in starters
+        return useTrainer;
     }
 
     @Override
@@ -42,6 +43,33 @@ public class RegroupCardActionAnswerer extends AbstractCardActionAnswerer {
         @Override
         protected boolean isUseTrainer() {
             return false;
+        }
+
+        @Override
+        protected boolean isTransferTrainer() {
+            return false;
+        }
+
+        @Override
+        protected boolean isHealTrainer() {
+            return false;
+        }
+    }
+
+    public static class RegroupUseCardTrainer extends AbstractPlayUseCardTrainer {
+        @Override
+        protected String getTextTrigger() {
+            return TRIGGER;
+        }
+
+        @Override
+        protected boolean isPlayTrainer() {
+            return false;
+        }
+
+        @Override
+        protected boolean isUseTrainer() {
+            return true;
         }
 
         @Override

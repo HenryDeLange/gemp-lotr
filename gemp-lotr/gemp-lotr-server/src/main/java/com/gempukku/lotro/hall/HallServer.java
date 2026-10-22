@@ -360,7 +360,7 @@ public class HallServer extends AbstractServer {
 
     /**
      * A game against the bot.  The player's deck comes from <code>deckOwner</code> (the player, or the Librarian for a
-     * Deck Library deck); the bot's deck, when one is named, is always one of the player's own decks.
+     * Deck Library deck); the bot may use a fixed/generated bot deck or one of the player's own decks.
      */
     public void createNewSoloTable(String type, Player player, Player deckOwner, String deckName, String botDeckName, boolean isPrivate) throws  HallException {
         if (_shutdown)
@@ -373,7 +373,10 @@ public class HallServer extends AbstractServer {
 
         LotroDeck botDeck = null;
         if (botDeckName != null && !botDeckName.isEmpty()) {
-            botDeck = validateUserAndDeck(gameSettings.format(), player, botDeckName, gameSettings.collectionType(), gameSettings.league());
+            botDeck = BotService.isBotDeckSelection(botDeckName)
+                    ? BotService.createBotDeckSelectionMarker(gameSettings.format().getCode(), botDeckName)
+                    : validateUserAndDeck(gameSettings.format(), player, botDeckName,
+                    gameSettings.collectionType(), gameSettings.league());
         }
 
         _hallDataAccessLock.writeLock().lock();

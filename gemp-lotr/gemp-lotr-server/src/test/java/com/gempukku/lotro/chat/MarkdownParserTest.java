@@ -34,4 +34,10 @@ public class MarkdownParserTest {
         assertEquals("", _parser.renderDescription(null));
         assertEquals("", _parser.renderDescription("   "));
     }
+
+    @Test
+    public void nullMarkdownRendersEmpty() {
+        assertEquals("", _parser.renderMarkdown(null, false));
+        assertEquals("", _parser.renderMarkdown(null, true));
+    }
 }

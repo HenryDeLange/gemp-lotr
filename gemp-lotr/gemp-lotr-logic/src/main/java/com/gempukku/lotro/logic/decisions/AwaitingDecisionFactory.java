@@ -6,6 +6,7 @@ public class AwaitingDecisionFactory {
     public static AwaitingDecision fromJson(JSONObject obj) {
         String type = obj.getString("type");
         return switch (type) {
+            case "ACTION_CHOICE" -> ActionChoiceAwaitingDecision.fromJson(obj);
             case "MultipleChoiceAwaitingDecision" -> MultipleChoiceAwaitingDecision.fromJson(obj);
             case "IntegerAwaitingDecision" -> IntegerAwaitingDecision.fromJson(obj);
             case "CardsSelectionDecision" -> CardsSelectionDecision.fromJson(obj);
