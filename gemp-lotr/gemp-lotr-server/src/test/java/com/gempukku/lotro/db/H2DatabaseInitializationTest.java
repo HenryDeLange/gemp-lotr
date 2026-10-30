@@ -32,6 +32,8 @@ public class H2DatabaseInitializationTest {
         var devPlayer = playerDAO.getPlayer("dev");
         assertNotNull(devPlayer);
         assertNotNull(playerDAO.loginUser("dev", "dev"));
+        var librarian = playerDAO.getPlayer("Librarian");
+        assertNotNull(librarian);
         try (Connection connection = dbAccess.getDataSource().getConnection();
              var statement = connection.prepareStatement(
                      "SELECT target_format, contents FROM deck WHERE player_id = ? AND name = ?")) {
@@ -53,6 +55,16 @@ public class H2DatabaseInitializationTest {
             try (ResultSet result = statement.executeQuery()) {
                 assertTrue(result.next());
                 assertEquals(1, result.getInt(1));
+            }
+        }
+        try (Connection connection = dbAccess.getDataSource().getConnection();
+             var statement = connection.prepareStatement(
+                     "SELECT COUNT(*) FROM deck WHERE player_id = ? AND name LIKE ?")) {
+            statement.setInt(1, librarian.getId());
+            statement.setString(2, "%Starter");
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                assertEquals(6, result.getInt(1));
             }
         }
 

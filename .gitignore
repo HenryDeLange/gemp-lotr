@@ -22,4 +22,5 @@ replay
 !replay/.placeholder
 logs/nohup.out
 nohup.out
+/gemp-lotr/bot-models/.training-*/
 gemp-lotr/docker/docker-compose.yml
