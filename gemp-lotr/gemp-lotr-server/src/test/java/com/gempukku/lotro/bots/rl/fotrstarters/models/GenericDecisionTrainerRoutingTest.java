@@ -56,6 +56,28 @@ public class GenericDecisionTrainerRoutingTest {
     }
 
     @Test
+    public void passGateDoesNotTreatZeroCardOrNonCardActionChoicesAsPassable() {
+        GenericCardActionChoiceTrainer passGate = new GenericCardActionChoiceTrainer();
+        AwaitingDecision optionalZeroCardSelection = mock(AwaitingDecision.class);
+        when(optionalZeroCardSelection.getDecisionType()).thenReturn(AwaitingDecisionType.ARBITRARY_CARDS);
+        when(optionalZeroCardSelection.getDecisionParameters()).thenReturn(Map.of(
+                "cardId", new String[]{"temp0"},
+                "selectable", new String[]{"true"},
+                "min", new String[]{"0"},
+                "max", new String[]{"1"}));
+        AwaitingDecision mandatoryChoice = mock(AwaitingDecision.class);
+        when(mandatoryChoice.getDecisionType()).thenReturn(AwaitingDecisionType.ACTION_CHOICE);
+        when(mandatoryChoice.getDecisionParameters()).thenReturn(Map.of(
+                "actionId", new String[]{"mandatory-action"},
+                "actionText", new String[]{"Resolve mandatory action"}));
+
+        assertFalse(passGate.appliesTo(null, optionalZeroCardSelection, "bot"));
+        assertFalse(passGate.appliesTo(null, mandatoryChoice, "bot"));
+        assertFalse(passGate.prefersPass(optionalZeroCardSelection, new double[0], new ModelRegistry()));
+        assertFalse(passGate.prefersPass(mandatoryChoice, new double[0], new ModelRegistry()));
+    }
+
+    @Test
     public void integerOptionFeaturesAppendAStableRangeEncoding() {
         assertArrayEquals(
                 new double[]{2.0, 0.5, 2.0 / 3.0, 1.0 / 3.0, 1.0, 0.0, 0.0},

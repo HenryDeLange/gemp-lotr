@@ -2,6 +2,8 @@ package com.gempukku.lotro.bots.simulation;
 
 public record GameTacticalMetrics(
         VictoryReason victoryReason,
+        int p1SeatIndex,
+        boolean p1StartsFirst,
         int p1SitePosition,
         int p2SitePosition,
         int p1SitesControlled,
@@ -27,7 +29,8 @@ public record GameTacticalMetrics(
         int p1ShadowTwilightSpent,
         int p2ShadowTwilightSpent,
         int overwhelmingSkirmishes,
-        int maximumTwilight) {
+        int maximumTwilight,
+        GameDecisionMetrics decisionMetrics) {
 
     public enum VictoryReason {
         SITE_NINE,

@@ -1,18 +1,123 @@
 package com.gempukku.lotro.bots.training;
 
+import com.gempukku.lotro.bots.deckbuilding.DeckBuilderTrainer;
+import com.gempukku.lotro.bots.rl.fotrstarters.models.FotrStarterTrainerCatalog;
+import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelIO;
 import com.gempukku.lotro.bots.training.TrainingProgress.PlannedStage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
+import smile.classification.Classifier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BotModelTrainingPlanTest {
+    @TempDir
+    Path temporaryDirectory;
+
+    @Test
+    void trainingSafetySettingsAreExplicitAndRejectInvalidBooleans() throws Exception {
+        Path file = temporaryDirectory.resolve("training.properties");
+        Files.writeString(file, "training.data.compact.on.load=false\n"
+                + "training.transfer.guard.enabled=true\ntraining.action.pass.gate.enabled=true\n"
+                + "training.require.incumbent.models=true\n"
+                + "training.deckbuilder.max.history.records=1234\n"
+                + "models.directory=isolated-models\n");
+        var config = BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + file});
+        assertFalse(config.compactTrainingData());
+        assertTrue(config.transferGuardEnabled());
+        assertTrue(config.genericPassGateEnabled());
+        assertTrue(config.requireIncumbentModels());
+        assertEquals(1234, config.deckBuilderMaxHistoryRecords());
+        assertEquals(temporaryDirectory.resolve("isolated-models").toAbsolutePath(), config.modelDirectory());
+
+        Files.writeString(file, "training.data.compact.on.load=true\n"
+                + "training.transfer.guard.enabled=false\ntraining.action.pass.gate.enabled=false\n");
+        config = BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + file});
+        assertTrue(config.compactTrainingData());
+        assertFalse(config.transferGuardEnabled());
+        assertFalse(config.genericPassGateEnabled());
+        assertEquals(DeckBuilderTrainer.DEFAULT_MAX_HISTORY_RECORDS,
+                config.deckBuilderMaxHistoryRecords());
+
+        Files.writeString(temporaryDirectory.resolve("heldout.json"), "manifest");
+        Files.writeString(file, "training.holdout.deck.manifest=heldout.json\n");
+        config = BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + file});
+        assertEquals(temporaryDirectory.resolve("heldout.json").toAbsolutePath(), config.holdoutDeckManifest());
+
+        Files.writeString(file, "training.data.compact.on.load=true\n"
+                + "training.holdout.deck.manifest=heldout.json\n");
+        assertThrows(IllegalArgumentException.class,
+                () -> BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + file}));
+
+        Files.writeString(file, "training.data.compact.on.load=maybe\n");
+        assertThrows(IllegalArgumentException.class,
+                () -> BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + file}));
+
+        Files.writeString(file, "training.deckbuilder.max.history.records=0\n");
+        assertThrows(IllegalArgumentException.class,
+                () -> BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + file}));
+    }
+
+    @Test
+    void compactionRefusesCompressedDecisionDataBeforeTrainingStarts() throws Exception {
+        Path dataDirectory = temporaryDirectory.resolve("corpus");
+        Path compressedDecisionFile = dataDirectory.resolve(
+                "public-observation-v8/fotr_block/movie-block-example.jsonl.gz");
+        Files.createDirectories(compressedDecisionFile.getParent());
+        Files.write(compressedDecisionFile, new byte[]{1});
+        Path configFile = temporaryDirectory.resolve("compact.properties");
+        Files.writeString(configFile, "training.data.directory=corpus\n"
+                + "training.data.compact.on.load=true\n");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> BotModelTrainingMain.TrainingConfig.load(
+                        new String[]{"--config=" + configFile}));
+        assertEquals(1, Files.size(compressedDecisionFile));
+    }
+
+    @Test
+    void requiredIncumbentsRejectMissingOrCorruptSnapshot() throws Exception {
+        List<String> formats = List.of("movie");
+        assertThrows(IllegalStateException.class,
+                () -> BotModelTrainingMain.validateRequiredIncumbentModels(temporaryDirectory, formats));
+        Path policy = ModelIO.resolveModelDirectory(temporaryDirectory, "movie");
+        var trainers = FotrStarterTrainerCatalog.createAll();
+        for (var trainer : trainers)
+            ModelIO.saveModel(trainer.getClass(), new ConstantModel(), policy);
+        ModelIO.saveModel(DeckBuilderTrainer.class, new ConstantModel(),
+                ModelIO.resolveDeckBuilderDirectory(temporaryDirectory, "movie"));
+        BotModelTrainingMain.validateRequiredIncumbentModels(temporaryDirectory, formats);
+
+        Files.writeString(policy.resolve(trainers.getFirst().getClass().getSimpleName() + ".model"), "corrupt");
+        assertThrows(IllegalStateException.class,
+                () -> BotModelTrainingMain.validateRequiredIncumbentModels(temporaryDirectory, formats));
+    }
+
+    @Test
+    void configuredIncumbentSnapshotCanBeLoadedWhenRequested() {
+        String path = System.getProperty("gemp.test.bot.incumbent");
+        Assumptions.assumeTrue(path != null && !path.isBlank(), "No incumbent snapshot supplied");
+        BotModelTrainingMain.validateRequiredIncumbentModels(
+                Path.of(path), List.of("fotr_block", "ttt_block", "king_block", "movie"));
+    }
+
+    private static final class ConstantModel implements Classifier<double[]> {
+        @Override public int numClasses() { return 2; }
+        @Override public int[] classes() { return new int[]{0, 1}; }
+        @Override public int predict(double[] features) { return 0; }
+    }
+
     @Test
     void plansAllFormatGamesBeforeOneSharedFitAndCrossFormatEvaluation() {
         List<PlannedStage> plan = BotModelTrainingMain.trainingPlan(

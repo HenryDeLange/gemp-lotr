@@ -1,6 +1,11 @@
 package com.gempukku.lotro.db;
 
 import com.gempukku.lotro.collection.CollectionSerializer;
+import com.gempukku.lotro.bots.MovieBlockDeckFactory;
+import com.gempukku.lotro.game.DefaultAdventureLibrary;
+import com.gempukku.lotro.game.LotroCardBlueprintLibrary;
+import com.gempukku.lotro.game.formats.LotroFormatLibrary;
+import com.gempukku.lotro.packs.ProductLibrary;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -64,9 +69,10 @@ public class H2DatabaseInitializationTest {
             statement.setString(2, "%Starter");
             try (ResultSet result = statement.executeQuery()) {
                 assertTrue(result.next());
-                assertEquals(6, result.getInt(1));
+                assertEquals(18, result.getInt(1));
             }
         }
+        assertLibrarianStartersMatchOfficialProducts(dbAccess, librarian.getId());
 
         assertTrue(new DbPrizePlaceholderDAO(dbAccess).getUnresolved().isEmpty());
         assertTrue(new DbTransferDAO(dbAccess).getPastAnnouncements().isEmpty());
@@ -84,5 +90,35 @@ public class H2DatabaseInitializationTest {
         return new DbAccess(new DbAccess.Configuration(
                 "org.h2.Driver", url, "sa", "", "SELECT 1",
                 Map.of(), List.of("database-init-tables.sql", "database-init-dev-h2.sql")));
+    }
+
+    private static void assertLibrarianStartersMatchOfficialProducts(DbAccess dbAccess, int librarianId)
+            throws Exception {
+        LotroCardBlueprintLibrary cards = new LotroCardBlueprintLibrary();
+        LotroFormatLibrary formats = new LotroFormatLibrary(new DefaultAdventureLibrary(), cards);
+        ProductLibrary products = new ProductLibrary(cards);
+        int checked = 0;
+        try (Connection connection = dbAccess.getDataSource().getConnection();
+             var statement = connection.prepareStatement(
+                     "SELECT target_format, contents FROM deck WHERE player_id = ? AND name = ?")) {
+            statement.setInt(1, librarianId);
+            for (String formatCode : List.of("fotr_block", "ttt_block", "king_block")) {
+                var format = formats.getFormat(formatCode);
+                for (var starter : MovieBlockDeckFactory.createStarterDecks(
+                        formatCode, format, cards, products)) {
+                    String deckName = starter.getDeckName().replace(" (" + formatCode + " legal)", "");
+                    statement.setString(2, deckName);
+                    try (ResultSet result = statement.executeQuery()) {
+                        assertTrue("Missing official library starter: " + deckName, result.next());
+                        assertEquals(formatCode, result.getString("target_format"));
+                        assertEquals(DeckSerialization.buildContentsFromDeck(starter),
+                                result.getString("contents"));
+                        assertTrue("Duplicate official library starter: " + deckName, !result.next());
+                    }
+                    checked++;
+                }
+            }
+        }
+        assertEquals(18, checked);
     }
 }

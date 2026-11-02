@@ -155,9 +155,9 @@
   </section>
   <section class="panel">
     <h2>Training roadmap
-      <span class="help-control"><button class="help" type="button" data-help="The run finishes deck setup for every selected format first. It then completes every format's generation 1 stages before any generation 2 stage starts, and repeats that order for later generations. Formats run one at a time within each generation. Progress units are games or model-training tasks, so the whole-run percentage is a task count, not a time estimate." aria-label="About training order and progress" aria-expanded="false">?</button></span>
+      <span class="help-control"><button class="help" type="button" data-help="In each generation, each format evaluates decks and collects training games in turn. The shared policy is then fitted and individual policy changes are evaluated across formats. Progress units are games or model-training tasks, so the whole-run percentage is a task count, not a time estimate." aria-label="About training order and progress" aria-expanded="false">?</button></span>
     </h2>
-    <p class="muted">Choose a generation to inspect its progress and results across formats. Live run status above always shows the active work; deck setup below is shared setup before generation 1.</p>
+    <p class="muted">Choose a generation to inspect its progress and results across formats. Live run status above always shows the active work; deck evaluation is repeated in each generation.</p>
     <p class="muted" id="generation-view-summary" aria-live="polite"></p>
     <div class="table-wrap">
       <table>
@@ -169,12 +169,12 @@
   </section>
   <section class="panel">
     <h2>Deck builder: options and ranking model
-      <span class="help-control"><button class="help" type="button" data-help="Before game generations begin, the deck builder tests legal deck options against reference decks. Some complete deck comparisons are kept out of learning and used to check whether the ranking model learned a useful ordering. A new ranking is selected only when it is ready and improves on the existing one; otherwise the existing ranking or random deck sampling remains in use." aria-label="About deck choices and ranking results" aria-expanded="false">?</button></span>
+      <span class="help-control"><button class="help" type="button" data-help="In each generation and format, the deck builder tests legal deck options against reference decks. Some complete deck comparisons are kept out of learning and used to check whether the ranking model learned a useful ordering. A new ranking is selected only when it is ready and improves on the existing one; otherwise the existing ranking or random deck sampling remains in use." aria-label="About deck choices and ranking results" aria-expanded="false">?</button></span>
     </h2>
-    <p class="muted">The deck builder evaluates legal deck options in each generation. "New ranking selected" means the new deck-ranking model replaces the previous one for choosing training decks.</p>
+    <p class="muted">The deck builder evaluates legal deck options in each generation. Each ranker fit uses a deterministic cap on historical outcomes plus every outcome from that generation; the append-only history is not compacted. "New ranking selected" means the new deck-ranking model replaces the previous one for choosing training decks.</p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Format</th><th>Generation</th><th>Ranking method</th><th>Deck options</th><th>Games played</th><th>Skipped</th><th>Deck results</th><th title="The total number of deck comparisons, then how many were used for learning and how many were kept aside for a separate check.">Examples (total / learning / check)</th><th>New ranking: check match</th><th title="How often the existing ranking matched the outcomes of deck comparisons kept aside from its learning examples.">Current ranking: check match</th><th>Choice</th></tr></thead>
+        <thead><tr><th>Format</th><th>Generation</th><th>Ranking method</th><th>Deck options</th><th>Games played</th><th>Skipped</th><th>Deck results</th><th title="Historical sample plus this generation's new outcomes / learning / check.">Examples used (total / learning / check)</th><th>New outcomes this generation</th><th>New ranking: check match</th><th title="How often the existing ranking matched the outcomes of deck comparisons kept aside for a separate check.">Current ranking: check match</th><th>Choice</th></tr></thead>
         <tbody id="deck-builders"></tbody>
       </table>
       <p id="deck-builder-empty" class="muted empty-state">Deck setup has not finished yet.</p>
@@ -182,7 +182,7 @@
   </section>
   <section class="panel">
     <h2>Individual policy changes: game evaluation and promotion
-      <span class="help-control"><button class="help" type="button" data-help="Each row tests one decision model change by itself against the current working policy, using the same deck pairs from both seats in every format. A model is promoted only if the paired cross-format confidence and skip safeguards pass. Accepted models become the opponent for later tests and are used by the next generation; changes accepted in the last generation are included in the final release. Rejected changes leave the current policy unchanged." aria-label="About individual policy evaluation and promotion" aria-expanded="false">?</button></span>
+      <span class="help-control"><button class="help" type="button" data-help="Each row tests one decision model change by itself against the current working policy, using the same deck pairs with the simulator bot arguments reversed in every format. Bidding determines actual starting order, which is not controlled by this swap. A model is promoted only if the paired cross-format confidence and skip safeguards pass. Accepted models become the opponent for later tests and are used by the next generation; changes accepted in the last generation are included in the final release." aria-label="About individual policy evaluation and promotion" aria-expanded="false">?</button></span>
     </h2>
     <p class="muted">Models are evaluated one at a time, not bundled together. "Promoted" means that specific model was selected; "Current policy kept" means the trained candidate did not replace it.</p>
     <div class="comparison-controls">
@@ -204,6 +204,18 @@
     </div>
   </section>
   <section class="panel">
+    <h2>Training data written this run</h2>
+    <p class="muted">Input steps are completed-episode decisions submitted for persistence, not all game decisions. One step may be written to multiple trainer files. JSON bytes show the uncompressed records; disk bytes show the actual append, including gzip compression. These are this run's appends, not retained corpus size; compaction, if enabled, is separate. The game denominator includes completed training batches only, so in-progress writes can make the ratios temporarily high.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Format</th><th>Completed training-batch games</th><th>Decision input steps</th><th>Trainer records</th><th>Decision JSON bytes</th><th>Decision disk bytes</th><th>Steps / game</th><th>Disk bytes / game</th><th>Deck outcomes</th><th>Deck JSON bytes</th><th>Deck disk bytes</th></tr></thead>
+        <tbody id="training-data"></tbody>
+      </table>
+      <p id="training-data-empty" class="muted empty-state">No training data has been written yet.</p>
+    </div>
+    <p class="muted" id="bot-action-gates-summary">No bot action-gate overrides recorded yet.</p>
+  </section>
+  <section class="panel">
     <h2>Decision models
       <span class="help-control"><button class="help" type="button" data-help="A decision model handles one kind of game choice. The learning match rate tells how often it predicts the recorded choices in examples used for learning. The check match rate uses examples from whole games kept out of learning. These scores measure how well it repeats recorded choices, not whether the bot wins; the game comparison above measures that. Example counts are decisions, not games; positive and negative are the two labels being learned." aria-label="About decision model progress and results" aria-expanded="false">?</button></span>
     </h2>
@@ -218,9 +230,9 @@
   </section>
   <section class="panel">
     <h2>Game results
-      <span class="help-control"><button class="help" type="button" data-help="These rows summarize completed batches. 'Learning bot vs random bot' checks the learner against random choices. 'Self-play' puts the same policy in both seats. Individual policy checks compare one trained decision model against the current working policy, swapping seats on the same deck pairs. Seat 1 and seat 2 are player identities, not fixed Fellowship or Shadow roles. The extra game details are diagnostics, not additional training rewards." aria-label="About completed game comparisons" aria-expanded="false">?</button></span>
+      <span class="help-control"><button class="help" type="button" data-help="These rows summarize completed batches. 'Learning bot vs random bot' checks the learner against random choices. 'Self-play' uses the same policy for both bots. Individual policy checks reverse the simulator's bot arguments on the same deck pairs; bidding still determines actual starting order. The extra game details are diagnostics, not additional training rewards." aria-label="About completed game comparisons" aria-expanded="false">?</button></span>
     </h2>
-    <p class="muted">Results below are for the selected generation. Each individual model is checked in both seats so the comparison is not decided by starting position. The selection label says whether the candidate replaced the current working model.</p>
+    <p class="muted">Results below are for the selected generation. Each individual model is checked in both simulator argument positions; actual starting order is determined by bidding and is not controlled. The selection label says whether the candidate replaced the current working model.</p>
     <div class="table-wrap">
       <table id="batches-table">
         <thead><tr><th>Format</th><th>Generation</th><th>What was compared</th><th>Games</th><th>Result</th><th>Win rate</th><th>Game details</th></tr></thead>
@@ -325,18 +337,34 @@
     function stageName(name) {
       if (name === "preparing")
         return "Preparing this format";
-      if (name === "deck-builder-evaluation")
+      name = String(name || "");
+      if (name.endsWith("deck-builder-evaluation"))
         return "Choose and test deck options";
       if (name === "decision-model-fitting")
         return "Train decision models";
-      if (name.endsWith("vs-random"))
-        return "Learning bot vs random bot";
-      if (name.endsWith("self-play"))
-        return "Learning bot self-play";
+      if (isRandomBatch(name))
+        return "Learning bot vs random bot" + batchDeckDescription(name);
+      if (isSelfPlayBatch(name))
+        return "Learning bot self-play" + batchDeckDescription(name);
       const policyChange = name.match(/evaluation policy-change-(\d+)-(candidate-first|candidate-second)$/);
       if (policyChange)
         return `Test policy change ${policyChange[1]} against current policy (${policyChange[2] === "candidate-first" ? "candidate first" : "candidate second"})`;
       return name || "Preparing";
+    }
+
+    function isRandomBatch(name) {
+      return /vs-random(?:-(?:starter|generated))?$/.test(name);
+    }
+
+    function isSelfPlayBatch(name) {
+      return /self-play(?:-(?:same-starter|different-starters|generated))?$/.test(name);
+    }
+
+    function batchDeckDescription(name) {
+      if (name.endsWith("different-starters")) return " · different starters";
+      if (name.endsWith("same-starter") || name.endsWith("vs-random-starter")) return " · same starter";
+      if (name.endsWith("-generated")) return " · generated decks";
+      return "";
     }
 
     function stageUnit(name) {
@@ -387,9 +415,11 @@
 
       const stages = (data.stages || []).filter(stage => Number(stage.generation) === generation);
       const completed = stages.reduce((sum, stage) => sum
-        + Math.min(Number(stage.total) || 0, Number(stage.completed) || 0), 0);
+        + (stage.state === "completed" || stage.state === "skipped"
+          ? Number(stage.total) || 0
+          : Math.min(Number(stage.total) || 0, Number(stage.completed) || 0)), 0);
       const total = stages.reduce((sum, stage) => sum + (Number(stage.total) || 0), 0);
-      const formats = new Set(stages.map(stage => stage.format)).size;
+      const formats = new Set(stages.map(stage => stage.format).filter(format => format !== "shared-policy")).size;
       const models = (data.models || []).filter(model => Number(model.generation) === generation).length;
       const batches = (data.batches || []).filter(batch => Number(batch.generation) === generation).length;
       text("generation-view-summary", generationCount > 0
@@ -494,10 +524,10 @@
       const secondWins = Number(record[2]);
       const skipped = Number(record[3]) || 0;
       let outcome;
-      if (stage.name.endsWith("vs-random"))
+      if (isRandomBatch(stage.name))
         outcome = `Learning bot ${firstWins}–${secondWins} random bot`;
-      else if (stage.name.endsWith("self-play"))
-        outcome = `Seat 1 ${firstWins}–${secondWins} seat 2`;
+      else if (isSelfPlayBatch(stage.name))
+        outcome = `Bot 1 ${firstWins}–${secondWins} bot 2`;
       else if (stage.name.includes("evaluation policy-change-") && stage.name.endsWith("candidate-first"))
         outcome = `Candidate ${firstWins}–${secondWins} current model`;
       else if (stage.name.includes("evaluation policy-change-") && stage.name.endsWith("candidate-second"))
@@ -513,20 +543,20 @@
       const secondWins = Number(batch.losses) || 0;
       const skipped = Number(batch.skippedGames) || 0;
       const includeSkipped = result => skipped ? `${result}; ${skipped} skipped` : result;
-      if (label.endsWith("vs-random")) {
+      if (isRandomBatch(label)) {
         return {
-          comparison: "Learning bot vs random bot",
+          comparison: "Learning bot vs random bot" + batchDeckDescription(label),
           result: includeSkipped(`Learning bot ${firstWins}–${secondWins} random bot`),
           winRate: firstWins + secondWins ? firstWins * 100 / (firstWins + secondWins) : 0,
           winRateLabel: "Learning bot"
         };
       }
-      if (label.endsWith("self-play")) {
+      if (isSelfPlayBatch(label)) {
         return {
-          comparison: "Same learned policy in both seats",
-          result: includeSkipped(`Seat 1 ${firstWins}–${secondWins} seat 2`),
+          comparison: "Same learned policy for both bots" + batchDeckDescription(label),
+          result: includeSkipped(`Bot 1 ${firstWins}–${secondWins} bot 2`),
           winRate: firstWins + secondWins ? firstWins * 100 / (firstWins + secondWins) : 0,
-          winRateLabel: "Seat 1"
+          winRateLabel: "Bot 1"
         };
       }
 
@@ -537,7 +567,7 @@
         const currentWins = candidateFirst ? secondWins : firstWins;
         const policyChange = label.match(/policy-change-(\d+)-candidate-(?:first|second)$/);
         return {
-          comparison: `Individual policy change ${policyChange ? policyChange[1] : ""} vs working policy (candidate in seat ${candidateFirst ? 1 : 2})`,
+          comparison: `Individual policy change ${policyChange ? policyChange[1] : ""} vs working policy (candidate bot ${candidateFirst ? 1 : 2})`,
           result: includeSkipped(`Candidate model ${candidateWins}–${currentWins} working policy`
             + (batch.selection ? ` · ${batch.selection}` : "")),
           winRate: candidateWins + currentWins ? candidateWins * 100 / (candidateWins + currentWins) : 0,
@@ -546,22 +576,41 @@
       }
       return {
         comparison: label || "Game comparison",
-        result: includeSkipped(`Seat 1 ${firstWins}–${secondWins} seat 2`),
+        result: includeSkipped(`Bot 1 ${firstWins}–${secondWins} bot 2`),
         winRate: firstWins + secondWins ? firstWins * 100 / (firstWins + secondWins) : 0,
-        winRateLabel: "Seat 1"
+        winRateLabel: "Bot 1"
       };
     }
 
-    function batchDetails(batch) {
+    function batchDetails(batch, diagnostics) {
       const metrics = batch.tacticalMetrics;
-      if (!metrics || !metrics.gamesMeasured)
-        return "No game-end details recorded.";
-      const average = total => (total / metrics.gamesMeasured).toFixed(1);
-      return `Endings: final site ${metrics.siteNineWins}; Ring-bearer corrupted ${metrics.ringBearerCorruptionWins}; `
-        + `Ring-bearer died ${metrics.ringBearerDeathWins}; other ${metrics.otherWins}. `
-        + `Average site reached: seat 1 ${average(metrics.p1SitePositionTotal)}/9, `
-        + `seat 2 ${average(metrics.p2SitePositionTotal)}/9. `
-        + `Overwhelming skirmishes: ${metrics.overwhelmingSkirmishes}.`;
+      const details = [];
+      if (metrics && metrics.gamesMeasured) {
+        const average = total => (total / metrics.gamesMeasured).toFixed(1);
+        const decisions = metrics.decisionMetrics;
+        const decisionDetails = decisions && decisions.gamesMeasured
+          ? ` Decisions/game: mean ${(decisions.decisionsTotal / decisions.gamesMeasured).toFixed(1)}, `
+            + `median ${decisions.medianDecisions}, p95 ${decisions.p95Decisions}, max ${decisions.maximumDecisions}. `
+            + `Card-action passes ${decisions.cardActionPasses}/${decisions.cardActionChoices}; `
+            + `transfer actions ${decisions.transferActions}; observed same-turn attachment reversals ${decisions.attachmentReversals}.`
+          : "";
+        details.push(`Endings: final site ${metrics.siteNineWins}; Ring-bearer corrupted ${metrics.ringBearerCorruptionWins}; `
+          + `Ring-bearer died ${metrics.ringBearerDeathWins}; other ${metrics.otherWins}. `
+          + `Average site reached: bot 1 ${average(metrics.p1SitePositionTotal)}/9, `
+          + `bot 2 ${average(metrics.p2SitePositionTotal)}/9. `
+          + `Overwhelming skirmishes: ${metrics.overwhelmingSkirmishes}.`
+          + decisionDetails);
+      }
+      if (diagnostics && Number(diagnostics.games) > 0) {
+        const games = Number(diagnostics.games);
+        details.push(`Batch safeguards: ${Number(diagnostics.cycleRecoveries || 0)} cycle recoveries `
+          + `(${(Number(diagnostics.cycleRecoveries || 0) * 1000 / games).toFixed(1)} per 1,000 games); `
+          + `${Number(diagnostics.transferConstraints || 0)} repeat-transfer constraints; `
+          + `${Number(diagnostics.genericPassVetoes || 0)} shared-model Pass vetoes; `
+          + `${Number(diagnostics.decisionModelFallbacks || 0)} model fallbacks; `
+          + `${Number(diagnostics.invalidAnswerFallbacks || 0)} invalid-answer fallbacks.`);
+      }
+      return details.join(" ") || "No game-end or batch safeguard details recorded.";
     }
 
     function formatTrainingDuration(milliseconds) {
@@ -850,7 +899,7 @@
       const generationCount = Number(data.generationCount) || 0;
       const viewGeneration = generationForView(data);
       updateGenerationControls(data, viewGeneration, generationCount);
-      const isSetup = !data.generation || data.stage === "deck-builder-evaluation";
+      const isSetup = !data.generation;
       const generationLabel = isSetup
         ? "Setup before generation 1"
         : `Generation ${data.generation} of ${generationCount || data.generation}`;
@@ -881,10 +930,7 @@
       const stages = document.getElementById("stages");
       stages.replaceChildren();
       const visibleStages = (data.stages || []).filter(stage =>
-        Number(stage.generation) === 0 || Number(stage.generation) === viewGeneration)
-        .sort((first, second) => formatRank(first.format) - formatRank(second.format)
-          || Number(first.generation) - Number(second.generation)
-          || first.name.localeCompare(second.name));
+        Number(stage.generation) === 0 || Number(stage.generation) === viewGeneration);
       for (const [index, stage] of visibleStages.entries()) {
         const stageGeneration = stage.generation
           ? `Generation ${stage.generation} of ${generationCount || stage.generation}`
@@ -986,12 +1032,42 @@
           Number(deck.skippedGames || 0).toLocaleString(),
           `${deck.wins} wins / ${deck.losses} losses (${deckWinRate}%)`,
           `${Number(deck.accumulatedExamples || 0).toLocaleString()} total · ${Number(deck.trainingExamples || 0).toLocaleString()} learning / ${Number(deck.validationExamples || 0).toLocaleString()} check`,
+          Number(deck.recentExamples || 0).toLocaleString(),
           checkMatchRate,
           currentCheckMatchRate,
           choice
         ]);
       }
       document.getElementById("deck-builder-empty").hidden = deckBuilders.length > 0;
+
+      const trainingData = document.getElementById("training-data");
+      trainingData.replaceChildren();
+      const trainingDataRows = [...(data.trainingData || [])]
+        .sort((first, second) => formatRank(first.format) - formatRank(second.format));
+      for (const totals of trainingDataRows) {
+        const games = (data.batches || []).filter(batch => batch.format === totals.format
+          && (isRandomBatch(batch.label || "") || isSelfPlayBatch(batch.label || "")))
+          .reduce((sum, batch) => sum + Number(batch.wins || 0) + Number(batch.losses || 0), 0);
+        const steps = Number(totals.inputSteps || 0);
+        const bytes = Number(totals.decisionBytes || 0);
+        addRow(trainingData, [
+          formatName(totals.format), games.toLocaleString(), steps.toLocaleString(),
+          Number(totals.trainerRecords || 0).toLocaleString(),
+          Number(totals.decisionJsonBytes || 0).toLocaleString(), bytes.toLocaleString(),
+          games ? (steps / games).toFixed(1) : "—",
+          games ? (bytes / games).toFixed(1) : "—",
+          Number(totals.deckExamples || 0).toLocaleString(),
+          Number(totals.deckJsonBytes || 0).toLocaleString(),
+          Number(totals.deckBytes || 0).toLocaleString()
+        ]);
+      }
+      document.getElementById("training-data-empty").hidden = trainingDataRows.length > 0;
+      const guard = (data.transferGuard || []).reduce((sum, item) =>
+        sum + Number(item.constrainedDecisions || 0), 0);
+      const passOverrides = (data.genericPassGate || []).reduce((sum, item) =>
+        sum + Number(item.passOverrides || 0), 0);
+      text("bot-action-gates-summary", `${guard.toLocaleString()} optional Fellowship choices constrained by the repeat-transfer safeguard; `
+        + `${passOverrides.toLocaleString()} phase-specific actions vetoed by the shared Pass model across all stages this run.`);
 
       const batches = document.getElementById("batches");
       batches.replaceChildren();
@@ -1002,6 +1078,9 @@
       for (const batch of batchRows) {
         const description = describeBatch(batch);
         const games = Number(batch.wins || 0) + Number(batch.losses || 0);
+        const diagnostics = (data.batchDecisionDiagnostics || []).find(item =>
+          item.format === batch.format && Number(item.generation) === Number(batch.generation)
+          && item.label === batch.label);
         addRow(batches, [
           formatName(batch.format),
           `Generation ${batch.generation} of ${generationCount || batch.generation}`,
@@ -1009,7 +1088,7 @@
           games.toLocaleString(),
           description.result,
           `${description.winRateLabel}: ${description.winRate.toFixed(1)}%`,
-          batchDetails(batch)
+          batchDetails(batch, diagnostics)
         ]);
       }
       const batchEmpty = document.getElementById("batch-empty");

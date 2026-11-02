@@ -41,6 +41,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlayer {
+    public static final String TRANSFER_GUARD_PROPERTY = "gemp.lotr.bot.fellowshipTransferGuard";
+    public static final String GENERIC_PASS_GATE_PROPERTY = "gemp.lotr.bot.genericActionPassGate";
     private static final Logger LOG = LogManager.getLogger(FotrStarterBot.class);
     private static final double TERMINAL_REWARD_DISCOUNT = 0.995;
     private final List<DecisionAnswerer> cardSelectionTrainers = List.of(
@@ -107,13 +109,19 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
     private final double explorationRate;
     private final double explorationExampleWeight;
     private final double episodeExampleWeight;
+    private final FellowshipTransferGuard transferGuard;
+    private final boolean genericPassGateEnabled;
     private final Set<Class<?>> trainerFailuresLogged = ConcurrentHashMap.newKeySet();
 
     private CardActionSelectionDecision lastDecision = null;
+    private Phase lastDecisionPhase;
+    private int lastDecisionTurn;
     private int decisionRepeat = 0;
     private String lastAction = null;
     private int answerRepeat = 0;
     private String gameId;
+    private List<String> episodeDeckFingerprints = List.of();
+    private boolean lastDecisionRecorded;
 
     private final List<LearningStep> episodeSteps = new ArrayList<>();
 
@@ -139,6 +147,37 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
             double explorationRate,
             double explorationExampleWeight,
             double episodeExampleWeight) {
+        this(features, playerId, modelRegistry, replayBuffer, eventReporter, explorationRate,
+                explorationExampleWeight, episodeExampleWeight,
+                configuredTransferGuard(), configuredGenericPassGate());
+    }
+
+    public FotrStarterBot(
+            RLGameStateFeatures features,
+            String playerId,
+            ModelRegistry modelRegistry,
+            ReplayBuffer replayBuffer,
+            TrainingEventReporter eventReporter,
+            double explorationRate,
+            double explorationExampleWeight,
+            double episodeExampleWeight,
+            boolean transferGuardEnabled) {
+        this(features, playerId, modelRegistry, replayBuffer, eventReporter, explorationRate,
+                explorationExampleWeight, episodeExampleWeight,
+                transferGuardEnabled, configuredGenericPassGate());
+    }
+
+    public FotrStarterBot(
+            RLGameStateFeatures features,
+            String playerId,
+            ModelRegistry modelRegistry,
+            ReplayBuffer replayBuffer,
+            TrainingEventReporter eventReporter,
+            double explorationRate,
+            double explorationExampleWeight,
+            double episodeExampleWeight,
+            boolean transferGuardEnabled,
+            boolean genericPassGateEnabled) {
         super(playerId);
         if (!Double.isFinite(explorationRate) || explorationRate < 0.0 || explorationRate > 1.0)
             throw new IllegalArgumentException("Exploration rate must be between 0 and 1");
@@ -156,6 +195,23 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
         this.explorationRate = explorationRate;
         this.explorationExampleWeight = explorationExampleWeight;
         this.episodeExampleWeight = episodeExampleWeight;
+        this.transferGuard = transferGuardEnabled ? new FellowshipTransferGuard(playerId) : null;
+        this.genericPassGateEnabled = genericPassGateEnabled;
+    }
+
+    public static boolean configuredTransferGuard() {
+        return configuredBoolean(TRANSFER_GUARD_PROPERTY, true);
+    }
+
+    public static boolean configuredGenericPassGate() {
+        return configuredBoolean(GENERIC_PASS_GATE_PROPERTY, false);
+    }
+
+    private static boolean configuredBoolean(String property, boolean defaultValue) {
+        String value = System.getProperty(property, Boolean.toString(defaultValue));
+        if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false"))
+            throw new IllegalArgumentException(property + " must be true or false");
+        return Boolean.parseBoolean(value);
     }
 
     @Override
@@ -165,41 +221,61 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
 
     @Override
     public String chooseAction(GameState gameState, AwaitingDecision decision, AssignmentLegality legality) {
+        if (transferGuard != null)
+            transferGuard.observe(gameState, decision);
+        lastDecisionRecorded = false;
         double[] stateVector = features.extractFeatures(gameState, decision, getName());
 
         boolean exploratory = replayBuffer != null
                 && ThreadLocalRandom.current().nextDouble() < explorationRate;
-        SemanticAction action = chooseSemanticAction(gameState, decision, legality, exploratory);
+        ActionSelection selection = chooseSemanticAction(gameState, decision, legality, exploratory);
+        SemanticAction action = selection.action();
 
-        if (replayBuffer != null) {
+        if (replayBuffer != null && !selection.guardConstrained()) {
             LearningStep step = new LearningStep(
-                    stateVector, action, getName().equals(gameState.getCurrentPlayerId()), decision, gameId);
+                    stateVector, action, getName().equals(gameState.getCurrentPlayerId()), decision, gameId,
+                    episodeDeckFingerprints);
             step.trainingWeight = episodeExampleWeight
                     * (exploratory ? explorationExampleWeight : 1.0);
             episodeSteps.add(step);
+            lastDecisionRecorded = true;
         }
 
         return action.toDecisionString(decision, gameState);
     }
 
-    private SemanticAction chooseSemanticAction(
+    private ActionSelection chooseSemanticAction(
             GameState gameState,
             AwaitingDecision decision,
             AssignmentLegality legality,
             boolean exploratory) {
+        FellowshipTransferGuard.PreparedDecision prepared = transferGuard == null
+                ? null : transferGuard.prepare(gameState, decision);
+        AwaitingDecision modelDecision = prepared == null ? decision : prepared.decision();
         String action = exploratory
-                ? super.chooseAction(gameState, decision, legality)
-                : switch (decision.getDecisionType()) {
-                    case INTEGER -> chooseIntegerAction(gameState, decision);
-                    case MULTIPLE_CHOICE -> chooseMultipleChoiceAction(gameState, decision);
-                    case ARBITRARY_CARDS -> chooseArbitraryCardsAction(gameState, decision);
-                    case CARD_ACTION_CHOICE -> chooseCardActionChoice(gameState, decision);
-                    case ACTION_CHOICE -> chooseActionChoice(gameState, decision);
-                    case CARD_SELECTION -> chooseCardSelectionAction(gameState, decision);
-                    case ASSIGN_MINIONS -> chooseAssignmentAction(gameState, decision, legality);
+                ? super.chooseAction(gameState, modelDecision, legality)
+                : switch (modelDecision.getDecisionType()) {
+                    case INTEGER -> chooseIntegerAction(gameState, modelDecision);
+                    case MULTIPLE_CHOICE -> chooseMultipleChoiceAction(gameState, modelDecision);
+                    case ARBITRARY_CARDS -> chooseArbitraryCardsAction(gameState, modelDecision);
+                    case CARD_ACTION_CHOICE -> chooseCardActionChoice(gameState, modelDecision);
+                    case ACTION_CHOICE -> chooseActionChoice(gameState, modelDecision);
+                    case CARD_SELECTION -> chooseCardSelectionAction(gameState, modelDecision);
+                    case ASSIGN_MINIONS -> chooseAssignmentAction(gameState, modelDecision, legality);
                 };
 
-        return switch (decision.getDecisionType()) {
+        boolean guardConstrained = prepared != null && prepared.filtered();
+        if (guardConstrained) {
+            action = prepared.toOriginalAnswer(action);
+            if (eventReporter != null)
+                eventReporter.recordEvent(Severity.SUCCESS, "transfer-guard-constrained-decision", null,
+                        "A previously transferred item was excluded from an optional Fellowship action choice.", null);
+        }
+        if (transferGuard != null && decision.getDecisionType()
+                == com.gempukku.lotro.logic.decisions.AwaitingDecisionType.CARD_ACTION_CHOICE)
+            transferGuard.selected(gameState, decision, action);
+
+        SemanticAction selected = switch (decision.getDecisionType()) {
             case INTEGER -> new IntegerChoiceAction(Integer.parseInt(action));
             case MULTIPLE_CHOICE -> new MultipleChoiceAction(action, decision);
             case ARBITRARY_CARDS -> new ChooseFromArbitraryCardsAction(action, decision);
@@ -213,8 +289,10 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
             }
             case ASSIGN_MINIONS -> new AssignMinionsAction(action, decision, gameState, gameState.getCurrentPlayerId().equals(getName()));
         };
+        return new ActionSelection(selected, guardConstrained);
     }
 
+    private record ActionSelection(SemanticAction action, boolean guardConstrained) { }
     private String chooseAssignmentAction(GameState gameState, AwaitingDecision decision, AssignmentLegality legality) {
         for (AbstractAssignmentTrainer trainer : assignmentTrainers) {
             if (trainer.appliesTo(gameState, decision, getName())) {
@@ -259,25 +337,40 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
             chosenAnswer = answerTrainer(trainer, gameState, decision);
             break;
         }
-        // Loop prevention
-        if (chosenAnswer != null) {
-            if (decision.equals(lastDecision) && chosenAnswer.equals(lastAction)) {
-                answerRepeat++;
-                decisionRepeat++;
-                if (answerRepeat >= 3) {
-                    answerRepeat = 0;
-                    lastAction = null;
-                    return "";
+        if (chosenAnswer != null && !chosenAnswer.isEmpty()
+                && genericPassGateEnabled
+                && modelRegistry.hasModel(GenericCardActionChoiceTrainer.class)) {
+            GenericCardActionChoiceTrainer passGate = new GenericCardActionChoiceTrainer();
+            try {
+                if (passGate.prefersPass(
+                        decision,                         features.extractFeatures(gameState, decision, getName()), modelRegistry)) {
+                        chosenAnswer = "";
+                        if (eventReporter != null)
+                            eventReporter.recordPassGateVeto(gameState.getCurrentPhase());
                 }
-            } else if (decision.equals(lastDecision)) {
+            } catch (RuntimeException | LinkageError e) {
+                if (isInterruptedFailure(e)) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+                logTrainerFailure(passGate, decision, e);
+            }
+        }
+        if (chosenAnswer != null) {
+            if (decision.equals(lastDecision)
+                    && gameState.getCurrentPhase() == lastDecisionPhase
+                    && gameState.getTurnNumber() == lastDecisionTurn) {
                 decisionRepeat++;
-                if (decisionRepeat >= 6) {
-                    answerRepeat = 0;
-                    lastAction = null;
+                answerRepeat = chosenAnswer.equals(lastAction) ? answerRepeat + 1 : 0;
+                lastAction = chosenAnswer;
+                if (answerRepeat >= 3 || decisionRepeat >= 6) {
+                    clearCardActionRepeatHistory();
                     return "";
                 }
             } else {
                 lastDecision = (CardActionSelectionDecision) decision;
+                lastDecisionPhase = gameState.getCurrentPhase();
+                lastDecisionTurn = gameState.getTurnNumber();
                 decisionRepeat = 0;
                 answerRepeat = 0;
                 lastAction = chosenAnswer;
@@ -293,6 +386,14 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
                 + "; blueprintId=" + Arrays.toString(decision.getDecisionParameters().get("blueprintId"))
                 + "; actionText=" + Arrays.toString(decision.getDecisionParameters().get("actionText")));
         return super.chooseAction(gameState, decision);
+    }
+
+    private void clearCardActionRepeatHistory() {
+        lastDecision = null;
+        lastDecisionPhase = null;
+        lastAction = null;
+        decisionRepeat = 0;
+        answerRepeat = 0;
     }
 
     private String chooseArbitraryCardsAction(GameState gameState, AwaitingDecision decision) {
@@ -508,15 +609,19 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
     }
 
     private void logTrainerFailure(DecisionAnswerer trainer, AwaitingDecision decision, Throwable failure) {
-        if (trainerFailuresLogged.add(trainer.getClass())) {
+        boolean firstFailure = trainerFailuresLogged.add(trainer.getClass());
+        if (firstFailure) {
             LOG.warn("Bot {} fell back to a base decision for {} after {} failed",
                     getName(), decision.getText(), trainer.getClass().getSimpleName(), failure);
-            if (eventReporter != null)
-                eventReporter.recordEvent(Severity.WARNING, "decision-model-fallback",
-                        trainer.getClass().getSimpleName(),
-                        "Bot " + getName() + " fell back to a base decision for \""
-                                + decision.getText() + "\" after the trainer failed.", failure);
         }
+        if (eventReporter != null)
+            eventReporter.recordEvent(
+                    firstFailure ? Severity.WARNING : Severity.SUCCESS,
+                    firstFailure ? "decision-model-fallback" : "decision-model-fallback-repeat",
+                    trainer.getClass().getSimpleName(),
+                    "Bot " + getName() + " fell back to a base decision for \""
+                            + decision.getText() + "\" after the trainer failed.",
+                    firstFailure ? failure : null);
     }
 
     @Override
@@ -528,7 +633,17 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
 
     @Override
     public void beginEpisode(String gameId) {
+        beginEpisode(gameId, List.of());
+    }
+
+    @Override
+    public void beginEpisode(String gameId, List<String> deckFingerprints) {
+        clearCardActionRepeatHistory();
+        if (transferGuard != null)
+            transferGuard.clear();
+        lastDecisionRecorded = false;
         this.gameId = gameId;
+        episodeDeckFingerprints = List.copyOf(deckFingerprints);
     }
 
     @Override
@@ -538,6 +653,7 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
             replayBuffer.addEpisode(new ArrayList<>(episodeSteps));
         }
         episodeSteps.clear();
+        lastDecisionRecorded = false;
     }
 
     static void assignTerminalRewardCredit(List<LearningStep> steps, double reward) {
@@ -551,12 +667,19 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
     @Override
     public void abortEpisode() {
         episodeSteps.clear();
+        clearCardActionRepeatHistory();
+        if (transferGuard != null)
+            transferGuard.clear();
+        lastDecisionRecorded = false;
         gameId = null;
+        episodeDeckFingerprints = List.of();
     }
 
     @Override
     public void discardLastDecision() {
-        if (!episodeSteps.isEmpty())
+        if (lastDecisionRecorded && !episodeSteps.isEmpty()) {
             episodeSteps.remove(episodeSteps.size() - 1);
+            lastDecisionRecorded = false;
+        }
     }
 }

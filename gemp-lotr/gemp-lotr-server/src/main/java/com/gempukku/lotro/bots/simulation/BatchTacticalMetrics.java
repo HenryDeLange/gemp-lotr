@@ -27,11 +27,13 @@ public record BatchTacticalMetrics(
         long p2FellowshipTwilightGeneratedTotal,
         long p1ShadowTwilightSpentTotal,
         long p2ShadowTwilightSpentTotal,
-        long maximumTwilightTotal) {
+        long maximumTwilightTotal,
+        BatchDecisionMetrics decisionMetrics) {
 
     public static BatchTacticalMetrics empty() {
         return new BatchTacticalMetrics(0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                BatchDecisionMetrics.empty());
     }
 
     public BatchTacticalMetrics plus(GameTacticalMetrics metrics) {
@@ -66,7 +68,8 @@ public record BatchTacticalMetrics(
                 p2FellowshipTwilightGeneratedTotal + metrics.p2FellowshipTwilightGenerated(),
                 p1ShadowTwilightSpentTotal + metrics.p1ShadowTwilightSpent(),
                 p2ShadowTwilightSpentTotal + metrics.p2ShadowTwilightSpent(),
-                maximumTwilightTotal + metrics.maximumTwilight());
+                maximumTwilightTotal + metrics.maximumTwilight(),
+                decisionMetrics.plus(metrics.decisionMetrics()));
     }
 
     public BatchTacticalMetrics plus(BatchTacticalMetrics other) {
@@ -95,7 +98,8 @@ public record BatchTacticalMetrics(
                 p2FellowshipTwilightGeneratedTotal + other.p2FellowshipTwilightGeneratedTotal,
                 p1ShadowTwilightSpentTotal + other.p1ShadowTwilightSpentTotal,
                 p2ShadowTwilightSpentTotal + other.p2ShadowTwilightSpentTotal,
-                maximumTwilightTotal + other.maximumTwilightTotal);
+                maximumTwilightTotal + other.maximumTwilightTotal,
+                decisionMetrics.plus(other.decisionMetrics));
     }
 
     public String compactSummary() {

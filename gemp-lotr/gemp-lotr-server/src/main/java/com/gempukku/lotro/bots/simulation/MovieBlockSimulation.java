@@ -1,10 +1,14 @@
 package com.gempukku.lotro.bots.simulation;
 
+import com.gempukku.lotro.bots.AssignmentLegality;
 import com.gempukku.lotro.bots.BotDecisionFallback;
 import com.gempukku.lotro.bots.BotPlayer;
 import com.gempukku.lotro.bots.TrainingEventReporter;
 import com.gempukku.lotro.bots.TrainingEventReporter.Severity;
+import com.gempukku.lotro.bots.TrainingDiagnosticTrace;
+import com.gempukku.lotro.bots.deckbuilding.DeckBuilderTrainer;
 import com.gempukku.lotro.bots.rl.LearningBotPlayer;
+import com.gempukku.lotro.common.Phase;
 import com.gempukku.lotro.db.DeckSerialization;
 import com.gempukku.lotro.game.DefaultUserFeedback;
 import com.gempukku.lotro.game.LotroCardBlueprintLibrary;
@@ -30,6 +34,7 @@ public class MovieBlockSimulation implements Simulation {
     private final LotroCardBlueprintLibrary library;
     private final Supplier<DeckPair> deckPairSupplier;
     private final TrainingEventReporter eventReporter;
+    private DeckPair preparedDeckPair;
 
     public MovieBlockSimulation(LotroFormat format, List<LotroDeck> availableDecks, LotroCardBlueprintLibrary library) {
         this(format, availableDecks, library, null);
@@ -70,14 +75,27 @@ public class MovieBlockSimulation implements Simulation {
 
     @Override
     public GameResult simulateGame(BotPlayer bot1, BotPlayer bot2) {
-        DeckPair deckPair = chooseDeckPair();
+        DeckPair deckPair = takeDeckPair();
         return simulateGameInternal(bot1, bot2, deckPair.first(), deckPair.second(), false).result();
     }
 
     @Override
     public SimulationOutcome simulateGameWithMetrics(BotPlayer bot1, BotPlayer bot2) {
-        DeckPair deckPair = chooseDeckPair();
+        DeckPair deckPair = takeDeckPair();
         return simulateGameInternal(bot1, bot2, deckPair.first(), deckPair.second(), true);
+    }
+
+    @Override
+    public void beginGame(String gameId, BotPlayer bot1, BotPlayer bot2) {
+        DeckPair deckPair = chooseDeckPair();
+        preparedDeckPair = deckPair;
+        List<String> deckFingerprints = List.of(
+                DeckBuilderTrainer.fingerprint(format.getCode(), deckPair.first()),
+                DeckBuilderTrainer.fingerprint(format.getCode(), deckPair.second()));
+        if (bot1 instanceof LearningBotPlayer learningBot1)
+            learningBot1.beginEpisode(gameId, deckFingerprints);
+        if (bot2 instanceof LearningBotPlayer learningBot2)
+            learningBot2.beginEpisode(gameId, deckFingerprints);
     }
 
     public GameResult simulateGame(BotPlayer bot1, BotPlayer bot2, LotroDeck bot1Deck, LotroDeck bot2Deck) {
@@ -118,6 +136,7 @@ public class MovieBlockSimulation implements Simulation {
         int decisions = 0;
         ArrayDeque<String> recentDecisions = new ArrayDeque<>();
         DecisionCycleGuard decisionCycleGuard = new DecisionCycleGuard();
+        AssignmentLegality assignmentLegality = new AssignmentLegality(game);
         while (!game.isFinished()) {
             if (++decisions > MAX_DECISIONS_PER_GAME)
                 throw new GameDecisionLimitException("Game exceeded " + MAX_DECISIONS_PER_GAME
@@ -128,10 +147,12 @@ public class MovieBlockSimulation implements Simulation {
             AwaitingDecision bot2Decision = userFeedback.getAwaitingDecision(bot2.getName());
             if (bot1Decision != null) {
                 getDecisionAndDecide(
-                        bot1, bot1Decision, game, userFeedback, tacticalMetrics, decisionCycleGuard, recentDecisions);
+                        bot1, bot1Decision, game, userFeedback, tacticalMetrics, decisionCycleGuard, recentDecisions,
+                        assignmentLegality);
             } else if (bot2Decision != null) {
                 getDecisionAndDecide(
-                        bot2, bot2Decision, game, userFeedback, tacticalMetrics, decisionCycleGuard, recentDecisions);
+                        bot2, bot2Decision, game, userFeedback, tacticalMetrics, decisionCycleGuard, recentDecisions,
+                        assignmentLegality);
             } else {
                 throw new IllegalStateException("Game has no pending decision and is not finished in " + format.getCode());
             }
@@ -170,6 +191,12 @@ public class MovieBlockSimulation implements Simulation {
                 : Objects.requireNonNull(deckPairSupplier.get(), "deckPairSupplier returned null");
     }
 
+    private DeckPair takeDeckPair() {
+        DeckPair deckPair = preparedDeckPair;
+        preparedDeckPair = null;
+        return deckPair == null ? chooseDeckPair() : deckPair;
+    }
+
     public record DeckPair(LotroDeck first, LotroDeck second) {
         public DeckPair {
             Objects.requireNonNull(first, "first");
@@ -192,8 +219,10 @@ public class MovieBlockSimulation implements Simulation {
             DefaultUserFeedback userFeedback,
             GameTacticalMetricsAccumulator tacticalMetrics,
             DecisionCycleGuard decisionCycleGuard,
-            ArrayDeque<String> recentDecisions) {
-        String phase = game.getGameState().getCurrentPhase().toString();
+            ArrayDeque<String> recentDecisions,
+            AssignmentLegality assignmentLegality) {
+        Phase currentPhase = game.getGameState().getCurrentPhase();
+        String phase = currentPhase.toString();
         String signature = DecisionCycleGuard.signature(bot.getName(), phase, decision, game.getGameState());
         var deferredEscape = decisionCycleGuard.takeDeferredEscape(signature);
         var repeatedCycle = deferredEscape.isPresent()
@@ -206,16 +235,17 @@ public class MovieBlockSimulation implements Simulation {
             answer = BotDecisionFallback.alternativeAnswer(
                     game, bot.getName(), decision, escape.repeatedAnswer());
             if (answer == null) {
+                recordDiagnosticTrace(TrainingDiagnosticTrace.create(
+                        "unresolvable-cycle", format.getCode(), phase, decision, signature,
+                        escape.repeatedAnswer(), null, 0, List.of()));
                 throw new UnresolvableDecisionCycleException(
                         "Scheduled cycle escape is no longer legal in " + format.getCode()
-                        + ": " + DecisionCycleGuard.formatDecisionOutcome(
-                        bot.getName(), phase, decision, escape.repeatedAnswer(), false));
+                                + " during " + phase + " for " + decision.getDecisionType());
             }
             decisionCycleGuard.clear();
             recordWarning("repeated-decision-cycle",
-                    "Used a deferred untrained alternate answer \"" + answer + "\" to break a repeated decision cycle: "
-                            + DecisionCycleGuard.formatDecisionOutcome(
-                            bot.getName(), phase, decision, answer, true));
+                    "A repeated decision was escaped in " + format.getCode()
+                            + " during " + phase + " for " + decision.getDecisionType() + ".");
         } else if (repeatedCycle.isPresent()) {
             DecisionCycleGuard.RepeatedCycle cycle = repeatedCycle.orElseThrow();
             answer = BotDecisionFallback.alternativeAnswer(
@@ -223,53 +253,70 @@ public class MovieBlockSimulation implements Simulation {
             if (answer == null) {
                 var deferred = cycle.deferredEscape();
                 if (deferred.isEmpty()) {
+                    recordDiagnosticTrace(TrainingDiagnosticTrace.create(
+                            "unresolvable-cycle", format.getCode(), phase, decision, signature,
+                            cycle.repeatedAnswer(), null, cycle.length(), cycle.diagnosticPattern()));
                     throw new UnresolvableDecisionCycleException(
                             "Detected repeated bot decision cycle in " + format.getCode()
-                            + " but found no distinct legal escape answer: " + cycle.describe());
+                                    + " during " + phase + " for " + decision.getDecisionType()
+                                    + " with no legal escape (cycle length " + cycle.length() + ")");
                 }
                 answer = cycle.repeatedAnswer();
                 decisionCycleGuard.clear();
                 decisionCycleGuard.deferEscape(deferred.orElseThrow());
                 recordWarning("repeated-decision-cycle",
-                        "Current repeated decision had no alternate; scheduled an untrained alternate for the next "
-                                + "cycle decision: " + cycle.describe());
+                        "A repeated decision had no immediate escape in " + format.getCode()
+                                + " during " + phase + "; an alternate was scheduled.");
             } else {
                 decisionCycleGuard.clear();
                 recordWarning("repeated-decision-cycle",
-                        "Used an untrained alternate answer \"" + answer + "\" to break a repeated decision cycle: "
-                                + cycle.describe());
+                        "A repeated decision was escaped in " + format.getCode()
+                                + " during " + phase + " for " + decision.getDecisionType() + ".");
             }
         } else {
-            answer = bot.chooseAction(game.getGameState(), decision);
+            answer = bot.chooseAction(game.getGameState(), decision, assignmentLegality);
         }
 
         try {
             userFeedback.participantDecided(bot.getName());
             String accepted = BotDecisionFallback.decide(game, bot.getName(), decision, answer);
             if (!java.util.Objects.equals(answer, accepted)) {
+                recordDiagnosticTrace(TrainingDiagnosticTrace.create(
+                        "invalid-answer-fallback", format.getCode(), phase, decision, signature,
+                        answer, accepted, 0, List.of()));
                 recordWarning("invalid-bot-answer-fallback",
-                        bot.getName() + " used fallback \"" + accepted
-                                + "\" for training decision \"" + decision.getText() + "\"");
-                System.out.println(bot.getName() + " used fallback \"" + accepted
-                        + "\" for training decision \"" + decision.getText() + "\"");
+                        "An invalid bot answer was replaced with a legal fallback in " + format.getCode()
+                                + " during " + phase + " for " + decision.getDecisionType() + ".");
+                System.out.println("Invalid bot answer replaced with a legal fallback in " + format.getCode()
+                        + " during " + phase + " for " + decision.getDecisionType() + ".");
                 if (!cycleEscape && bot instanceof LearningBotPlayer learningBot)
                     learningBot.discardLastDecision();
             }
             String summary = DecisionCycleGuard.formatDecisionOutcome(
-                    bot.getName(), phase, decision, accepted, cycleEscape);
+                    phase, decision, accepted, cycleEscape);
             DecisionCycleGuard.addRecentDecision(recentDecisions, summary);
             decisionCycleGuard.record(signature, decision.getDecisionType(), summary, accepted);
+            if (tacticalMetrics != null)
+                tacticalMetrics.recordDecision(currentPhase, decision, accepted);
             game.carryOutPendingActionsUntilDecisionNeeded();
             if (tacticalMetrics != null)
                 tacticalMetrics.capture(game.getGameState());
         } catch (DecisionResultInvalidException e) {
-            throw new IllegalStateException(
-                    "No valid bot answer for " + format.getCode() + " training decision \"" + decision.getText() + "\"", e);
+            recordDiagnosticTrace(TrainingDiagnosticTrace.create(
+                    "invalid-answer-failure", format.getCode(), phase, decision, signature,
+                    answer, null, 0, List.of()));
+            throw new IllegalStateException("No valid bot answer for " + format.getCode()
+                    + " during " + phase + " for " + decision.getDecisionType(), e);
         }
     }
 
     private void recordWarning(String type, String message) {
         if (eventReporter != null)
             eventReporter.recordEvent(Severity.WARNING, type, null, message, null);
+    }
+
+    private void recordDiagnosticTrace(TrainingDiagnosticTrace trace) {
+        if (eventReporter != null)
+            eventReporter.recordDiagnosticTrace(trace);
     }
 }

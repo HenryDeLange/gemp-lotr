@@ -5,12 +5,14 @@ import com.gempukku.lotro.at.AbstractAtTest;
 import com.gempukku.lotro.bots.deckbuilding.DeckBuilderTrainer;
 import com.gempukku.lotro.bots.rl.fotrstarters.MovieTrilogyRLGameStateFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelRegistry;
+import com.gempukku.lotro.bots.training.TrainingDataIO;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.nio.file.Files;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -38,15 +40,38 @@ public class DeckBuilderTrainerTest extends AbstractAtTest {
         assertEquals(4, result.wins() + result.losses());
         assertTrue(Double.isNaN(result.incumbentAccuracy()));
         assertEquals(4, result.accumulatedExamples());
+        assertEquals(4, result.recentExamples());
         assertTrue(result.generatedDecks().size() > 0);
         var dataFile = dataDirectory.resolve("deck-builder-outcomes-v4.jsonl");
-        assertTrue(Files.isRegularFile(dataFile));
-        List<String> records = Files.readAllLines(dataFile);
+        var compressedDataFile = dataFile.resolveSibling(dataFile.getFileName() + ".gz");
+        assertTrue(Files.isRegularFile(compressedDataFile));
+        java.util.List<String> records = new java.util.ArrayList<>();
+        TrainingDataIO.forEachLine(dataFile, compressedDataFile,
+                (source, lineNumber, line) -> records.add(line));
         assertEquals(4, records.size());
         assertTrue(records.stream().map(JSON::parseObject)
                 .allMatch(record -> record.getIntValue("schema") == 4
                         && record.getString("deckKey") != null
                         && record.getJSONArray("features") != null));
+        assertTrue(!Files.exists(dataFile));
         assertNotNull(DeckBuilderTrainer.createDeck(format, _cardLibrary, result.model(), 2, 123L));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void refusesToUseOnlyHeldOutReferenceDecks() throws Exception {
+        var format = _formatLibrary.getFormat("fotr_block");
+        var referenceDecks = MovieBlockDeckFactory.createStarterDecks(
+                "fotr_block", format, _cardLibrary, _productLibrary);
+        Set<String> heldOut = referenceDecks.stream()
+                .map(deck -> DeckBuilderTrainer.fingerprint("fotr_block", deck))
+                .collect(java.util.stream.Collectors.toSet());
+
+        DeckBuilderTrainer.train(
+                format, _cardLibrary, referenceDecks, null,
+                new ModelRegistry(), new MovieTrilogyRLGameStateFeatures("fotr_block"),
+                temporaryFolder.newFolder("holdout-models").toPath(),
+                temporaryFolder.newFolder("holdout-data").toPath(),
+                2, 2, 1, 1, null, 1, 76543L,
+                DeckBuilderTrainer.DEFAULT_MAX_HISTORY_RECORDS, heldOut);
     }
 }

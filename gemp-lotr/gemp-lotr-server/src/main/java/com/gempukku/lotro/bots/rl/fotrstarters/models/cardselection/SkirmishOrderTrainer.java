@@ -3,7 +3,7 @@ package com.gempukku.lotro.bots.rl.fotrstarters.models.cardselection;
 import com.gempukku.lotro.bots.rl.LearningStep;
 import com.gempukku.lotro.bots.rl.RLGameStateFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.CardFeatures;
-import com.gempukku.lotro.bots.rl.fotrstarters.FotrStarterBot;
+import com.gempukku.lotro.bots.rl.fotrstarters.SkirmishOrderAssignment;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.AbstractTrainer;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.CardCandidateFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.LabeledPoint;
@@ -11,7 +11,6 @@ import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelRegistry;
 import com.gempukku.lotro.bots.rl.semanticaction.CardSelectionAssignedAction;
 import com.gempukku.lotro.game.CardNotFoundException;
 import com.gempukku.lotro.game.PhysicalCard;
-import com.gempukku.lotro.game.state.Assignment;
 import com.gempukku.lotro.game.state.GameState;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.AwaitingDecisionType;
@@ -32,10 +31,27 @@ public class SkirmishOrderTrainer extends AbstractTrainer {
             if (!isStepRelevant(step)) continue;
 
             CardSelectionAssignedAction action = (CardSelectionAssignedAction) step.action;
+            int chosenCount = action.getChosenBlueprintIds().size();
+            boolean hasAssignmentContext = action.getAssignedFellowshipBlueprintIds().size() == chosenCount
+                    && action.getWoundsOnAssignedFellowship().size() == chosenCount
+                    && action.getMinionsOnChosen().size() == chosenCount
+                    && action.getStrengthOfMinionsOnChosen().size() == chosenCount;
+            boolean hasLegacyContext = action.getMinionsOnChosen().size() == chosenCount
+                    && action.getStrengthOfMinionsOnChosen().size() == chosenCount
+                    && action.getWoundsOnChosen().size() == chosenCount;
+            if (!hasAssignmentContext && !hasLegacyContext)
+                continue;
 
-            for (int i = 0; i < action.getChosenBlueprintIds().size(); i++) {
+            for (int i = 0; i < chosenCount; i++) {
                 try {
-                    double[] blueprintVector = CardFeatures.getFpAssignedCardFeatures(action.getChosenBlueprintIds().get(i), action.getWoundsOnChosen().get(i), action.getMinionsOnChosen().get(i), action.getStrengthOfMinionsOnChosen().get(i));
+                    String blueprintId = hasAssignmentContext
+                            ? action.getAssignedFellowshipBlueprintIds().get(i)
+                            : action.getChosenBlueprintIds().get(i);
+                    int wounds = hasAssignmentContext
+                            ? action.getWoundsOnAssignedFellowship().get(i)
+                            : action.getWoundsOnChosen().get(i);
+                    double[] blueprintVector = CardFeatures.getFpAssignedCardFeatures(blueprintId, wounds,
+                            action.getMinionsOnChosen().get(i), action.getStrengthOfMinionsOnChosen().get(i));
                     double[] extended = CardCandidateFeatures.append(step.state, blueprintVector);
 
                     int label = step.reward > 0 ? 1 : 0;
@@ -74,28 +90,29 @@ public class SkirmishOrderTrainer extends AbstractTrainer {
 
         for (String physicalId : cardIds) {
             try {
-                for (Assignment assignment : gameState.getAssignments()) {
-                    if (assignment.getFellowshipCharacter().getCardId() == Integer.parseInt(physicalId)) {
-                        String blueprintId = gameState.getBlueprintId(Integer.parseInt(physicalId));
-                        int wounds = 0;
-                        for (PhysicalCard physicalCard : gameState.getInPlay()) {
-                            if (physicalCard.getCardId() == Integer.parseInt(physicalId)) {
-                                wounds = gameState.getWounds(physicalCard);
-                            }
-                        }
-                        double[] cardVector = CardFeatures.getFpAssignedCardFeatures(blueprintId, wounds, assignment.getShadowCharacters().size(), assignment.getShadowCharacters().stream().mapToInt(value -> value.getBlueprint().getStrength()).sum());
-                        double[] extended = CardCandidateFeatures.append(stateVector, cardVector);
+                var assignment = SkirmishOrderAssignment.findForChoice(
+                        gameState.getAssignments(), Integer.parseInt(physicalId));
+                if (assignment.isEmpty())
+                    continue;
 
-                        double[] probs = new double[2];
-                        model.predict(extended, probs);
-                        scoredCards.add(new ScoredCard(physicalId, probs[1])); // probability of choosing this card
-                    }
-                }
+                PhysicalCard fellowshipCharacter = assignment.get().getFellowshipCharacter();
+                String blueprintId = fellowshipCharacter.getBlueprintId();
+                int wounds = gameState.getWounds(fellowshipCharacter);
+                double[] cardVector = CardFeatures.getFpAssignedCardFeatures(blueprintId, wounds,
+                        assignment.get().getShadowCharacters().size(), assignment.get().getShadowCharacters().stream()
+                                .mapToInt(value -> value.getBlueprint().getStrength()).sum());
+                double[] extended = CardCandidateFeatures.append(stateVector, cardVector);
 
+                double[] probs = new double[2];
+                model.predict(extended, probs);
+                scoredCards.add(new ScoredCard(physicalId, probs[1]));
             } catch (CardNotFoundException ignored) {
 
             }
         }
+
+        if (scoredCards.isEmpty())
+            throw new IllegalStateException("No pending skirmish matches the offered skirmish-order choices");
 
         // Find the card with the highest probability
         scoredCards.sort(Comparator.comparingDouble(c -> -c.score));

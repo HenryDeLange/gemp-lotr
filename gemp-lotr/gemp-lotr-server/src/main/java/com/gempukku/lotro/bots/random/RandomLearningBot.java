@@ -18,6 +18,7 @@ public class RandomLearningBot extends RandomDecisionBot implements LearningBotP
     private final List<LearningStep> episodeSteps = new ArrayList<>();
     private final ReplayBuffer replayBuffer;
     private String gameId;
+    private List<String> episodeDeckFingerprints = List.of();
 
 
     public RandomLearningBot(RLGameStateFeatures features, String playerId, ReplayBuffer replayBuffer) {
@@ -39,7 +40,8 @@ public class RandomLearningBot extends RandomDecisionBot implements LearningBotP
 
         if (replayBuffer != null) {
             episodeSteps.add(new LearningStep(
-                    stateVector, action, getName().equals(gameState.getCurrentPlayerId()), decision, gameId));
+                    stateVector, action, getName().equals(gameState.getCurrentPlayerId()), decision, gameId,
+                    episodeDeckFingerprints));
         }
 
         return action.toDecisionString(decision, gameState);
@@ -73,7 +75,13 @@ public class RandomLearningBot extends RandomDecisionBot implements LearningBotP
 
     @Override
     public void beginEpisode(String gameId) {
+        beginEpisode(gameId, List.of());
+    }
+
+    @Override
+    public void beginEpisode(String gameId, List<String> deckFingerprints) {
         this.gameId = gameId;
+        episodeDeckFingerprints = List.copyOf(deckFingerprints);
     }
 
     @Override
@@ -89,6 +97,7 @@ public class RandomLearningBot extends RandomDecisionBot implements LearningBotP
     public void abortEpisode() {
         episodeSteps.clear();
         gameId = null;
+        episodeDeckFingerprints = List.of();
     }
 
     @Override

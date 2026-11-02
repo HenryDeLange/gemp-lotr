@@ -64,12 +64,9 @@ public class SimpleBatchSimulationRunner implements SimulationRunner{
         while (gamesAttempted < numGames && claimNextGame.getAsBoolean()) {
             gamesAttempted++;
             String gameId = UUID.randomUUID().toString();
-            if (bot1 instanceof LearningBotPlayer learningBot1)
-                learningBot1.beginEpisode(gameId);
-            if (bot2 instanceof LearningBotPlayer learningBot2)
-                learningBot2.beginEpisode(gameId);
             SimulationOutcome outcome;
             try {
+                simulation.beginGame(gameId, bot1, bot2);
                 outcome = simulation.simulateGameWithMetrics(bot1, bot2);
             } catch (MovieBlockSimulation.GameDecisionLimitException
                      | MovieBlockSimulation.UnresolvableDecisionCycleException e) {

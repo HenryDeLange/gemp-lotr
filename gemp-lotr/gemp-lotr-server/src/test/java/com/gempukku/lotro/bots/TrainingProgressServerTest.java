@@ -98,7 +98,7 @@ public class TrainingProgressServerTest {
         progress.beginStage("deck-builder-evaluation", 0, 1);
         progress.gameCompleted();
         progress.deckBuilderCompleted(new DeckBuilderTrainer.TrainingResult(
-                null, List.of(), 2, 1, 1, 0, 8, 4, 4,
+                null, List.of(), 2, 1, 1, 0, 8, 2, 4, 4,
                 "Smile 7 logistic", Double.NaN, Double.NaN, false, 0));
         progress.beginStage("decision-model-fitting", 1, 1);
         progress.modelQueued("MoveAgainTrainer");
@@ -172,8 +172,8 @@ public class TrainingProgressServerTest {
             assertTrue(page.body().contains("name=\"comparison-generation-scope\" value=\"all\""));
             assertTrue(page.body().contains("renderPolicyComparisonTable(data.policyComparisons || [], viewGeneration)"));
             assertTrue(page.body().contains("Number(batch.generation) === viewGeneration"));
-            assertTrue(page.body().contains(
-                    "generation 1 stages before any generation 2 stage starts"));
+            assertTrue(page.body().contains("deck evaluation is repeated in each generation"));
+            assertTrue(page.body().contains("Training data written this run"));
             assertTrue(page.body().contains("overall-bar"));
             assertTrue(page.body().contains("Active generation"));
             assertTrue(page.body().contains("Game results"));

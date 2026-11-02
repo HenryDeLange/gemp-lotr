@@ -31,8 +31,21 @@ public class GenericCardActionChoiceTrainer extends AbstractTrainer {
             String playerName,
             RLGameStateFeatures features,
             ModelRegistry modelRegistry) {
-        Classifier<double[]> model = modelRegistry.getModel(getClass());
         double[] state = features.extractFeatures(gameState, decision, playerName);
+        int bestIndex = bestIndex(decision, state, modelRegistry);
+        String[] options = decision.getDecisionParameters().get("actionText");
+        return bestIndex == options.length ? "" : String.valueOf(bestIndex);
+    }
+
+    public boolean prefersPass(AwaitingDecision decision, double[] state, ModelRegistry modelRegistry) {
+        if (!hasOptions(decision))
+            return false;
+        return bestIndex(decision, state, modelRegistry)
+                == decision.getDecisionParameters().get("actionText").length;
+    }
+
+    private int bestIndex(AwaitingDecision decision, double[] state, ModelRegistry modelRegistry) {
+        Classifier<double[]> model = modelRegistry.getModel(getClass());
         String[] options = decision.getDecisionParameters().get("actionText");
         int optionCount = options.length + 1;
         int bestIndex = options.length;
@@ -46,7 +59,7 @@ public class GenericCardActionChoiceTrainer extends AbstractTrainer {
                 bestIndex = index;
             }
         }
-        return bestIndex == options.length ? "" : String.valueOf(bestIndex);
+        return bestIndex;
     }
 
     @Override

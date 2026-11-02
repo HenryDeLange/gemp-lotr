@@ -1,0 +1,800 @@
+{
+  "createdAt": "2026-11-02T11:35:04.545880+00:00",
+  "hashDefinition": "treeSha256 is SHA-256 over sorted UTF-8 lines of relative-path, tab, file-SHA-256, newline.",
+  "implementation": {
+    "configurationEvidence": "Exact effective values copied from the run_started JSONL record. The properties file timestamp is later than run start, so its current bytes are not asserted as the run configuration.",
+    "effectiveTrainingConfiguration": {
+      "compactTrainingData": false,
+      "configFile": "gemp-lotr/bot-training.properties",
+      "cpuThreads": 16,
+      "deckBuilderCandidatesPerGeneration": 10,
+      "deckBuilderGamesPerCandidate": 10,
+      "deckBuilderMaxHistoryRecords": 10000,
+      "evaluationGamesPerSeat": 100,
+      "evaluationSeed": 1,
+      "explorationDecayGenerations": 10,
+      "explorationExampleWeight": 0.25,
+      "explorationProfile": "auto",
+      "exploratoryPolicyChanges": 2,
+      "formats": [
+        "fotr_block",
+        "ttt_block",
+        "king_block",
+        "movie"
+      ],
+      "freshExplorationEndPercent": 5,
+      "freshExplorationStartPercent": 20,
+      "gamesPerGeneration": 400,
+      "generations": 1,
+      "genericActionPassGateEnabled": true,
+      "maxPolicyChangesPerGeneration": 5,
+      "maxTrainingRecordsPerFormat": 128000,
+      "maximumValidationRegressionPercent": 3.0,
+      "metricsDirectory": "gemp-lotr/bot-training-runs",
+      "minimumValidationAccuracy": 0.0,
+      "modelObservationSchema": "public-observation-v6",
+      "modelThreads": 2,
+      "modelsDirectory": "gemp-lotr/bot-training-runs/transfer-guard-experiment-models",
+      "randomBaselineExampleWeight": 0.25,
+      "randomBaselinePercent": 5,
+      "refinementExplorationEndPercent": 2,
+      "refinementExplorationStartPercent": 8,
+      "requireIncumbentModels": true,
+      "trainingDataDirectory": "gemp-lotr/bot-training-data",
+      "trainingDataSchema": "public-observation-v8",
+      "transferGuardEnabled": true
+    },
+    "gitRevision": "00f6a4a2e8dbf742f2b64d0ee5dd23b578684765",
+    "sourceFileCount": 110,
+    "sourceFiles": [
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/AssignmentLegality.java",
+        "sha256": "698dd426cfd93fc534082aa9bfd35cb5de3abbb6bec8e754612c71ed273056b8"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/BotDecisionFallback.java",
+        "sha256": "8cf14f90351bcc47e9f83a0c35fe3277427326ec3beb07422e8014e5eb123b6b"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/BotGameStateListener.java",
+        "sha256": "99e0ae8e572599967fbea1b704048d466c6cef731d34baf76ff44ae8bf111284"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/BotPlayer.java",
+        "sha256": "3b9845ca8ad0f731a00cfce57f14ffa81b05b0659b201558dd69c2ad92d175a3"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/BotService.java",
+        "sha256": "f33b85153dc58b2498dc15b6270484bc4ae271e0249f25b103ac9eb2e12659a1"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/MovieBlockDeckFactory.java",
+        "sha256": "dcefbdff53057e393d7d6ca8c1659f8e65091e15cb536e38f6ce54b4fb957cb2"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/TrainingEventReporter.java",
+        "sha256": "9ba80ce94c00d3d932e36a52dffb59aa1365e057fa90f9fe0b20fed56bfe73c1"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/benchmark/BenchmarkDeckManifest.java",
+        "sha256": "5030461ec75955d023b06e4fbe11c57162941127a8b0b62f018a987686043a89"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/benchmark/BotBenchmarkMain.java",
+        "sha256": "1053955116baa58dd93cd89067eac20f2593cb248aef85586f470897c66b9f11"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/deckbuilding/DeckBuilderTrainer.java",
+        "sha256": "cfed22a9d0820c9071ea83882ed0d42318dfc481bfefe5c6f8530b94539e8f1c"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/deckbuilding/DeckFeatureExtractor.java",
+        "sha256": "acca3b850414d166699946369541450ffea814f237fa137e7435f03e51167d11"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/deckbuilding/DeckQualityEvaluator.java",
+        "sha256": "aaeb697151a83d69831013007b97bde4c14c9df51228023e0fc184898f11211f"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/deckbuilding/StandardizedClassifier.java",
+        "sha256": "2e64b26867e386158d50c9ddc00c353bcca8cf7d87407a697cc8d2354ffe65a5"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/random/RandomDecisionBot.java",
+        "sha256": "50bd5c295d6cd582f61574782d1fbb234a5e5a8f24ee9f27a7413bcb0860006e"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/random/RandomLearningBot.java",
+        "sha256": "1e09bbb198adb3ddce6644ef687f4fe437174dc2402f5c23368024523c714114"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/DecisionAnswerer.java",
+        "sha256": "a97151e50e80ee97d707c5bfcafa6712f0fbd51ce99f7db81eaf8b1fb81a33f2"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/LearningBotPlayer.java",
+        "sha256": "3a9aa6653db19817e9c3edd15c7f7031b51a7ac429d0736bc2416b78d8e87784"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/LearningStep.java",
+        "sha256": "0139f9fc432b3a75e7dfad8025263e62efcd45b91af4890126afbd2b032c941b"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/LearningStepsPersistence.java",
+        "sha256": "d0be0b06d806a32dcaf7d250095a5d5b83fac34350103db93644bf07fdaa75ba"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/RLGameStateFeatures.java",
+        "sha256": "9804b19d499c8e846f663364bfb102fc73568f3166774144f10ec38afa09ee1f"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/ReplayBuffer.java",
+        "sha256": "a7bfd8016146ee9ff45831bab4072604e6dc3b1895e22e0be994be60f7e906ce"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/ReplayBufferListener.java",
+        "sha256": "5d464c39a3185a00075ae336244d8d54705954a2e3c6025548c670b4c43568bd"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/CardFeatures.java",
+        "sha256": "1b692d91e83e60288d8f60c1ba50535fe2c5b5ce4c8b712e0aad79664ec44597"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/CardStrategyFeatures.java",
+        "sha256": "43acfcaf976003cada174b83d4721500481d4c66cfeb35dbadf5503869335c12"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/FellowshipTransferGuard.java",
+        "sha256": "3ef6aeabe1043dca9ee2d4452aadbc809be0fad929a6d39063826344ab632190"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/FotrStarterBot.java",
+        "sha256": "da9483b47f5989ad82f2b9bd8e5469e4b5c7e3850ab63243f542bc630a4185cd"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/FotrStartersLearningStepsPersistence.java",
+        "sha256": "1637d1e843d9852a5335fdb3e52ea7a468f63d7b988020fb31223f35eeeba9f7"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/MovieTrilogyRLGameStateFeatures.java",
+        "sha256": "584894a3725cf3cb76622bb6192d29ce656e90b6fdaa290a98a019c272c9acdd"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/AbstractTrainer.java",
+        "sha256": "d39e0d8f287050cb979ad52c390c52878d6f921114caba8c78e3718dc4de55c9"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/CardCandidateFeatures.java",
+        "sha256": "ef30371e74c5e70bac827f653aa393901ea8f175e8bf520920f6030f66b9c877"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/DecisionOptionFeatures.java",
+        "sha256": "462cc8bb3a174a00fee4a82266fe47b852d90f7ba3bf5515b9548eebf832fa0a"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/FotrStarterTrainerCatalog.java",
+        "sha256": "9ddc1a0b16ab4a753f194d86ad616b8390533b8fc89b888a0c328cf21b6377b2"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/LabeledPoint.java",
+        "sha256": "6d438162ed7a587d2d520d0c60107389d5b100eaf3469e9943dbf8dc7fe7092c"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/ModelIO.java",
+        "sha256": "1cc6e15bea57ea9b594c32481ed2558c3b0f8b2068ae3f337ed9dd59ebfaf1b8"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/ModelRegistry.java",
+        "sha256": "cd70c09b54492ff5ba0be61a811339fb6d7fb03b1db5deed502ad89503ae138c"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/Trainer.java",
+        "sha256": "1fe101088dd0a81b5bdd8524c93a2646677ecdf16027989b0da0802acd50bb11"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/arbitrarycards/AbstractArbitraryCardsTrainer.java",
+        "sha256": "8aa780491acdb0e31a57dfcbe97996fd289664540ba04af2b3b07022b0190741"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/arbitrarycards/CardFromDiscardTrainer.java",
+        "sha256": "92969fff307b50e1538c4cf6dd6d59e0d2920dbb52c742eb73eb164481ffbde2"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/arbitrarycards/GenericArbitraryCardsTrainer.java",
+        "sha256": "3452a70717279542aa08706330ec4038cfcb4286e726b9ebd8008e341c4d5d6c"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/arbitrarycards/StartingFellowshipTrainer.java",
+        "sha256": "4e91b965d650af87d54fc02b333e6b3aeac274fab555134f7fbeaeecb74939f6"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/assignment/AbstractAssignmentTrainer.java",
+        "sha256": "17ff996cfc99868b863d1e88b331364963c6f8c6102bb1193301ab4d022ba087"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/assignment/FpAssignmentTrainer.java",
+        "sha256": "582181e01dcd9e6712b50ed5b5965d3d0e634a8a116d3f300bb1a5a0be6effb8"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/assignment/ShadowAssignmentTrainer.java",
+        "sha256": "f85d4483eb5045af290e7662bddfd9cc927de05c60d40fab54697d8b2d311ece"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardaction/AbstractCardActionAnswerer.java",
+        "sha256": "fbccb1c40838f69ece29966cd0453fddf57f01a3b95275646d9669e42556569c"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardaction/AbstractPlayUseCardTrainer.java",
+        "sha256": "9df83cb69b3462bee91f01f48f368574139066e06cb27e787ab325ffeb04f1a9"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardaction/ArcheryCardActionAnswerer.java",
+        "sha256": "012b368fccf42492462dec80ad41d511fda20c953d143d30286e9a593f13025e"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardaction/AssignmentCardActionAnswerer.java",
+        "sha256": "603dfa8fccf6f58f7d916415bc1785a8d26a961d3551295724d8a4d6e7378329"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardaction/FellowshipCardActionAnswerer.java",
+        "sha256": "6ed2932ee45aa6a7732b1e1702edcce5bd6c91a725386fa339a9d7f4aa027808"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardaction/GenericActionChoiceTrainer.java",
+        "sha256": "f470332d5d756915e6759d36c8412345fdcb7e92e4643a5fcb5510055109cb34"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardaction/GenericCardActionChoiceTrainer.java",
+        "sha256": "d29f1fb353d77da3605d4ef9f3ac6c62db359c7fb8aca5d0e720a8d6b2f7761f"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardaction/ManeuverCardActionAnswerer.java",
+        "sha256": "80610dcab5fec6161c1ad8caee49ac86b63a46a00f1dfedf1d0ca5c54dc50c69"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardaction/OptionalResponsesCardActionTrainer.java",
+        "sha256": "120cf7f7924b1128d8ee279dcbd758824d5b6a7d4cf0e35a92ef7bf6b5b653be"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardaction/RegroupCardActionAnswerer.java",
+        "sha256": "479f7a8d4caf46b17894caa5d4869104a53d6524f4aae2d90f4a7339774697d3"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardaction/ShadowCardActionAnswerer.java",
+        "sha256": "a2b762acdca04e7c6f70870345dc2c90873282cebeabdf6294b7e6bc76c15b7d"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardaction/SkirmishFpCardActionAnswerer.java",
+        "sha256": "b9b35aa1924010aedf3c1293a0b0bed26087f8be56bc67cd607c65e312ab5c9f"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardaction/SkirmishShadowCardActionAnswerer.java",
+        "sha256": "051363a5eb933850736e049789b4aca2b98d5b8fcf46412a39235b97332a3223"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardselection/AbstractCardSelectionTrainer.java",
+        "sha256": "ea1eb42d6977a755c3d64aafddc45ecae47f0507c2cf33d113a80e46582e43fc"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardselection/ArcheryWoundTrainer.java",
+        "sha256": "4f3ee1bdfff6911623c8331dcd9fb27f9d30fa92bc90cc12c962bc243ce05d5d"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardselection/AttachItemTrainer.java",
+        "sha256": "cc3df57faecefce9292fd0ef661b077e35f1ecf4ead05fe729f8f1f4e4c68a3f"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardselection/DiscardFromHandTrainer.java",
+        "sha256": "6eede1a9ffb4fbc240a5b519ff01e785293e8152f0a0fc1fba006d98b8d47636"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardselection/DiscardFromPlayTrainer.java",
+        "sha256": "a041ef7335d90670052c75a9a9f8616c4d7fbf33b189c03575c5cb1cffba532c"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardselection/ExertTrainer.java",
+        "sha256": "482cb0cc65f04d3208e45ebb308f53004e713514784c902faaa9a00d092d941f"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardselection/FallBackCardSelectionTrainer.java",
+        "sha256": "b9d046d05790d9ab9e8f3a8df4ad00153036d0bbd135f1fab9cd3d96ff45456f"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardselection/HealTrainer.java",
+        "sha256": "6851cc5af9a8b8d0972af012a15fd97fa814ef5e0bbad16085ec9c4afef99656"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardselection/PlayFromHandTrainer.java",
+        "sha256": "255747c9a154e0087ba8b117d9375d1f4a795e92ccc944f69ed755cf0f26a9e0"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardselection/ReconcileTrainer.java",
+        "sha256": "70ab35b483558b86e11a389fb96d9fb3babdc64033bb75b1df634a0eb8fbbb96"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardselection/SanctuaryTrainer.java",
+        "sha256": "c5db2f08ec4579b7ad843c39284d8c061ee7f575a1d17ae6c7b9b6125c3e88eb"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/cardselection/SkirmishOrderTrainer.java",
+        "sha256": "a72fe994f15a4602d472c5cd9b69d70ad7f500f7ec3ad5d052659e95fc81d7aa"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/integerchoice/AbstractIntegerTrainer.java",
+        "sha256": "3eb53ad7c79962527a7dce9f619b0bb1dca34e24fd65dd09b5d83e2243d897cb"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/integerchoice/BurdenTrainer.java",
+        "sha256": "ae6f112a46dacc43697988a2bced550837f765491324961f61863ad9eb8e47a3"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/integerchoice/GenericIntegerTrainer.java",
+        "sha256": "9901493976bbc2e6246e19f773c61c2cb8828c8fc79b8b9088c38b458dbe3fe0"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/integerchoice/IntegerOptionFeatures.java",
+        "sha256": "d64c8ee4813a8098d09615aadb7b607669c62a1785478b7cfc0a43d7e3cd8de3"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/multiplechoice/AbstractMultipleChoiceTrainer.java",
+        "sha256": "65855fa4590429e2a2f4b875a6dfd23dd6aff50f10b9010eb0d75640b490a30e"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/multiplechoice/AnotherMoveTrainer.java",
+        "sha256": "b1926957d679cd967853fbb2bccbf488a1543aa652c0553e641970d30f516216"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/multiplechoice/GenericMultipleChoiceTrainer.java",
+        "sha256": "897b8375a102086f1e078442bf97ea4a334e89df86bd4109ffb8029dc4d80876"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/multiplechoice/GoFirstTrainer.java",
+        "sha256": "b5d38e13963f2613c42c0988a473db5f270fabbeabfad54a633d5e5c1ecf12f4"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/fotrstarters/models/multiplechoice/MulliganTrainer.java",
+        "sha256": "aefbfb0ccaa2a6e80cf68915db21fd800a7aec535fcba9d2897c3ac46fe7df42"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/semanticaction/ActionChoiceAction.java",
+        "sha256": "c547ecdedc841f399262acd6ce9a3cae1a81555d5a7695dc5783ef24a2f2e419"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/semanticaction/AssignMinionsAction.java",
+        "sha256": "1df79de422f41e09f213c84b83098bf919b317043ced6d4481d1c12079d0b568"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/semanticaction/CardActionChoiceAction.java",
+        "sha256": "c944c1f3cbf0675ebf25ab422e2dc27e6b4fca44c614ed61cf14e2967b15fc32"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/semanticaction/CardSelectionAction.java",
+        "sha256": "4a8dfc2562a220cb4ee7cf640aaab9cc1b642b7f06c4e423bd5af7da76b636c3"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/semanticaction/CardSelectionAssignedAction.java",
+        "sha256": "9570bcb79e66bd3abeabd1710a5d43d97eb14a899469da24b6856b871f7508b9"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/semanticaction/ChooseFromArbitraryCardsAction.java",
+        "sha256": "06697ac38c99b3126d4f8710d744d36646554cd6733b9e40d8137f370f2cfe00"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/semanticaction/IntegerChoiceAction.java",
+        "sha256": "7bdf7b3b5707257d2f12788bc24b9fdaec03b1fd5392161d97a88bebfb70fae6"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/semanticaction/MultipleChoiceAction.java",
+        "sha256": "c069341458ad66120e03d241348b77df1803e62802ad1a257f58ecb9b255d90f"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/semanticaction/SemanticAction.java",
+        "sha256": "aa7b3c9b3216f297ff0469f49976afa177e14eaca12fe00ad0936610e2d7d16d"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/rl/semanticaction/SemanticActionFactory.java",
+        "sha256": "72f2acb83bd1be851c94fe765a7868f946fcb4d082768cbcf4c057545b1aa745"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/simulation/BatchDecisionMetrics.java",
+        "sha256": "8bf15a9831f8ae9b0e3fd01ae2cb86b224ec685d0937d3efdfc7db982d357afe"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/simulation/BatchTacticalMetrics.java",
+        "sha256": "310e5aa84c600cca96e05b744effa19455d5ec0daab0f3ed260f6e5010252b4a"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/simulation/DecisionCycleGuard.java",
+        "sha256": "38601f90161d0a309c755c5cbe7484fd8e2af60d2fec6d7ef024a785304dcc45"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/simulation/FotrStartersSimulation.java",
+        "sha256": "50646f451fba8c2c3db9e04dfe41019f205d6bcd35ca93c2fb92b0bd6f0e0c12"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/simulation/GameDecisionMetrics.java",
+        "sha256": "8bbb727edcd2cb3a47aec5edc80bdeff309a96cbf3a47a473a787f0dd25f6fe8"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/simulation/GameDecisionMetricsAccumulator.java",
+        "sha256": "6b9ae795a7b51106fc34ce5d4b06f9a198e458b6dd2ddb548a8c093c7e004295"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/simulation/GameResult.java",
+        "sha256": "72ebf33aab15d65c6d0fd7d84b613bec69c4e84d7242c47deb9ee85005618475"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/simulation/GameTacticalMetrics.java",
+        "sha256": "8a002009e473999426605516eb1e353ac4fc20dc439d33eebc9352361d7d4bd3"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/simulation/GameTacticalMetricsAccumulator.java",
+        "sha256": "26d62f2a99414973447b8b7d901b30a8768779ba6e900245e78d557ee5cdbf69"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/simulation/MovieBlockSimulation.java",
+        "sha256": "d07875465443aac68e1bee08d6378b598c200fd0c9aae5fc710a4a4bcf35fc3d"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/simulation/SimpleBatchSimulationRunner.java",
+        "sha256": "b7a714a945b04ea241aa75474aecb9581d0d7ff09041e2c907f8c3d26dfbb9a8"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/simulation/Simulation.java",
+        "sha256": "90d3c52dd5cb2ff173da7675fc45b390aba67277a54fe5454147c2acafd13f77"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/simulation/SimulationOutcome.java",
+        "sha256": "5bb2b763a84e554d637eef4eecb7851f4ca78a2b9a234812a5971cdb132c3b7b"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/simulation/SimulationRunner.java",
+        "sha256": "680464f870828dca178a3df20338c55cba5e74da019524662d40c0bb0ee5e069"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/simulation/SimulationStats.java",
+        "sha256": "15324074b249f564a9e24dcb8e337aad07723cc7315035d00eba78bc6cdc210a"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/training/BotModelTrainingMain.java",
+        "sha256": "b786a08438255bbf2206d22d7190dcde2462d47a3b61858258fd97416d074d7e"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/training/TrainingDataIO.java",
+        "sha256": "5d048cb5064a02ff293ea5d8c114c71e71c6f750c6c257bd6ab6df8145ad7195"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/training/TrainingDataWorkspaceLock.java",
+        "sha256": "92589f767fe5640f42047d92e2f73584e38cb7981c033fbecea6e6f3ce8e60ef"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/training/TrainingModelWorkspace.java",
+        "sha256": "6b5283a5bf085cab8babe20ff881255648186570cd955a9ec0dea21caffe62e0"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/training/TrainingProgress.java",
+        "sha256": "3dd4c6b7a6a203543325ec557fbafcbd451d31996c45a27632bdadaf811ba0c6"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/training/TrainingProgressServer.java",
+        "sha256": "d82fbcbf4f08af7ef44fb71683765aa1aa43c3cc542666a7ffe16f7fb54c31fe"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/training/TrainingRunMetricsWriter.java",
+        "sha256": "6f15360fcd52c6ae0b1a4463e99f63a7d0dd7f65ea5e4481bba5dd63bc3a09ac"
+      },
+      {
+        "path": "gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/training/TrainingThreadFactory.java",
+        "sha256": "216ba52c5ff2a819315c517444a0a2a2e2aaa5fbde6c70b02470c64b2477cd30"
+      }
+    ],
+    "sourceSnapshotPath": "implementation/gemp-lotr/gemp-lotr-server/src/main/java/com/gempukku/lotro/bots/",
+    "sourceSnapshotPredatesRunStart": true,
+    "sourceTreeSha256": "0c8af6ad275aca141356dd36864a309d3a4ecbdfa3093d8f5a26835bb0e10876",
+    "workingTreeWasDirty": true
+  },
+  "kind": "frozen-reference-model-release",
+  "models": {
+    "deckBuilderModelsPromotedByRun": 0,
+    "fileCount": 47,
+    "files": [
+      {
+        "path": "deck-builder/fotr_block/DeckBuilderTrainer.model",
+        "sha256": "802efe187a31e7cce448448e09f7ad538d168a6c220deb0b6fdd9cac8e1a9a7d",
+        "sizeBytes": 20506
+      },
+      {
+        "path": "deck-builder/king_block/DeckBuilderTrainer.model",
+        "sha256": "19f7f183004c933171b2b9118fbe3119d38ee2090efa480c1ac9bc27fa589e9e",
+        "sizeBytes": 20506
+      },
+      {
+        "path": "deck-builder/movie/DeckBuilderTrainer.model",
+        "sha256": "b9fdf93011354a44429ab34633394db425d369df8179bb848742e85086b6a7bc",
+        "sizeBytes": 20506
+      },
+      {
+        "path": "deck-builder/ttt_block/DeckBuilderTrainer.model",
+        "sha256": "c07171a102a6f3507e321855b8bc787b9c4ffa67b60254fedc10e34b076e80a1",
+        "sizeBytes": 20506
+      },
+      {
+        "path": "movie-trilogy/AnotherMoveTrainer.model",
+        "sha256": "df032f0e2c5a85286c7e963f4636a5ef919a40456a0524ce5f93dd88b56b43de",
+        "sizeBytes": 6632
+      },
+      {
+        "path": "movie-trilogy/ArcheryPlayCardTrainer.model",
+        "sha256": "694d25f2537413b121aa7c7f4dbffd889230849985fb07c196c72b467b4251d9",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/ArcheryUseCardTrainer.model",
+        "sha256": "3615c01d58172e9d1eea491ea9f0e71bad997e2306ea0e9632571221250d9c91",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/ArcheryWoundTrainer.model",
+        "sha256": "05840efdf63f425d0f660c9a7efcea5b4917bc58002137c8ef2787e362732139",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/AssignmentPlayCardTrainer.model",
+        "sha256": "6131d64fa9a04474aac2177382f64e75e9242be3168694247877a14810d33344",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/AssignmentUseCardTrainer.model",
+        "sha256": "b9203779ecfd1fb1bd87d8c3e62cfa12c888152f984a0136a87ef5802fd21bef",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/AttachItemTrainer.model",
+        "sha256": "4f905cd2cd3bab7d836ba0504df1ece02ccb7c6dcf517e63c9fb2d8eac90d77b",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/BurdenTrainer.model",
+        "sha256": "5d37e5135ffb8228ea143329d9ccfa25e3e59e0673bcce9ebd003f28419e65eb",
+        "sizeBytes": 55148
+      },
+      {
+        "path": "movie-trilogy/CardFromDiscardTrainer.model",
+        "sha256": "0d49349d16fb93531246aa61f74fd53e8990c9252036a247262b51b8599178f3",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/DiscardFromHandTrainer.model",
+        "sha256": "e02b07c7f80024734d2ccfcad232b19bc1b09bb3aa558cdd80c3f6686d7cea5d",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/DiscardFromPlayTrainer.model",
+        "sha256": "ca70771cc05146a4c99a0305fe2762ef6c2491ee836a14fedea2d4cf34c2fe7e",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/ExertTrainer.model",
+        "sha256": "a1975ee06150ad0b631692fc77d41d9fcb7a4feab29478c15594b7ca65ed7a54",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/FallBackCardSelectionTrainer.model",
+        "sha256": "defcb06f4a92fd6fedab26358efa01633befe7a65bd80d8cba5a99c92921d0ef",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/FellowshipHealTrainer.model",
+        "sha256": "0247232938a26f675f4bc4319ee12fb996a8087847d58bc870f72f774da22e72",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/FellowshipPlayCardTrainer.model",
+        "sha256": "41314506478dbfce6db4a9422fd17f69c42f044363d3375de3dc336d71415e71",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/FellowshipTransferTrainer.model",
+        "sha256": "de34fc9f60921fe22ff98f6e793d01d0cd25baa83c18ca1133d06cef9555439f",
+        "sizeBytes": 7144
+      },
+      {
+        "path": "movie-trilogy/FellowshipUseCardTrainer.model",
+        "sha256": "3f21ecb608f9f0d49d5e25975f74975bea51b749bf78964978dfe9e57fc0e2e1",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/FpAssignmentTrainer.model",
+        "sha256": "e294faea58f90860e0c8f46a5e56f086d99d789774696c6cee023a2443e93142",
+        "sizeBytes": 9664
+      },
+      {
+        "path": "movie-trilogy/GenericActionChoiceTrainer.model",
+        "sha256": "acd42ad762a8f36f371db3ef772c95697417cdb683a5965acdceb60ab8bf7ed3",
+        "sizeBytes": 7192
+      },
+      {
+        "path": "movie-trilogy/GenericArbitraryCardsTrainer.model",
+        "sha256": "ea5862c891c5ae4780081ef87959cea2c2ebae398d534551820f9c19a47da713",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/GenericCardActionChoiceTrainer.model",
+        "sha256": "d87a91a0027d894ea3485a09a615db5fd444cb39ab05454591f17699219eee22",
+        "sizeBytes": 7192
+      },
+      {
+        "path": "movie-trilogy/GenericIntegerTrainer.model",
+        "sha256": "68dd01ef3466d1f18f3037053465f66e3e0bf90da4fce541d56513feb25496b6",
+        "sizeBytes": 6680
+      },
+      {
+        "path": "movie-trilogy/GenericMultipleChoiceTrainer.model",
+        "sha256": "87847dcc4b1740242390ec822ac792136ea0abb1d7dd5c487d4a574fe9d36a74",
+        "sizeBytes": 7192
+      },
+      {
+        "path": "movie-trilogy/GoFirstTrainer.model",
+        "sha256": "cc006e191b4bdbb2eba44a81646e6bd19c337b0adeaee466e76fc74657b88b34",
+        "sizeBytes": 6632
+      },
+      {
+        "path": "movie-trilogy/HealTrainer.model",
+        "sha256": "49c0c1f4e6086567eed980317081a7b29f9facb89f5dba67aa4c12fef508ac97",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/ManeuverPlayCardTrainer.model",
+        "sha256": "68d705f8a5f47c26b86bff3ab5c212bfdb00d6341cc896921b0c94f5bd3cbde3",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/ManeuverUseCardTrainer.model",
+        "sha256": "51ee7c9a1a3ab9a2aa211f05b895dae244406445e30bece2051b9b8c67f1dd15",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/MulliganTrainer.model",
+        "sha256": "360d7e2399235daf3d4f71583b06ac2c61960f842a69e0326f20715d0085678f",
+        "sizeBytes": 6632
+      },
+      {
+        "path": "movie-trilogy/OptionalResponsesCardActionTrainer.model",
+        "sha256": "67e600350d809068269444fe21bf978f2f4efa6bd8515e9f9270ac7876ab9395",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/PlayFromHandTrainer.model",
+        "sha256": "5c3c83fa54ccae6c74fa8a05d07941c80be2c22d4a421fb34ee7ed198f32e6ea",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/ReconcileTrainer.model",
+        "sha256": "acf90e4bede5212c477e88f79def3732eaadbb0e341e86c5549813690e7892c6",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/RegroupPlayCardTrainer.model",
+        "sha256": "803a60343d347c06497e879bb62ddeb92126c5726b87f7d1deab3464a85a6cb6",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/RegroupUseCardTrainer.model",
+        "sha256": "0435f7d1a05decebbb655ce4bf4d23ec753c3c182b161f7dfe48788c3f44aeda",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/SanctuaryTrainer.model",
+        "sha256": "5d9d183679237c163277dcd6308c3f7cc17791cace4c08b5dfcabb51563f17fd",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/ShadowAssignmentTrainer.model",
+        "sha256": "9f05b7b4b1b24cb866a3ee416d5710702e2963463f8b6d104f24b08ffd92488c",
+        "sizeBytes": 9664
+      },
+      {
+        "path": "movie-trilogy/ShadowPlayCardTrainer.model",
+        "sha256": "d612657d2519d02898f34c3c85b715fc132ec730f42f0f5da0a7455232219e63",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/ShadowUseCardTrainer.model",
+        "sha256": "344d72825c2d8009ec75047a8a457b29610b82ad7ed03ae63eba5bc30379c891",
+        "sizeBytes": 7232
+      },
+      {
+        "path": "movie-trilogy/SkirmishFpPlayCardTrainer.model",
+        "sha256": "1353879b06cb885235ebcf621e5c30c78e044d7312f9ff45da4340c6afe467dc",
+        "sizeBytes": 7096
+      },
+      {
+        "path": "movie-trilogy/SkirmishFpUseCardTrainer.model",
+        "sha256": "a842e04ea8420427bfcc31586824705062035912e53fb0a9a9e41347195d1072",
+        "sizeBytes": 7096
+      },
+      {
+        "path": "movie-trilogy/SkirmishOrderTrainer.model",
+        "sha256": "9cb1b3e1936f6ab1d2d419fdd5fca5872a2db1c9d3db23b43b12a1459d12d589",
+        "sizeBytes": 7120
+      },
+      {
+        "path": "movie-trilogy/SkirmishShadowPlayCardTrainer.model",
+        "sha256": "a658d6d8e806299a24de9b5a3b66f9c0ecdab6f9ebc4c068ad3269463e97b35c",
+        "sizeBytes": 7096
+      },
+      {
+        "path": "movie-trilogy/SkirmishShadowUseCardTrainer.model",
+        "sha256": "e0e7eb330f207de7531dad5319728bed4a665ab7864d017a1d0f94f3eb1fd401",
+        "sizeBytes": 7096
+      },
+      {
+        "path": "movie-trilogy/StartingFellowshipTrainer.model",
+        "sha256": "0750c8b50371d5b59b3d38459de183a628c1e68ae5174982a15aa7578a50c684",
+        "sizeBytes": 7232
+      }
+    ],
+    "matchesLiveIncumbentAtArchiveTime": true,
+    "path": "public-observation-v6/",
+    "policyModelsPromotedByRun": 0,
+    "totalBytes": 442564,
+    "treeSha256": "1e79769c603818a7452323f8cdd3a0f7eb68aa1853f592c67412c6edbaabcd14"
+  },
+  "releaseId": "incumbent-v6-20261102",
+  "schemaVersion": 1,
+  "trainingRun": {
+    "completedAt": "2026-11-02T11:27:02.938517200Z",
+    "cycleRecoveries": 7,
+    "cycleRecoveryGameDenominator": 2400,
+    "decisionModelFallbacks": 0,
+    "deckBuilderGames": 400,
+    "deckBuilderPromotions": 0,
+    "elapsedMillis": 2565055,
+    "errorEvents": 0,
+    "genericPassVetoesByFormat": {
+      "fotr_block": 3207,
+      "king_block": 7158,
+      "movie": 5543,
+      "ttt_block": 3840
+    },
+    "invalidAnswerFallbacks": 0,
+    "modelFits": 43,
+    "policyBatchGames": 2400,
+    "policyCandidateFormatComparisons": 20,
+    "policyCandidateLowerConfidenceBoundPercentRange": [
+      28.621336963409917,
+      48.50587963805443
+    ],
+    "policyCandidatePromotions": 0,
+    "policyCandidateWinRatePercentRange": [
+      35.625,
+      56.25
+    ],
+    "policyCandidatesTested": 5,
+    "reportPath": "training-run.jsonl",
+    "reportSha256": "8f04a544699d22c9f2eca6864158b2d0c9fd2b9ccf91e979b039de17acd74a68",
+    "runId": "20261102T104417.934Z-cf08b7ac-d55d-4f10-917c-754308f0a6ae",
+    "simulatedGames": 2800,
+    "skippedGames": 0,
+    "startedAt": "2026-11-02T10:44:17.859371400Z",
+    "status": "completed",
+    "trainingDataCompacted": false,
+    "trainingDataTotals": {
+      "decisionBytes": 85453445,
+      "decisionJsonBytes": 1035822284,
+      "deckBytes": 49078,
+      "deckExamples": 400,
+      "deckJsonBytes": 1391891,
+      "inputSteps": 298570,
+      "trainerRecords": 273802
+    },
+    "trainingGames": 1600,
+    "transferConstraintsByFormat": {
+      "fotr_block": 361,
+      "king_block": 429,
+      "movie": 541,
+      "ttt_block": 912
+    },
+    "warningEvents": 0
+  }
+}

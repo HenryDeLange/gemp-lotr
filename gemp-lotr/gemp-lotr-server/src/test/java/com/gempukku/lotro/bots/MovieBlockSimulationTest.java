@@ -1,20 +1,32 @@
 package com.gempukku.lotro.bots;
 
 import com.gempukku.lotro.at.AbstractAtTest;
+import com.gempukku.lotro.bots.TrainingDiagnosticTrace;
+import com.gempukku.lotro.bots.TrainingEventReporter;
+import com.gempukku.lotro.bots.deckbuilding.DeckBuilderTrainer;
 import com.gempukku.lotro.bots.random.RandomDecisionBot;
+import com.gempukku.lotro.bots.rl.LearningBotPlayer;
 import com.gempukku.lotro.bots.rl.RLGameStateFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.CardFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.FotrStarterBot;
 import com.gempukku.lotro.bots.rl.fotrstarters.MovieTrilogyRLGameStateFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelRegistry;
+import com.gempukku.lotro.bots.simulation.BatchTacticalMetrics;
 import com.gempukku.lotro.bots.simulation.GameResult;
+import com.gempukku.lotro.bots.simulation.FotrStartersSimulation;
 import com.gempukku.lotro.bots.simulation.MovieBlockSimulation;
 import com.gempukku.lotro.bots.simulation.SimulationOutcome;
+import com.gempukku.lotro.game.state.GameState;
+import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.ArrayList;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class MovieBlockSimulationTest extends AbstractAtTest {
     @Test
@@ -35,8 +47,191 @@ public class MovieBlockSimulationTest extends AbstractAtTest {
                 SimulationOutcome outcome = simulation.simulateGameWithMetrics(bot, random);
                 GameResult result = outcome.result();
                 assertNotNull(formatCode + " game result", result);
-                assertNotNull(formatCode + " tactical metrics", outcome.tacticalMetrics().orElse(null));
+                var metrics = outcome.tacticalMetrics().orElseThrow();
+                assertTrue(formatCode + " must record an actual seat",
+                        metrics.p1SeatIndex() == 0 || metrics.p1SeatIndex() == 1);
+                assertTrue(formatCode + " must record decisions", metrics.decisionMetrics().decisions() > 0);
+                var batch = BatchTacticalMetrics.empty().plus(metrics).decisionMetrics();
+                assertTrue(formatCode + " must aggregate the game", batch.gamesMeasured() == 1
+                        && batch.getP95Decisions() == metrics.decisionMetrics().decisions());
             }
+        }
+    }
+
+    @Test
+    public void bothSimulatorsProvideTheActualGamesAssignmentRules() {
+        var format = _formatLibrary.getFormat("fotr_block");
+        var decks = MovieBlockDeckFactory.createBotDecks("fotr_block", format, _cardLibrary, 2, 5678L);
+        var movieSimulation = new MovieBlockSimulation(format, decks, _cardLibrary);
+        var starterSimulation = new FotrStartersSimulation(_cardLibrary, _formatLibrary);
+
+        assertNotNull(movieSimulation.simulateGame(
+                new CheckedRulesBot("~movie-one"), new CheckedRulesBot("~movie-two")));
+        assertNotNull(starterSimulation.simulateGame(
+                new CheckedRulesBot("~starter-one"), new CheckedRulesBot("~starter-two")));
+    }
+
+    @Test
+    public void batchEpisodeReceivesBothDeckFingerprintsBeforeRecordingDecisions() {
+        var format = _formatLibrary.getFormat("fotr_block");
+        var decks = MovieBlockDeckFactory.createBotDecks("fotr_block", format, _cardLibrary, 2, 5678L);
+        var pair = new MovieBlockSimulation.DeckPair(decks.get(0), decks.get(1));
+        var simulation = new MovieBlockSimulation(format, _cardLibrary, () -> pair);
+        var bot1 = new RecordingLearningBot("~recording-one");
+        var bot2 = new RecordingLearningBot("~recording-two");
+        String gameId = "provenance-test";
+
+        simulation.beginGame(gameId, bot1, bot2);
+
+        List<String> expected = List.of(
+                DeckBuilderTrainer.fingerprint("fotr_block", pair.first()),
+                DeckBuilderTrainer.fingerprint("fotr_block", pair.second()));
+        assertEquals(gameId, bot1.gameId);
+        assertEquals(gameId, bot2.gameId);
+        assertEquals(expected, bot1.deckFingerprints);
+        assertEquals(expected, bot2.deckFingerprints);
+    }
+
+    @Test
+    public void invalidAnswerProducesARedactedTrainingTrace() {
+        var format = _formatLibrary.getFormat("king_block");
+        var deck = MovieBlockDeckFactory.createBotDecks("king_block", format, _cardLibrary, 1, 5678L).getFirst();
+        List<TrainingDiagnosticTrace> traces = new ArrayList<>();
+        TrainingEventReporter reporter = new TrainingEventReporter() {
+            @Override
+            public void recordEvent(Severity severity, String type, String model, String message, Throwable failure) {
+            }
+
+            @Override
+            public void recordDiagnosticTrace(TrainingDiagnosticTrace trace) {
+                traces.add(trace);
+            }
+        };
+        var simulation = new MovieBlockSimulation(format, _cardLibrary,
+                () -> new MovieBlockSimulation.DeckPair(deck, deck), reporter);
+        var invalidOnce = new InvalidOnceBot("~invalid-once");
+        var random = new RandomDecisionBot("~trace-random");
+
+        assertNotNull(simulation.simulateGame(invalidOnce, random));
+
+        TrainingDiagnosticTrace trace = traces.stream()
+                .filter(item -> item.kind().equals("invalid-answer-fallback"))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("king_block", trace.format());
+        assertFalse(com.alibaba.fastjson2.JSON.toJSONString(trace).contains("private-invalid-answer"));
+    }
+
+    private static final class CheckedRulesBot implements BotPlayer {
+        private final RandomDecisionBot delegate;
+
+        private CheckedRulesBot(String name) {
+            delegate = new RandomDecisionBot(name);
+        }
+
+        @Override
+        public String chooseAction(GameState gameState, AwaitingDecision decision) {
+            throw new AssertionError("Simulator did not provide assignment legality");
+        }
+
+        @Override
+        public String chooseAction(GameState gameState, AwaitingDecision decision, AssignmentLegality legality) {
+            assertTrue("Assignment legality must reference the running game", legality.isChecked());
+            return delegate.chooseAction(gameState, decision, legality);
+        }
+
+        @Override
+        public String getName() {
+            return delegate.getName();
+        }
+    }
+
+    private static final class RecordingLearningBot implements LearningBotPlayer {
+        private final RandomDecisionBot delegate;
+        private String gameId;
+        private List<String> deckFingerprints = List.of();
+
+        private RecordingLearningBot(String name) {
+            delegate = new RandomDecisionBot(name);
+        }
+
+        @Override
+        public String chooseAction(GameState gameState, AwaitingDecision decision) {
+            return delegate.chooseAction(gameState, decision);
+        }
+
+        @Override
+        public String chooseAction(GameState gameState, AwaitingDecision decision, AssignmentLegality legality) {
+            return delegate.chooseAction(gameState, decision, legality);
+        }
+
+        @Override
+        public String getName() {
+            return delegate.getName();
+        }
+
+        @Override
+        public void observe(GameState gameState, AwaitingDecision decision, String playerId,
+                            String chosenAction, double reward, boolean terminal) {
+        }
+
+        @Override
+        public void beginEpisode(String gameId) {
+            this.gameId = gameId;
+            deckFingerprints = List.of();
+        }
+
+        @Override
+        public void beginEpisode(String gameId, List<String> deckFingerprints) {
+            this.gameId = gameId;
+            this.deckFingerprints = List.copyOf(deckFingerprints);
+        }
+
+        @Override
+        public void endEpisode(double reward) {
+        }
+
+        @Override
+        public void abortEpisode() {
+        }
+
+        @Override
+        public void discardLastDecision() {
+        }
+    }
+
+    private static final class InvalidOnceBot implements BotPlayer {
+        private final RandomDecisionBot delegate;
+        private boolean invalidAnswerPending = true;
+
+        private InvalidOnceBot(String name) {
+            delegate = new RandomDecisionBot(name);
+        }
+
+        @Override
+        public String chooseAction(GameState gameState, AwaitingDecision decision) {
+            if (invalidAnswerPending) {
+                invalidAnswerPending = false;
+                return "private-invalid-answer";
+            }
+            return delegate.chooseAction(gameState, decision);
+        }
+
+        @Override
+        public String chooseAction(
+                GameState gameState,
+                AwaitingDecision decision,
+                AssignmentLegality assignmentLegality) {
+            if (invalidAnswerPending) {
+                invalidAnswerPending = false;
+                return "private-invalid-answer";
+            }
+            return delegate.chooseAction(gameState, decision, assignmentLegality);
+        }
+
+        @Override
+        public String getName() {
+            return delegate.getName();
         }
     }
 }

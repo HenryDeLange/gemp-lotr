@@ -4,8 +4,8 @@ import com.gempukku.lotro.bots.rl.LearningStep;
 import com.gempukku.lotro.bots.rl.LearningStepsPersistence;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.FotrStarterTrainerCatalog;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.Trainer;
+import com.gempukku.lotro.bots.training.TrainingDataIO;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -20,7 +20,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.SplittableRandom;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Consumer;
 
 public class FotrStartersLearningStepsPersistence implements LearningStepsPersistence {
@@ -30,6 +32,11 @@ public class FotrStartersLearningStepsPersistence implements LearningStepsPersis
     private static final Map<Class<? extends Trainer>, String> trainerFileMap = createTrainerFileMap();
     private final Path dataDirectory;
     private final Consumer<Compaction> compactionListener;
+    private final Consumer<AppendStats> appendListener;
+    private final boolean compactOnLoad;
+    private final Set<String> heldOutDeckFingerprints;
+    private final LongAdder heldOutRecordsExcluded = new LongAdder();
+    private final LongAdder unattributedRecordsExcluded = new LongAdder();
 
     public FotrStartersLearningStepsPersistence() {
         this(getConfiguredDataDirectory());
@@ -43,8 +50,28 @@ public class FotrStartersLearningStepsPersistence implements LearningStepsPersis
     public FotrStartersLearningStepsPersistence(
             Path dataDirectory,
             Consumer<Compaction> compactionListener) {
+        this(dataDirectory, compactionListener, stats -> { }, true);
+    }
+
+    public FotrStartersLearningStepsPersistence(
+            Path dataDirectory,
+            Consumer<Compaction> compactionListener,
+            Consumer<AppendStats> appendListener,
+            boolean compactOnLoad) {
+        this(dataDirectory, compactionListener, appendListener, compactOnLoad, Set.of());
+    }
+
+    public FotrStartersLearningStepsPersistence(
+            Path dataDirectory,
+            Consumer<Compaction> compactionListener,
+            Consumer<AppendStats> appendListener,
+            boolean compactOnLoad,
+            Set<String> heldOutDeckFingerprints) {
         this.dataDirectory = dataDirectory.toAbsolutePath().normalize();
         this.compactionListener = Objects.requireNonNull(compactionListener);
+        this.appendListener = Objects.requireNonNull(appendListener);
+        this.compactOnLoad = compactOnLoad;
+        this.heldOutDeckFingerprints = Set.copyOf(heldOutDeckFingerprints);
     }
 
     public Path getDataDirectory() {
@@ -84,27 +111,34 @@ public class FotrStartersLearningStepsPersistence implements LearningStepsPersis
 
         try {
             Files.createDirectories(dataDirectory);
+            long records = 0;
+            long jsonBytes = 0;
+            long appendedBytes = 0;
             for (Trainer trainer : FotrStarterTrainerCatalog.createAll()) {
                 String filename = trainerFileMap.get(trainer.getClass());
-                saveFilteredSteps(dataDirectory.resolve(filename), trainer, steps);
+                AppendStats stats = saveFilteredSteps(
+                        dataDirectory.resolve(filename), trainer, steps, compactOnLoad);
+                records += stats.trainerRecords();
+                jsonBytes += stats.jsonBytes();
+                appendedBytes += stats.appendedBytes();
             }
+            appendListener.accept(new AppendStats(steps.size(), records, jsonBytes, appendedBytes));
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to save bot training data to " + dataDirectory, e);
         }
     }
 
-    private void saveFilteredSteps(Path file, Trainer trainer, List<LearningStep> steps) throws IOException {
+    private AppendStats saveFilteredSteps(
+            Path file, Trainer trainer, List<LearningStep> steps, boolean compactOnLoad) throws IOException {
         List<LearningStep> relevantSteps = steps.stream().filter(trainer::isStepRelevant).toList();
         if (relevantSteps.isEmpty())
-            return;
+            return new AppendStats(0, 0, 0, 0);
 
-        try (var writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-            for (LearningStep step : relevantSteps) {
-                writer.write(step.toJson().toJSONString());
-                writer.newLine();
-            }
-        }
+        List<String> lines = relevantSteps.stream().map(step -> step.toJson().toJSONString()).toList();
+        TrainingDataIO.AppendResult result = compactOnLoad
+                ? TrainingDataIO.appendPlainLines(file, lines)
+                : TrainingDataIO.appendCompressedLines(compressedFile(file), lines);
+        return new AppendStats(0, relevantSteps.size(), result.jsonBytes(), result.appendedBytes());
     }
 
     public List<LearningStep> load(Trainer trainer) {
@@ -120,44 +154,86 @@ public class FotrStartersLearningStepsPersistence implements LearningStepsPersis
             return List.of();
 
         Path file = dataDirectory.resolve(fileName);
-        if (!Files.isRegularFile(file))
+        Path compressedFile = compressedFile(file);
+        if (!Files.isRegularFile(file) && !Files.isRegularFile(compressedFile))
             return List.of();
 
         List<LearningStep> steps = new ArrayList<>(Math.min(maxRecords, 16_384));
         SplittableRandom random = new SplittableRandom(
                 31L * dataDirectory.hashCode() + trainer.getClass().getName().hashCode());
         long recordsSeen = 0;
-        try (BufferedReader br = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
-            String line;
-            int lineNumber = 0;
-            while ((line = br.readLine()) != null) {
-                lineNumber++;
+        try {
+            long[] seen = {0};
+            TrainingDataIO.forEachLine(file, compressedFile, (source, lineNumber, line) -> {
                 if (!line.isBlank()) {
                     try {
                         LearningStep step = LearningStep.fromJson(line);
-                        recordsSeen++;
+                        if (!isEligibleForHoldout(step))
+                            return;
+                        seen[0]++;
                         if (steps.size() < maxRecords) {
                             steps.add(step);
                         } else {
-                            long replacementIndex = random.nextLong(recordsSeen);
+                            long replacementIndex = random.nextLong(seen[0]);
                             if (replacementIndex < maxRecords)
                                 steps.set((int) replacementIndex, step);
                         }
                     } catch (RuntimeException e) {
-                        throw new IllegalStateException("Invalid training record at " + file + ":" + lineNumber, e);
+                        throw new IllegalStateException("Invalid training record at "
+                                + source + ":" + lineNumber, e);
                     }
                 }
-            }
+            });
+            recordsSeen = seen[0];
         } catch (IOException e) {
-            throw new UncheckedIOException("Unable to load bot training data from " + file, e);
+            throw new UncheckedIOException("Unable to load bot training data from " + file
+                    + " and " + compressedFile, e);
         }
-        if (recordsSeen > maxRecords) {
+        if (compactOnLoad && recordsSeen > maxRecords) {
+            if (!heldOutDeckFingerprints.isEmpty())
+                throw new IllegalStateException("Cannot compact decision data while a deck holdout is active; "
+                        + "historical provenance must remain unchanged: " + file);
+            if (Files.isRegularFile(compressedFile))
+                throw new IllegalStateException("Cannot compact compressed training records without replacing "
+                        + "historical data: " + compressedFile);
             compact(file, steps, recordsSeen);
             compactionListener.accept(new Compaction(
                     trainer.getClass().getSimpleName(), file.getFileName().toString(),
                     recordsSeen, steps.size()));
         }
+
         return steps;
+    }
+
+    private boolean isEligibleForHoldout(LearningStep step) {
+        if (heldOutDeckFingerprints.isEmpty())
+            return true;
+        if (step.deckFingerprints.isEmpty()) {
+            unattributedRecordsExcluded.increment();
+            return false;
+        }
+        if (step.deckFingerprints.stream().anyMatch(heldOutDeckFingerprints::contains)) {
+            heldOutRecordsExcluded.increment();
+            return false;
+        }
+        return true;
+    }
+
+    public HoldoutFilterSummary holdoutFilterSummary() {
+        return new HoldoutFilterSummary(heldOutRecordsExcluded.sum(), unattributedRecordsExcluded.sum());
+    }
+
+    private static Path compressedFile(Path legacyFile) {
+        return legacyFile.resolveSibling(legacyFile.getFileName() + ".gz");
+    }
+
+    public record AppendStats(long inputSteps, long trainerRecords, long jsonBytes, long appendedBytes) { }
+
+    public record HoldoutFilterSummary(long heldOutRecords, long unattributedRecords) {
+        public HoldoutFilterSummary plus(HoldoutFilterSummary other) {
+            return new HoldoutFilterSummary(
+                    heldOutRecords + other.heldOutRecords, unattributedRecords + other.unattributedRecords);
+        }
     }
 
     private static void compact(Path file, List<LearningStep> steps, long recordsSeen) {

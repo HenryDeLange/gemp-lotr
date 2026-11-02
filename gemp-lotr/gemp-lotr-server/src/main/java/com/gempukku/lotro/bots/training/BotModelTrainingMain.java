@@ -3,6 +3,7 @@ package com.gempukku.lotro.bots.training;
 import com.gempukku.lotro.bots.BotPlayer;
 import com.gempukku.lotro.bots.MovieBlockDeckFactory;
 import com.gempukku.lotro.bots.TrainingEventReporter.Severity;
+import com.gempukku.lotro.bots.benchmark.BenchmarkDeckManifest;
 import com.gempukku.lotro.bots.deckbuilding.DeckBuilderTrainer;
 import com.gempukku.lotro.bots.random.RandomDecisionBot;
 import com.gempukku.lotro.bots.rl.LearningStep;
@@ -33,14 +34,18 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
@@ -68,17 +73,25 @@ public final class BotModelTrainingMain {
 
     public static void main(String[] args) throws IOException {
         TrainingConfig config = TrainingConfig.load(args);
+        if (config.compactTrainingData())
+            validateDecisionDataCompaction(config.trainingDataDirectory()
+                    .resolve(ModelIO.TRAINING_DATA_SCHEMA_DIRECTORY));
+        if (config.requireIncumbentModels())
+            validateRequiredIncumbentModels(config.modelDirectory(), config.formats());
         String previousModelDirectory = System.getProperty(ModelIO.MODEL_DIRECTORY_PROPERTY);
         String previousTrainingDataDirectory =
                 System.getProperty(FotrStartersLearningStepsPersistence.DATA_DIRECTORY_PROPERTY);
+        String previousTransferGuard = System.getProperty(FotrStarterBot.TRANSFER_GUARD_PROPERTY);
+        String previousGenericPassGate = System.getProperty(FotrStarterBot.GENERIC_PASS_GATE_PROPERTY);
 
-        TrainingModelWorkspace workspace = TrainingModelWorkspace.create(config.modelDirectory());
         TrainingProgress progress = new TrainingProgress();
         progress.start();
         List<Trainer> trainers = FotrStarterTrainerCatalog.createAll();
         TrainingProgressServer dashboard = null;
         boolean trainingSucceeded = false;
-        try (workspace;
+        try (TrainingDataWorkspaceLock dataWorkspaceLock =
+                     TrainingDataWorkspaceLock.acquire(config.trainingDataDirectory());
+             TrainingModelWorkspace workspace = TrainingModelWorkspace.create(config.modelDirectory());
              TrainingRunMetricsWriter metricsWriter =
                      new TrainingRunMetricsWriter(config.metricsDirectory(), trainingMetadata(config))) {
             try {
@@ -88,6 +101,10 @@ public final class BotModelTrainingMain {
                 System.setProperty(ModelIO.MODEL_DIRECTORY_PROPERTY, workspace.getStagingDirectory().toString());
                 System.setProperty(FotrStartersLearningStepsPersistence.DATA_DIRECTORY_PROPERTY,
                         config.trainingDataDirectory().toString());
+                System.setProperty(FotrStarterBot.TRANSFER_GUARD_PROPERTY,
+                        Boolean.toString(config.transferGuardEnabled()));
+                System.setProperty(FotrStarterBot.GENERIC_PASS_GATE_PROPERTY,
+                        Boolean.toString(config.genericPassGateEnabled()));
                 if (config.dashboardPort() > 0) {
                     dashboard = new TrainingProgressServer(
                             config.dashboardHost(), config.dashboardPort(), progress);
@@ -112,16 +129,30 @@ public final class BotModelTrainingMain {
                 ProductLibrary productLibrary = new ProductLibrary(
                         cardLibrary, config.cardResourcesDirectory().resolve("product").toFile());
                 CardFeatures.init(cardLibrary);
+                Set<String> heldOutDeckFingerprints = config.holdoutDeckManifest() == null
+                        ? Set.of()
+                        : BenchmarkDeckManifest.read(config.holdoutDeckManifest(), formatLibrary)
+                        .generatedFingerprints();
     
                 System.out.println("Training configuration: " + config.configFile());
                 System.out.println("Card resources: " + config.cardResourcesDirectory());
                 System.out.println("Model output (published only after successful training): " + config.modelDirectory());
                 System.out.println("Training workspace: " + workspace.getStagingDirectory());
                 System.out.println("Training data: " + config.trainingDataDirectory());
+                if (!heldOutDeckFingerprints.isEmpty()) {
+                    System.out.println("Strict generated-deck holdout: " + heldOutDeckFingerprints.size()
+                            + " deck fingerprints from " + config.holdoutDeckManifest());
+                    System.out.println("Historical decision records without deck fingerprints and records "
+                            + "containing a held-out deck are excluded from fitting.");
+                }
                 System.out.println("CPU workers: " + config.threads());
                 System.out.println("Model-fitting workers: " + config.modelThreads());
                 System.out.println("Maximum historical training records per model and format: "
                         + config.maxTrainingRecordsPerFormat());
+                System.out.println("Compact historical decision files on load: " + config.compactTrainingData());
+                System.out.println("New training data writes: gzip-compressed JSONL append files.");
+                System.out.println("Fellowship repeat-transfer guard: " + config.transferGuardEnabled());
+                System.out.println("Shared-model card-action Pass gate: " + config.genericPassGateEnabled());
                 System.out.println("Formats: " + String.join(", ", config.formats()));
                 System.out.printf(Locale.ROOT, "Minimum decision-model check-example match rate: %.1f%%%n",
                         config.minimumValidationAccuracy());
@@ -130,15 +161,20 @@ public final class BotModelTrainingMain {
                         + config.maxPolicyChangesPerGeneration() + " policy changes with "
                         + (config.evaluationGamesPerSeat() / config.maxPolicyChangesPerGeneration())
                         + " games per seat and format per change.");
-                System.out.println("Random-baseline games are diagnostic only and do not contribute training decisions.");
+                System.out.println("Random-baseline games contribute weighted policy-bot decisions; "
+                        + "random-opponent decisions are not recorded.");
                 System.out.println("Deck builder: " + config.deckBuilderCandidatesPerGeneration()
                         + " candidates x " + config.deckBuilderGamesPerCandidate()
                         + " games per format and generation; evaluated with the incumbent decision policy");
+                System.out.println("Deck-builder historical examples sampled per format: "
+                        + config.deckBuilderMaxHistoryRecords()
+                        + " plus all outcomes from the current generation.");
     
                 Path versionedDataDirectory = config.trainingDataDirectory()
                         .resolve(ModelIO.TRAINING_DATA_SCHEMA_DIRECTORY);
                 List<FotrStartersLearningStepsPersistence> trainingDataSources =
-                        trainingDataSourcesFor(versionedDataDirectory, progress);
+                        trainingDataSourcesFor(versionedDataDirectory, progress, config.compactTrainingData(),
+                                heldOutDeckFingerprints);
                 List<FormatTrainingState> formatTrainingStates = new ArrayList<>();
                 for (String formatCode : config.formats()) {
                     progress.beginFormat(formatCode);
@@ -149,7 +185,11 @@ public final class BotModelTrainingMain {
                     Path modelDirectory = modelDirectoryFor(workspace.getStagingDirectory(), formatCode);
                     Path dataDirectory = versionedDataDirectory.resolve(formatCode);
                     FotrStartersLearningStepsPersistence persistence =
-                            new FotrStartersLearningStepsPersistence(dataDirectory);
+                            new FotrStartersLearningStepsPersistence(dataDirectory, compaction -> { },
+                                    stats -> progress.decisionDataAppended(formatCode,
+                                            stats.inputSteps(), stats.trainerRecords(),
+                                            stats.jsonBytes(), stats.appendedBytes()),
+                                    config.compactTrainingData(), heldOutDeckFingerprints);
                     RLGameStateFeatures features = featuresFor(formatCode);
                     List<LotroDeck> starterDecks = MovieBlockDeckFactory.createStarterDecks(
                             formatCode, format, cardLibrary, productLibrary);
@@ -158,7 +198,7 @@ public final class BotModelTrainingMain {
                     Classifier<double[]> deckBuilderModel = loadDeckBuilderModel(deckBuilderDirectory, formatCode);
                     formatTrainingStates.add(new FormatTrainingState(
                             format, starterDecks, features, persistence, modelDirectory,
-                            deckBuilderDirectory, dataDirectory, deckBuilderModel));
+                            deckBuilderDirectory, dataDirectory, deckBuilderModel, heldOutDeckFingerprints));
                 }
     
                 for (int generation = 1; generation <= config.generations(); generation++) {
@@ -180,6 +220,17 @@ public final class BotModelTrainingMain {
                     }
                     trainSharedPolicyGeneration(formatTrainingStates, trainers, trainingDataSources, cardLibrary,
                             incumbent, config, progress, generation);
+                }
+                if (!heldOutDeckFingerprints.isEmpty()) {
+                    FotrStartersLearningStepsPersistence.HoldoutFilterSummary filtered =
+                            trainingDataSources.stream()
+                                    .map(FotrStartersLearningStepsPersistence::holdoutFilterSummary)
+                                    .reduce(new FotrStartersLearningStepsPersistence.HoldoutFilterSummary(0, 0),
+                                            FotrStartersLearningStepsPersistence.HoldoutFilterSummary::plus);
+                    System.out.printf(Locale.ROOT,
+                            "Strict deck holdout excluded %d reserved-deck and %d unattributed historical "
+                                    + "records across trainer loads.%n",
+                            filtered.heldOutRecords(), filtered.unattributedRecords());
                 }
                 TrainingModelWorkspace.PublicationResult publication = workspace.publish();
                 System.out.println("Published " + publication.sharedPolicyModels()
@@ -207,6 +258,14 @@ public final class BotModelTrainingMain {
             else
                 System.setProperty(FotrStartersLearningStepsPersistence.DATA_DIRECTORY_PROPERTY,
                         previousTrainingDataDirectory);
+            if (previousTransferGuard == null)
+                System.clearProperty(FotrStarterBot.TRANSFER_GUARD_PROPERTY);
+            else
+                System.setProperty(FotrStarterBot.TRANSFER_GUARD_PROPERTY, previousTransferGuard);
+            if (previousGenericPassGate == null)
+                System.clearProperty(FotrStarterBot.GENERIC_PASS_GATE_PROPERTY);
+            else
+                System.setProperty(FotrStarterBot.GENERIC_PASS_GATE_PROPERTY, previousGenericPassGate);
             if (dashboard != null) {
                 String outcome = trainingSucceeded ? "completed successfully" : "did not complete successfully";
                 System.out.println("Training " + outcome
@@ -234,7 +293,7 @@ public final class BotModelTrainingMain {
         failure.printStackTrace(System.err);
     }
 
-    private static Map<String, Object> trainingMetadata(TrainingConfig config) {
+    private static Map<String, Object> trainingMetadata(TrainingConfig config) throws IOException {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("configFile", config.configFile().toString());
         metadata.put("formats", config.formats());
@@ -254,18 +313,35 @@ public final class BotModelTrainingMain {
         metadata.put("cpuThreads", config.threads());
         metadata.put("modelThreads", config.modelThreads());
         metadata.put("maxTrainingRecordsPerFormat", config.maxTrainingRecordsPerFormat());
+        metadata.put("compactTrainingData", config.compactTrainingData());
+        metadata.put("transferGuardEnabled", config.transferGuardEnabled());
+        metadata.put("genericActionPassGateEnabled", config.genericPassGateEnabled());
+        metadata.put("requireIncumbentModels", config.requireIncumbentModels());
         metadata.put("evaluationGamesPerSeat", config.evaluationGamesPerSeat());
         metadata.put("maxPolicyChangesPerGeneration", config.maxPolicyChangesPerGeneration());
         metadata.put("exploratoryPolicyChanges", config.exploratoryPolicyChanges());
         metadata.put("maximumValidationRegressionPercent", config.maximumValidationRegressionPercent());
         metadata.put("deckBuilderCandidatesPerGeneration", config.deckBuilderCandidatesPerGeneration());
         metadata.put("deckBuilderGamesPerCandidate", config.deckBuilderGamesPerCandidate());
+        metadata.put("deckBuilderMaxHistoryRecords", config.deckBuilderMaxHistoryRecords());
         metadata.put("evaluationSeed", config.evaluationSeed());
         metadata.put("minimumValidationAccuracy", config.minimumValidationAccuracy());
         metadata.put("modelsDirectory", config.modelDirectory().toString());
         metadata.put("trainingDataDirectory", config.trainingDataDirectory().toString());
+        metadata.put("holdoutDeckManifest", config.holdoutDeckManifest() == null
+                ? null : config.holdoutDeckManifest().toString());
+        metadata.put("holdoutDeckManifestSha256", config.holdoutDeckManifest() == null
+                ? null : sha256(config.holdoutDeckManifest()));
         metadata.put("metricsDirectory", config.metricsDirectory().toString());
         return metadata;
+    }
+
+    private static String sha256(Path file) throws IOException {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable", e);
+        }
     }
 
     private static void trainFormatGeneration(
@@ -289,7 +365,8 @@ public final class BotModelTrainingMain {
                 trainingState.deckBuilderDirectory, trainingState.dataDirectory,
                 config.deckBuilderCandidatesPerGeneration(), config.deckBuilderGamesPerCandidate(),
                 config.threads(), config.progressInterval(), progress, generation,
-                formatCode.hashCode() ^ (31L * generation) ^ 0x51A7B1L);
+                formatCode.hashCode() ^ (31L * generation) ^ 0x51A7B1L,
+                config.deckBuilderMaxHistoryRecords(), trainingState.heldOutDeckFingerprints);
         trainingState.deckBuilderModel = deckBuilderResult.model();
         trainingState.generatedDecks = deckBuilderResult.generatedDecks();
         System.out.println("  Deck builder generated " + trainingState.generatedDecks.size()
@@ -536,15 +613,41 @@ public final class BotModelTrainingMain {
         return ModelIO.resolveModelDirectory(baseDirectory, formatCode);
     }
 
+    static void validateRequiredIncumbentModels(Path directory, List<String> formats) {
+        Path policyDirectory = ModelIO.resolveModelDirectory(directory, formats.getFirst());
+        for (Trainer trainer : FotrStarterTrainerCatalog.createAll())
+            ModelIO.loadModel(trainer.getClass(), policyDirectory);
+        for (String format : formats)
+            ModelIO.loadModel(DeckBuilderTrainer.class, ModelIO.resolveDeckBuilderDirectory(directory, format));
+    }
+
+    static void validateDecisionDataCompaction(Path versionedDataDirectory) throws IOException {
+        if (!Files.isDirectory(versionedDataDirectory))
+            return;
+        try (var files = Files.walk(versionedDataDirectory)) {
+            Path compressed = files.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().startsWith("movie-block-")
+                            && path.getFileName().toString().endsWith(".jsonl.gz"))
+                    .findFirst()
+                    .orElse(null);
+            if (compressed != null)
+                throw new IllegalArgumentException("Decision-data compaction is not supported while compressed "
+                        + "decision files exist; historical files were not changed: " + compressed);
+        }
+    }
+
     private static List<FotrStartersLearningStepsPersistence> trainingDataSourcesFor(
             Path versionedDataDirectory,
-            TrainingProgress progress) {
+            TrainingProgress progress,
+            boolean compactTrainingData,
+            Set<String> heldOutDeckFingerprints) {
         return SUPPORTED_FORMATS.stream()
                 .map(sourceFormat -> new FotrStartersLearningStepsPersistence(
                         versionedDataDirectory.resolve(sourceFormat),
                         compaction -> progress.trainingDataCompacted(
                                 sourceFormat, compaction.trainerName(), compaction.fileName(),
-                                compaction.recordsBefore(), compaction.recordsAfter())))
+                                compaction.recordsBefore(), compaction.recordsAfter()),
+                        stats -> { }, compactTrainingData, heldOutDeckFingerprints))
                 .toList();
     }
 
@@ -1161,6 +1264,7 @@ public final class BotModelTrainingMain {
         private final Path modelDirectory;
         private final Path deckBuilderDirectory;
         private final Path dataDirectory;
+        private final Set<String> heldOutDeckFingerprints;
         private Classifier<double[]> deckBuilderModel;
         private List<LotroDeck> generatedDecks = List.of();
 
@@ -1172,7 +1276,8 @@ public final class BotModelTrainingMain {
                 Path modelDirectory,
                 Path deckBuilderDirectory,
                 Path dataDirectory,
-                Classifier<double[]> deckBuilderModel) {
+                Classifier<double[]> deckBuilderModel,
+                Set<String> heldOutDeckFingerprints) {
             this.format = format;
             this.starterDecks = List.copyOf(starterDecks);
             this.features = features;
@@ -1181,6 +1286,7 @@ public final class BotModelTrainingMain {
             this.deckBuilderDirectory = deckBuilderDirectory;
             this.dataDirectory = dataDirectory;
             this.deckBuilderModel = deckBuilderModel;
+            this.heldOutDeckFingerprints = Set.copyOf(heldOutDeckFingerprints);
         }
 
         private List<LotroDeck> deckBuilderReferenceDecks() {
@@ -1199,7 +1305,7 @@ public final class BotModelTrainingMain {
     private record TrainerTrainingResult(Trainer trainer, AbstractTrainer.TrainingAttempt attempt) {
     }
 
-    private record TrainingConfig(
+    record TrainingConfig(
             Path configFile,
             Path cardResourcesDirectory,
             Path modelDirectory,
@@ -1212,6 +1318,11 @@ public final class BotModelTrainingMain {
             int threads,
             int modelThreads,
             int maxTrainingRecordsPerFormat,
+            boolean compactTrainingData,
+            Path holdoutDeckManifest,
+            boolean transferGuardEnabled,
+            boolean genericPassGateEnabled,
+            boolean requireIncumbentModels,
             int evaluationGamesPerSeat,
             int maxPolicyChangesPerGeneration,
             int exploratoryPolicyChanges,
@@ -1227,11 +1338,12 @@ public final class BotModelTrainingMain {
             long evaluationSeed,
             int deckBuilderCandidatesPerGeneration,
             int deckBuilderGamesPerCandidate,
+            int deckBuilderMaxHistoryRecords,
             double minimumValidationAccuracy,
             int progressInterval,
             String dashboardHost,
             int dashboardPort) {
-        private static TrainingConfig load(String[] args) throws IOException {
+        static TrainingConfig load(String[] args) throws IOException {
             Path configFile = configPath(args);
             Properties properties = new Properties();
             try (var reader = Files.newBufferedReader(configFile, StandardCharsets.UTF_8)) {
@@ -1247,6 +1359,11 @@ public final class BotModelTrainingMain {
             int modelThreads = integerProperty(properties, "training.model.threads", 1);
             int maxTrainingRecordsPerFormat =
                     integerProperty(properties, "training.model.max.records.per.format", 5000);
+            boolean compactTrainingData = booleanProperty(properties, "training.data.compact.on.load", false);
+            boolean transferGuardEnabled = booleanProperty(properties, "training.transfer.guard.enabled", true);
+            boolean genericPassGateEnabled =
+                    booleanProperty(properties, "training.action.pass.gate.enabled", false);
+            boolean requireIncumbentModels = booleanProperty(properties, "training.require.incumbent.models", false);
             List<String> formats = List.of(properties.getProperty("training.formats",
                             String.join(",", SUPPORTED_FORMATS)).split(","))
                     .stream().map(String::trim).filter(value -> !value.isEmpty()).distinct().toList();
@@ -1268,6 +1385,9 @@ public final class BotModelTrainingMain {
                     properties, "training.deckbuilder.candidates.per.generation", 24);
             int deckBuilderGamesPerCandidate = integerProperty(
                     properties, "training.deckbuilder.games.per.candidate", 6);
+            int deckBuilderMaxHistoryRecords = integerProperty(properties,
+                    "training.deckbuilder.max.history.records",
+                    DeckBuilderTrainer.DEFAULT_MAX_HISTORY_RECORDS);
             double minimumValidationAccuracy = decimalProperty(
                     properties, "training.models.minimum.validation.accuracy", 0.0);
             int exploratoryPolicyChanges = integerProperty(
@@ -1298,6 +1418,20 @@ public final class BotModelTrainingMain {
             int dashboardPort = integerProperty(properties, "training.dashboard.port", 8765);
             String metricsDirectory = properties.getProperty(
                     "training.metrics.directory", "bot-training-runs").trim();
+            Path trainingDataDirectory = resolvePath(baseDirectory,
+                    properties.getProperty("training.data.directory", "bot-training-data"));
+            String holdoutManifestSetting = properties.getProperty("training.holdout.deck.manifest", "").trim();
+            Path holdoutDeckManifest = holdoutManifestSetting.isEmpty()
+                    ? null : resolvePath(baseDirectory, holdoutManifestSetting);
+            if (holdoutDeckManifest != null && !Files.isRegularFile(holdoutDeckManifest))
+                throw new IllegalArgumentException("training.holdout.deck.manifest is not a regular file: "
+                        + holdoutDeckManifest);
+            if (compactTrainingData && holdoutDeckManifest != null)
+                throw new IllegalArgumentException("training.data.compact.on.load cannot be combined with "
+                        + "training.holdout.deck.manifest because holdout filtering must not rewrite history");
+            if (compactTrainingData)
+                validateDecisionDataCompaction(trainingDataDirectory
+                        .resolve(ModelIO.TRAINING_DATA_SCHEMA_DIRECTORY));
             if (games < 1 || randomBaselinePercent < 0 || randomBaselinePercent > 20
                     || generations < 1 || threads < 1 || modelThreads < 1
                     || maxTrainingRecordsPerFormat < 1 || evaluationGames < 1
@@ -1316,7 +1450,8 @@ public final class BotModelTrainingMain {
                     || !Double.isFinite(randomBaselineExampleWeight)
                     || randomBaselineExampleWeight < 0.0 || randomBaselineExampleWeight > 1.0
                     || deckBuilderCandidates < 2 || deckBuilderGamesPerCandidate < 2
-                    || deckBuilderGamesPerCandidate % 2 != 0 || progressInterval < 1
+                    || deckBuilderGamesPerCandidate % 2 != 0 || deckBuilderMaxHistoryRecords < 1
+                    || progressInterval < 1
                     || !Double.isFinite(minimumValidationAccuracy)
                     || minimumValidationAccuracy < 0.0 || minimumValidationAccuracy > 100.0
                     || dashboardHost.isBlank() || dashboardPort < 0 || dashboardPort > 65535
@@ -1332,16 +1467,19 @@ public final class BotModelTrainingMain {
                     resolvePath(baseDirectory, properties.getProperty(
                             "cards.resources.directory", "gemp-lotr-cards/src/main/resources")),
                     resolvePath(baseDirectory, properties.getProperty("models.directory", "bot-models")),
-                    resolvePath(baseDirectory, properties.getProperty("training.data.directory", "bot-training-data")),
+                    trainingDataDirectory,
                     resolvePath(baseDirectory, metricsDirectory),
                     formats, games, randomBaselinePercent, generations, threads, modelThreads,
-                    maxTrainingRecordsPerFormat, evaluationGames, maxPolicyChanges,
+                    maxTrainingRecordsPerFormat, compactTrainingData, holdoutDeckManifest, transferGuardEnabled,
+                    genericPassGateEnabled, requireIncumbentModels,
+                    evaluationGames, maxPolicyChanges,
                     exploratoryPolicyChanges, maximumValidationRegressionPercent, explorationProfile,
                     freshExplorationStartPercent, freshExplorationEndPercent,
                     refinementExplorationStartPercent, refinementExplorationEndPercent,
                     explorationDecayGenerations, explorationExampleWeight, randomBaselineExampleWeight,
                     evaluationSeed,
                     deckBuilderCandidates, deckBuilderGamesPerCandidate,
+                    deckBuilderMaxHistoryRecords,
                     minimumValidationAccuracy, progressInterval,
                     dashboardHost, dashboardPort);
         }
@@ -1384,6 +1522,17 @@ public final class BotModelTrainingMain {
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException("Invalid integer setting " + key + "=" + value, e);
             }
+
+        }
+
+        private static boolean booleanProperty(Properties properties, String key, boolean defaultValue) {
+            String value = properties.getProperty(key);
+            if (value == null)
+                return defaultValue;
+            value = value.trim();
+            if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false"))
+                throw new IllegalArgumentException("Invalid boolean setting " + key + "=" + value);
+            return Boolean.parseBoolean(value);
         }
 
         private static double decimalProperty(Properties properties, String key, double defaultValue) {

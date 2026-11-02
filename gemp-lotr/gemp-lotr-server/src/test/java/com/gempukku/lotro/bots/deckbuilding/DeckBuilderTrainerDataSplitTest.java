@@ -1,8 +1,14 @@
 package com.gempukku.lotro.bots.deckbuilding;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -11,6 +17,100 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DeckBuilderTrainerDataSplitTest {
+    @TempDir
+    Path temporaryDirectory;
+
+    @Test
+    void readsLegacyJsonlAndMultipleCompressedAppendsWithoutChangingLegacyRecords() throws Exception {
+        Path legacyFile = temporaryDirectory.resolve("deck-builder-outcomes-v4.jsonl");
+        Path compressedFile = legacyFile.resolveSibling(legacyFile.getFileName() + ".gz");
+        double[] features = new double[512];
+        Arrays.fill(features, 1.0);
+        JSONObject legacy = outcome("legacy-deck", features, true);
+        Files.writeString(legacyFile, JSON.toJSONString(legacy) + System.lineSeparator());
+        byte[] legacyBefore = Files.readAllBytes(legacyFile);
+
+        var firstAppend = DeckBuilderTrainer.appendExamples(compressedFile, List.of(
+                new DeckBuilderTrainer.DeckTrainingExample("compressed-one", features, false)));
+        var secondAppend = DeckBuilderTrainer.appendExamples(compressedFile, List.of(
+                new DeckBuilderTrainer.DeckTrainingExample("compressed-two", features, true)));
+
+        List<DeckBuilderTrainer.DeckTrainingExample> examples =
+                DeckBuilderTrainer.loadExamples(legacyFile, compressedFile, features.length);
+        assertEquals(3, examples.size());
+        assertEquals(Set.of("legacy-deck", "compressed-one", "compressed-two"),
+                fingerprints(examples));
+        assertEquals(firstAppend.appendedBytes() + secondAppend.appendedBytes(),
+                Files.size(compressedFile));
+        assertTrue(firstAppend.jsonBytes() > firstAppend.appendedBytes());
+        assertTrue(Arrays.equals(legacyBefore, Files.readAllBytes(legacyFile)));
+    }
+
+    @Test
+    void reservoirSamplesHistoricalOutcomesDeterministicallyAndBoundsMemorySample() throws Exception {
+        Path legacyFile = temporaryDirectory.resolve("historical-outcomes.jsonl");
+        Path compressedFile = legacyFile.resolveSibling(legacyFile.getFileName() + ".gz");
+        double[] features = new double[8];
+        List<String> historical = new ArrayList<>();
+        for (int index = 0; index < 40; index++)
+            historical.add(JSON.toJSONString(outcome("old-deck-" + index, features, index % 2 == 0)));
+        Files.write(legacyFile, historical);
+        byte[] before = Files.readAllBytes(legacyFile);
+
+        List<DeckBuilderTrainer.DeckTrainingExample> first =
+                DeckBuilderTrainer.loadExamples(legacyFile, compressedFile, features.length, 7);
+        List<DeckBuilderTrainer.DeckTrainingExample> second =
+                DeckBuilderTrainer.loadExamples(legacyFile, compressedFile, features.length, 7);
+
+        assertEquals(7, first.size());
+        assertEquals(first.stream().map(DeckBuilderTrainer.DeckTrainingExample::deckKey).toList(),
+                second.stream().map(DeckBuilderTrainer.DeckTrainingExample::deckKey).toList());
+        assertTrue(Arrays.equals(before, Files.readAllBytes(legacyFile)));
+    }
+
+    @Test
+    void excludesHeldOutDeckOutcomesBeforeReservoirSampling() throws Exception {
+        Path legacyFile = temporaryDirectory.resolve("held-out-outcomes.jsonl");
+        Path compressedFile = legacyFile.resolveSibling(legacyFile.getFileName() + ".gz");
+        double[] features = new double[8];
+        Files.write(legacyFile, List.of(
+                JSON.toJSONString(outcome("reserved-one", features, true)),
+                JSON.toJSONString(outcome("reserved-two", features, false)),
+                JSON.toJSONString(outcome("eligible-one", features, true)),
+                JSON.toJSONString(outcome("eligible-two", features, false))));
+
+        List<DeckBuilderTrainer.DeckTrainingExample> examples =
+                DeckBuilderTrainer.loadExamples(legacyFile, compressedFile, features.length, 2,
+                        Set.of("reserved-one", "reserved-two"));
+
+        assertEquals(Set.of("eligible-one", "eligible-two"), fingerprints(examples));
+    }
+
+    @Test
+    void keepsCurrentGenerationOutcomesInAdditionToCappedHistory() throws Exception {
+        Path legacyFile = temporaryDirectory.resolve("prior-generation-outcomes.jsonl");
+        Path compressedFile = legacyFile.resolveSibling(legacyFile.getFileName() + ".gz");
+        double[] features = new double[8];
+        List<String> historical = new ArrayList<>();
+        for (int index = 0; index < 40; index++)
+            historical.add(JSON.toJSONString(outcome("old-deck-" + index, features, index % 2 == 0)));
+        Files.write(legacyFile, historical);
+
+        List<DeckBuilderTrainer.DeckTrainingExample> historicalSample =
+                DeckBuilderTrainer.loadExamples(legacyFile, compressedFile, features.length, 7);
+        List<DeckBuilderTrainer.DeckTrainingExample> recent = List.of(
+                new DeckBuilderTrainer.DeckTrainingExample("new-deck-one", features, true),
+                new DeckBuilderTrainer.DeckTrainingExample("new-deck-two", features, false));
+        List<DeckBuilderTrainer.DeckTrainingExample> fitExamples = new ArrayList<>(historicalSample);
+        fitExamples.addAll(recent);
+
+        assertEquals(9, fitExamples.size());
+        assertTrue(fingerprints(fitExamples).containsAll(Set.of("new-deck-one", "new-deck-two")));
+        assertTrue(java.util.Collections.disjoint(
+                fingerprints(DeckBuilderTrainer.splitByDeckFingerprint(fitExamples).training()),
+                fingerprints(DeckBuilderTrainer.splitByDeckFingerprint(fitExamples).validation())));
+    }
+
     @Test
     void keepsEveryDeckFingerprintOnOnlyOneSideOfTheHoldout() {
         String validationDeck = null;
@@ -42,5 +142,14 @@ class DeckBuilderTrainerDataSplitTest {
         Set<String> fingerprints = new HashSet<>();
         examples.forEach(example -> fingerprints.add(example.deckKey()));
         return fingerprints;
+    }
+
+    private static JSONObject outcome(String deckKey, double[] features, boolean won) {
+        JSONObject object = new JSONObject();
+        object.put("schema", 4);
+        object.put("deckKey", deckKey);
+        object.put("features", features);
+        object.put("won", won);
+        return object;
     }
 }

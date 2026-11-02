@@ -1,6 +1,7 @@
 package com.gempukku.lotro.bots.training;
 
 import com.gempukku.lotro.bots.deckbuilding.DeckBuilderTrainer;
+import com.gempukku.lotro.bots.TrainingDiagnosticTrace;
 import com.gempukku.lotro.bots.TrainingEventReporter;
 import com.gempukku.lotro.bots.TrainingEventReporter.Severity;
 import com.gempukku.lotro.bots.simulation.BatchTacticalMetrics;
@@ -13,10 +14,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public final class TrainingProgress implements TrainingEventReporter {
     private final List<MutableStage> stages = new ArrayList<>();
@@ -25,8 +28,18 @@ public final class TrainingProgress implements TrainingEventReporter {
     private final Map<String, DeckBuilderProgress> deckBuilders = new LinkedHashMap<>();
     private final List<TrainingEvent> events = new ArrayList<>();
     private final List<PolicyComparison> policyComparisons = new ArrayList<>();
+    private final List<BatchDecisionDiagnostics> batchDecisionDiagnostics = new ArrayList<>();
+    private final Set<String> diagnosticTraceKindsThisStage = new HashSet<>();
     private final EnumMap<Severity, Long> eventCounts = new EnumMap<>(Severity.class);
     private final Map<CycleRecoveryKey, Long> cycleRecoveries = new LinkedHashMap<>();
+    private final Map<CycleRecoveryKey, Long> transferConstraints = new LinkedHashMap<>();
+    private final Map<CycleRecoveryKey, Long> genericPassGateVetoes = new LinkedHashMap<>();
+    private final Map<String, TrainingDataTotals> trainingData = new LinkedHashMap<>();
+    private long cycleRecoveriesThisStage;
+    private long transferConstraintsThisStage;
+    private long passGateVetoesThisStage;
+    private long decisionModelFallbacksThisStage;
+    private long invalidAnswerFallbacksThisStage;
     private long nextEventId = 1;
     private String status = "starting";
     private String format = "";
@@ -98,6 +111,12 @@ public final class TrainingProgress implements TrainingEventReporter {
         currentStage = next;
         stage = stageName;
         this.generation = generation;
+        transferConstraintsThisStage = 0;
+        passGateVetoesThisStage = 0;
+        cycleRecoveriesThisStage = 0;
+        decisionModelFallbacksThisStage = 0;
+        invalidAnswerFallbacksThisStage = 0;
+        diagnosticTraceKindsThisStage.clear();
         completed = 0;
         this.total = total;
         candidateModelsReady = 0;
@@ -116,6 +135,30 @@ public final class TrainingProgress implements TrainingEventReporter {
                     sourceFormat, trainerName, recordsAfter,
                 fileName, recordsBefore, recordsAfter);
         recordEvent(Severity.WARNING, "training-data-compacted", trainerName, message, null);
+    }
+
+    public synchronized void decisionDataAppended(
+            String sourceFormat, long inputSteps, long trainerRecords, long jsonBytes, long appendedBytes) {
+        TrainingDataTotals previous = trainingData.getOrDefault(sourceFormat,
+                new TrainingDataTotals(sourceFormat, 0, 0, 0, 0, 0, 0, 0));
+        TrainingDataTotals updated = new TrainingDataTotals(sourceFormat,
+                previous.inputSteps() + inputSteps, previous.trainerRecords() + trainerRecords,
+                previous.decisionJsonBytes() + jsonBytes, previous.decisionBytes() + appendedBytes,
+                previous.deckExamples(), previous.deckJsonBytes(), previous.deckBytes());
+        trainingData.put(sourceFormat, updated);
+        appendMetrics("training_data_totals", updated);
+    }
+
+    public synchronized void deckBuilderDataAppended(
+            String sourceFormat, long examples, long jsonBytes, long appendedBytes) {
+        TrainingDataTotals previous = trainingData.getOrDefault(sourceFormat,
+                new TrainingDataTotals(sourceFormat, 0, 0, 0, 0, 0, 0, 0));
+        TrainingDataTotals updated = new TrainingDataTotals(sourceFormat,
+                previous.inputSteps(), previous.trainerRecords(), previous.decisionJsonBytes(),
+                previous.decisionBytes(), previous.deckExamples() + examples,
+                previous.deckJsonBytes() + jsonBytes, previous.deckBytes() + appendedBytes);
+        trainingData.put(sourceFormat, updated);
+        appendMetrics("training_data_totals", updated);
     }
 
     public synchronized void gameCompleted() {
@@ -211,12 +254,38 @@ public final class TrainingProgress implements TrainingEventReporter {
             int losses,
             int skippedGames,
             BatchTacticalMetrics tacticalMetrics) {
-        flushCycleRecoveries(format, generation);
+        long cycleEscapes = flushCycleRecoveries(format, generation);
+        long games = (long) wins + losses + skippedGames;
+        BatchDecisionDiagnostics diagnostics = new BatchDecisionDiagnostics(
+                format,
+                generation,
+                label,
+                games,
+                cycleEscapes,
+                transferConstraintsThisStage,
+                passGateVetoesThisStage,
+                decisionModelFallbacksThisStage,
+                invalidAnswerFallbacksThisStage);
+        transferConstraintsThisStage = 0;
+        passGateVetoesThisStage = 0;
+        cycleRecoveriesThisStage = 0;
+        decisionModelFallbacksThisStage = 0;
+        invalidAnswerFallbacksThisStage = 0;
+        batchDecisionDiagnostics.add(diagnostics);
+        appendMetrics("batch_decision_diagnostics", diagnostics);
         String key = format + "/" + label;
         BatchResult result = new BatchResult(format, generation, label, wins, losses,
                 skippedGames, "", tacticalMetrics);
         batchResults.put(key, result);
         appendMetrics("batch", result);
+        Long constraints = transferConstraints.get(new CycleRecoveryKey(format, generation));
+        if (constraints != null)
+            appendMetrics("transfer_guard_totals",
+                    new TransferGuardTotals(format, generation, constraints));
+        Long passGateVetoes = genericPassGateVetoes.get(new CycleRecoveryKey(format, generation));
+        if (passGateVetoes != null)
+            appendMetrics("generic_pass_gate_totals",
+                    new GenericPassGateTotals(format, generation, passGateVetoes));
         recordEvent(Severity.SUCCESS, "simulation-batch-completed", null,
                 label + " completed with " + wins + " wins, " + losses + " losses, and "
                         + skippedGames + " skipped games.", null);
@@ -331,8 +400,8 @@ public final class TrainingProgress implements TrainingEventReporter {
     public synchronized void deckBuilderCompleted(DeckBuilderTrainer.TrainingResult result) {
         deckBuilders.put(format + "/" + generation, new DeckBuilderProgress(
                 format, generation, result.candidates(), result.games(), result.wins(), result.losses(),
-                result.skippedGames(),
-                result.accumulatedExamples(), result.trainingExamples(), result.validationExamples(),
+                result.skippedGames(), result.accumulatedExamples(), result.recentExamples(),
+                result.trainingExamples(), result.validationExamples(),
                 result.algorithm(), finiteOrNull(result.validationAccuracy()),
                 finiteOrNull(result.incumbentAccuracy()), result.promoted()));
         appendMetrics("deck_builder", deckBuilders.get(format + "/" + generation));
@@ -403,7 +472,29 @@ public final class TrainingProgress implements TrainingEventReporter {
             Throwable failure) {
         if ("repeated-decision-cycle".equals(type) && severity == Severity.WARNING) {
             cycleRecoveries.merge(new CycleRecoveryKey(format, generation), 1L, Long::sum);
+            cycleRecoveriesThisStage++;
             return;
+        }
+        if ("transfer-guard-constrained-decision".equals(type) && severity == Severity.SUCCESS) {
+            transferConstraints.merge(new CycleRecoveryKey(format, generation), 1L, Long::sum);
+            transferConstraintsThisStage++;
+            return;
+        }
+        if ("generic-action-pass-veto".equals(type) && severity == Severity.SUCCESS) {
+            genericPassGateVetoes.merge(new CycleRecoveryKey(format, generation), 1L, Long::sum);
+            passGateVetoesThisStage++;
+            return;
+        }
+        if ("decision-model-fallback".equals(type) && severity == Severity.WARNING)
+            decisionModelFallbacksThisStage++;
+        if ("decision-model-fallback-repeat".equals(type) && severity == Severity.SUCCESS) {
+            decisionModelFallbacksThisStage++;
+            return;
+        }
+        if ("invalid-bot-answer-fallback".equals(type) && severity == Severity.WARNING) {
+            invalidAnswerFallbacksThisStage++;
+            if (invalidAnswerFallbacksThisStage > 1)
+                return;
         }
         StringWriter stackTrace = new StringWriter();
         if (failure != null)
@@ -413,6 +504,13 @@ public final class TrainingProgress implements TrainingEventReporter {
         events.add(event);
         eventCounts.put(severity, eventCounts.get(severity) + 1);
         appendMetrics("event", event);
+    }
+
+    @Override
+    public synchronized void recordDiagnosticTrace(TrainingDiagnosticTrace trace) {
+        if (metricsWriter == null || !diagnosticTraceKindsThisStage.add(trace.kind()))
+            return;
+        appendMetrics("bot_diagnostic_trace", trace);
     }
 
     public synchronized EventPage eventPage(Severity severity, int page, int pageSize) {
@@ -468,6 +566,16 @@ public final class TrainingProgress implements TrainingEventReporter {
         result.put("policyComparisons", new ArrayList<>(policyComparisons));
         result.put("deckBuilders", new ArrayList<>(deckBuilders.values()));
         result.put("batches", new ArrayList<>(batchResults.values()));
+        result.put("batchDecisionDiagnostics", new ArrayList<>(batchDecisionDiagnostics));
+        result.put("trainingData", new ArrayList<>(trainingData.values()));
+        result.put("transferGuard", transferConstraints.entrySet().stream()
+                .map(entry -> new TransferGuardTotals(
+                        entry.getKey().format(), entry.getKey().generation(), entry.getValue()))
+                .toList());
+        result.put("genericPassGate", genericPassGateVetoes.entrySet().stream()
+                .map(entry -> new GenericPassGateTotals(
+                        entry.getKey().format(), entry.getKey().generation(), entry.getValue()))
+                .toList());
         Map<String, Long> eventCountSnapshot = new LinkedHashMap<>();
         for (Severity severity : Severity.values())
             eventCountSnapshot.put(severity.name().toLowerCase(Locale.ROOT), eventCounts.get(severity));
@@ -509,13 +617,14 @@ public final class TrainingProgress implements TrainingEventReporter {
         }
     }
 
-    private void flushCycleRecoveries(String formatCode, int generationNumber) {
+    private long flushCycleRecoveries(String formatCode, int generationNumber) {
         CycleRecoveryKey key = new CycleRecoveryKey(formatCode, generationNumber);
         Long count = cycleRecoveries.remove(key);
         if (count != null)
             recordEvent(Severity.SUCCESS, "decision-cycle-recoveries", null,
                     count + " repeated-decision cycles were safely escaped during this simulation batch.",
                     null);
+        return count == null ? 0 : count;
     }
 
     private void flushAllCycleRecoveries() {
@@ -633,6 +742,32 @@ public final class TrainingProgress implements TrainingEventReporter {
     private record CycleRecoveryKey(String format, int generation) {
     }
 
+    public record BatchDecisionDiagnostics(
+            String format,
+            int generation,
+            String label,
+            long games,
+            long cycleRecoveries,
+            long transferConstraints,
+            long genericPassVetoes,
+            long decisionModelFallbacks,
+            long invalidAnswerFallbacks) {
+    }
+
+    public record TrainingDataTotals(
+            String format,
+            long inputSteps,
+            long trainerRecords,
+            long decisionJsonBytes,
+            long decisionBytes,
+            long deckExamples,
+            long deckJsonBytes,
+            long deckBytes) { }
+
+    public record TransferGuardTotals(String format, int generation, long constrainedDecisions) { }
+
+    public record GenericPassGateTotals(String format, int generation, long passOverrides) { }
+
     public record DeckBuilderProgress(
             String format,
             int generation,
@@ -642,6 +777,7 @@ public final class TrainingProgress implements TrainingEventReporter {
             int losses,
             int skippedGames,
             int accumulatedExamples,
+            int recentExamples,
             int trainingExamples,
             int validationExamples,
             String algorithm,

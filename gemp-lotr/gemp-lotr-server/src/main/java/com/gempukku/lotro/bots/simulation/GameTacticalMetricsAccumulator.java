@@ -4,6 +4,7 @@ import com.gempukku.lotro.common.CardType;
 import com.gempukku.lotro.common.Phase;
 import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.GameState;
+import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.timing.DefaultLotroGame;
 import com.gempukku.lotro.logic.timing.GameStats;
 
@@ -14,6 +15,7 @@ final class GameTacticalMetricsAccumulator {
     private final String p2;
     private final PlayerMetrics p1Metrics = new PlayerMetrics();
     private final PlayerMetrics p2Metrics = new PlayerMetrics();
+    private final GameDecisionMetricsAccumulator decisionMetrics = new GameDecisionMetricsAccumulator();
     private Snapshot previous;
     private int maximumTwilight;
     private int overwhelmingSkirmishes;
@@ -24,6 +26,7 @@ final class GameTacticalMetricsAccumulator {
     }
 
     void capture(GameState gameState) {
+        decisionMetrics.capture(gameState);
         Snapshot current = snapshot(gameState);
         maximumTwilight = Math.max(maximumTwilight, current.twilight());
         if (previous != null) {
@@ -40,12 +43,21 @@ final class GameTacticalMetricsAccumulator {
         previous = current;
     }
 
+    void recordDecision(Phase phase, AwaitingDecision decision, String acceptedAnswer) {
+        decisionMetrics.recordDecision(phase, decision, acceptedAnswer);
+    }
+
     GameTacticalMetrics finish(DefaultLotroGame game) {
         GameState gameState = game.getGameState();
         capture(gameState);
 
         int p1Position = gameState.getPlayerPosition(p1);
         int p2Position = gameState.getPlayerPosition(p2);
+        var seatingOrder = gameState.getPlayerOrder().getAllPlayers();
+        int p1SeatIndex = seatingOrder.indexOf(p1);
+        String firstPlayer = gameState.getFirstPlayerId();
+        if (seatingOrder.size() != 2 || p1SeatIndex < 0 || !p1.equals(firstPlayer) && !p2.equals(firstPlayer))
+            throw new IllegalStateException("Completed game has invalid actual seating data");
         int p1BurdenCount = gameState.getPlayerBurdens(p1);
         int p2BurdenCount = gameState.getPlayerBurdens(p2);
         PhysicalCard p1RingBearer = gameState.getRingBearer(p1);
@@ -55,6 +67,8 @@ final class GameTacticalMetricsAccumulator {
 
         return new GameTacticalMetrics(
                 victoryReason(game, p1Position, p2Position),
+                p1SeatIndex,
+                p1.equals(firstPlayer),
                 p1Position,
                 p2Position,
                 countControlledSites(gameState, p1),
@@ -80,7 +94,8 @@ final class GameTacticalMetricsAccumulator {
                 p1Metrics.shadowTwilightSpent,
                 p2Metrics.shadowTwilightSpent,
                 overwhelmingSkirmishes,
-                maximumTwilight);
+                maximumTwilight,
+                decisionMetrics.finish());
     }
 
     private void accumulatePlayerChanges(

@@ -1,5 +1,6 @@
 package com.gempukku.lotro.bots.simulation;
 
+import com.gempukku.lotro.bots.AssignmentLegality;
 import com.gempukku.lotro.bots.BotPlayer;
 import com.gempukku.lotro.bots.BotDecisionFallback;
 import com.gempukku.lotro.db.DeckSerialization;
@@ -67,6 +68,7 @@ public class FotrStartersSimulation implements Simulation {
         int decisions = 0;
         DecisionCycleGuard decisionCycleGuard = new DecisionCycleGuard();
         Deque<String> recentDecisions = new ArrayDeque<>();
+        AssignmentLegality assignmentLegality = new AssignmentLegality(lotroGame);
         while (!lotroGame.isFinished()) {
             if (++decisions > MAX_DECISIONS_PER_GAME)
                 throw new IllegalStateException("Starter game exceeded " + MAX_DECISIONS_PER_GAME
@@ -74,9 +76,9 @@ public class FotrStartersSimulation implements Simulation {
                         + (recentDecisions.isEmpty() ? "<none>" : String.join(" | ", recentDecisions)));
 
             if (userFeedback.getAwaitingDecision(bot1.getName()) != null) {
-                getDecisionAndDecide(bot1, lotroGame, decisionCycleGuard, recentDecisions);
+                getDecisionAndDecide(bot1, lotroGame, decisionCycleGuard, recentDecisions, assignmentLegality);
             } else if (userFeedback.getAwaitingDecision(bot2.getName()) != null) {
-                getDecisionAndDecide(bot2, lotroGame, decisionCycleGuard, recentDecisions);
+                getDecisionAndDecide(bot2, lotroGame, decisionCycleGuard, recentDecisions, assignmentLegality);
             } else {
                 throw new IllegalStateException("Starter game has no pending decision and is not finished");
             }
@@ -94,7 +96,8 @@ public class FotrStartersSimulation implements Simulation {
             BotPlayer bot,
             DefaultLotroGame lotroGame,
             DecisionCycleGuard decisionCycleGuard,
-            Deque<String> recentDecisions) {
+            Deque<String> recentDecisions,
+            AssignmentLegality assignmentLegality) {
         AwaitingDecision awaitingDecision = userFeedback.getAwaitingDecision(bot.getName());
         String phase = lotroGame.getGameState().getCurrentPhase().toString();
         String signature = DecisionCycleGuard.signature(
@@ -110,15 +113,12 @@ public class FotrStartersSimulation implements Simulation {
             action = BotDecisionFallback.alternativeAnswer(
                     lotroGame, bot.getName(), awaitingDecision, escape.repeatedAnswer());
             if (action == null) {
-                throw new IllegalStateException("Scheduled cycle escape is no longer legal in starter game: "
-                        + DecisionCycleGuard.formatDecisionOutcome(
-                        bot.getName(), phase, awaitingDecision, escape.repeatedAnswer(), false));
+                throw new IllegalStateException("Scheduled cycle escape is no longer legal in starter game during "
+                        + phase + " for " + awaitingDecision.getDecisionType());
             }
             decisionCycleGuard.clear();
-            System.out.println("Detected repeated starter-game decision cycle; using a deferred untrained alternate "
-                    + "answer \"" + action + "\" to break it: "
-                    + DecisionCycleGuard.formatDecisionOutcome(
-                    bot.getName(), phase, awaitingDecision, action, true));
+            System.out.println("Escaped a repeated starter-game decision during " + phase
+                    + " for " + awaitingDecision.getDecisionType() + ".");
         } else if (repeatedCycle.isPresent()) {
             DecisionCycleGuard.RepeatedCycle cycle = repeatedCycle.orElseThrow();
             action = BotDecisionFallback.alternativeAnswer(
@@ -126,22 +126,22 @@ public class FotrStartersSimulation implements Simulation {
             if (action == null) {
                 var deferred = cycle.deferredEscape();
                 if (deferred.isEmpty()) {
-                    throw new IllegalStateException("Detected repeated starter-game decision cycle but found no distinct "
-                            + "legal escape answer: " + cycle.describe());
+                    throw new IllegalStateException("Detected an unresolvable starter-game decision cycle during "
+                            + phase + " for " + awaitingDecision.getDecisionType()
+                            + " (cycle length " + cycle.length() + ")");
                 }
                 action = cycle.repeatedAnswer();
                 decisionCycleGuard.clear();
                 decisionCycleGuard.deferEscape(deferred.orElseThrow());
-                System.out.println("Detected repeated starter-game decision cycle; current decision has no alternate, "
-                        + "so repeating it and scheduling an untrained alternate for the next cycle decision: "
-                        + cycle.describe());
+                System.out.println("A repeated starter-game decision had no immediate escape during " + phase
+                        + "; an alternate was scheduled.");
             } else {
                 decisionCycleGuard.clear();
-                System.out.println("Detected repeated starter-game decision cycle; using an untrained alternate answer \""
-                        + action + "\" to break it: " + cycle.describe());
+                System.out.println("Escaped a repeated starter-game decision during " + phase
+                        + " for " + awaitingDecision.getDecisionType() + ".");
             }
         } else {
-            action = bot.chooseAction(lotroGame.getGameState(), awaitingDecision);
+            action = bot.chooseAction(lotroGame.getGameState(), awaitingDecision, assignmentLegality);
         }
 
         String acceptedAction;
@@ -149,17 +149,18 @@ public class FotrStartersSimulation implements Simulation {
             userFeedback.participantDecided(bot.getName());
             acceptedAction = BotDecisionFallback.decide(lotroGame, bot.getName(), awaitingDecision, action);
         } catch (DecisionResultInvalidException e) {
-            throw new IllegalStateException("No valid bot answer for training decision \"" + awaitingDecision.getText() + "\"", e);
+            throw new IllegalStateException("No valid starter-game bot answer during " + phase
+                    + " for " + awaitingDecision.getDecisionType(), e);
         }
 
         if (!java.util.Objects.equals(action, acceptedAction)) {
-            System.out.println(bot.getName() + " required fallback \"" + acceptedAction
-                    + "\" for decision \"" + awaitingDecision.getText() + "\"");
+            System.out.println("Invalid starter-game bot answer replaced with a legal fallback during "
+                    + phase + " for " + awaitingDecision.getDecisionType() + ".");
             if (!cycleEscape && bot instanceof LearningBotPlayer learningBot)
                 learningBot.discardLastDecision();
         }
         String summary = DecisionCycleGuard.formatDecisionOutcome(
-                bot.getName(), phase, awaitingDecision, acceptedAction, cycleEscape);
+                phase, awaitingDecision, acceptedAction, cycleEscape);
         DecisionCycleGuard.addRecentDecision(recentDecisions, summary);
         decisionCycleGuard.record(signature, awaitingDecision.getDecisionType(), summary, acceptedAction);
         lotroGame.carryOutPendingActionsUntilDecisionNeeded();

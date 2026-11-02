@@ -10,6 +10,7 @@ import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelIO;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelRegistry;
 import com.gempukku.lotro.bots.simulation.GameResult;
 import com.gempukku.lotro.bots.simulation.MovieBlockSimulation;
+import com.gempukku.lotro.bots.training.TrainingDataIO;
 import com.gempukku.lotro.bots.training.TrainingProgress;
 import com.gempukku.lotro.bots.training.TrainingThreadFactory;
 import com.gempukku.lotro.game.LotroCardBlueprintLibrary;
@@ -18,13 +19,10 @@ import com.gempukku.lotro.logic.vo.LotroDeck;
 import smile.classification.Classifier;
 import smile.classification.LogisticRegression;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -32,6 +30,8 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.Set;
+import java.util.SplittableRandom;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
@@ -41,6 +41,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class DeckBuilderTrainer {
+    public static final int DEFAULT_MAX_HISTORY_RECORDS = 10_000;
     private static final int MINIMUM_EXAMPLES_PER_CLASS = 2;
     private static final int VALIDATION_HASH_MODULUS = 5;
     private static final int DEFAULT_CANDIDATE_POOL_SIZE = 16;
@@ -66,7 +67,56 @@ public final class DeckBuilderTrainer {
             TrainingProgress progress,
             int generation,
             long seed) {
-        if (referenceDecks.isEmpty())
+        return train(format, library, referenceDecks, incumbentModel, decisionModels, decisionFeatures,
+                modelDirectory, dataDirectory, candidatesPerGeneration, gamesPerCandidate, requestedThreads,
+                progressInterval, progress, generation, seed, DEFAULT_MAX_HISTORY_RECORDS);
+    }
+
+    public static TrainingResult train(
+            LotroFormat format,
+            LotroCardBlueprintLibrary library,
+            List<LotroDeck> referenceDecks,
+            Classifier<double[]> incumbentModel,
+            ModelRegistry decisionModels,
+            RLGameStateFeatures decisionFeatures,
+            Path modelDirectory,
+            Path dataDirectory,
+            int candidatesPerGeneration,
+            int gamesPerCandidate,
+            int requestedThreads,
+            int progressInterval,
+            TrainingProgress progress,
+            int generation,
+            long seed,
+            int maxHistoryRecords) {
+        return train(format, library, referenceDecks, incumbentModel, decisionModels, decisionFeatures,
+                modelDirectory, dataDirectory, candidatesPerGeneration, gamesPerCandidate, requestedThreads,
+                progressInterval, progress, generation, seed, maxHistoryRecords, Set.of());
+    }
+
+    public static TrainingResult train(
+            LotroFormat format,
+            LotroCardBlueprintLibrary library,
+            List<LotroDeck> referenceDecks,
+            Classifier<double[]> incumbentModel,
+            ModelRegistry decisionModels,
+            RLGameStateFeatures decisionFeatures,
+            Path modelDirectory,
+            Path dataDirectory,
+            int candidatesPerGeneration,
+            int gamesPerCandidate,
+            int requestedThreads,
+            int progressInterval,
+            TrainingProgress progress,
+            int generation,
+            long seed,
+            int maxHistoryRecords,
+            Set<String> heldOutDeckFingerprints) {
+        Set<String> heldOut = Set.copyOf(heldOutDeckFingerprints);
+        List<LotroDeck> eligibleReferenceDecks = referenceDecks.stream()
+                .filter(deck -> !heldOut.contains(fingerprint(format.getCode(), deck)))
+                .toList();
+        if (eligibleReferenceDecks.isEmpty())
             throw new IllegalArgumentException("Deck-builder training requires at least one reference deck");
         if (decisionModels == null || decisionFeatures == null)
             throw new IllegalArgumentException("Deck-builder evaluation requires the incumbent decision policy");
@@ -76,16 +126,17 @@ public final class DeckBuilderTrainer {
             throw new IllegalArgumentException("Deck-builder games per candidate must be an even number of at least two");
         if (requestedThreads < 1 || progressInterval < 1)
             throw new IllegalArgumentException("Deck-builder worker and progress intervals must be positive");
+        if (maxHistoryRecords < 1)
+            throw new IllegalArgumentException("Deck-builder historical example cap must be positive");
 
         List<LotroDeck> candidates = new ArrayList<>(candidatesPerGeneration);
         for (int candidate = 0; candidate < candidatesPerGeneration; candidate++) {
             long candidateSeed = seed + 31L * candidate;
-            LotroDeck deck = incumbentModel != null && candidate % 3 == 2
-                    ? createDeck(format, library, incumbentModel, DEFAULT_CANDIDATE_POOL_SIZE, candidateSeed)
-                    : createDeck(format, library, null, QUALITY_SCREEN_CANDIDATE_POOL_SIZE, candidateSeed);
+            LotroDeck deck = createTrainingDeck(format, library, incumbentModel,
+                    candidate % 3 == 2, candidateSeed, heldOut);
             candidates.add(deck);
         }
-        List<DeckDescriptor> referenceDescriptors = referenceDecks.stream()
+        List<DeckDescriptor> referenceDescriptors = eligibleReferenceDecks.stream()
                 .map(deck -> new DeckDescriptor(deck, fingerprint(format.getCode(), deck),
                         DeckFeatureExtractor.extract(deck, library)))
                 .toList();
@@ -107,7 +158,7 @@ public final class DeckBuilderTrainer {
                 double[] features = DeckFeatureExtractor.extract(candidateDeck, library);
                 String deckKey = fingerprint(format.getCode(), candidateDeck);
                 futures.add(completionService.submit(() -> evaluateCandidate(
-                        format, library, referenceDecks, referenceDescriptors, decisionModels, decisionFeatures,
+                        format, library, eligibleReferenceDecks, referenceDescriptors, decisionModels, decisionFeatures,
                         candidateDeck, features, deckKey, index,
                         gamesPerCandidate, completedGames, totalGames, progressInterval, progress)));
             }
@@ -145,9 +196,17 @@ public final class DeckBuilderTrainer {
                     format.getCode(), averageDeckQuality, playableDecks, candidates.size());
 
             Path dataFile = dataDirectory.resolve("deck-builder-outcomes-v4.jsonl");
-            appendExamples(dataFile, newExamples);
-            List<DeckTrainingExample> allExamples = loadExamples(dataFile,
-                    DeckFeatureExtractor.extract(candidates.getFirst(), library).length);
+            Path compressedDataFile = dataFile.resolveSibling(dataFile.getFileName() + ".gz");
+            List<DeckTrainingExample> historicalExamples = loadExamples(
+                    dataFile, compressedDataFile,
+                    DeckFeatureExtractor.extract(candidates.getFirst(), library).length,
+                    maxHistoryRecords, heldOut);
+            TrainingDataIO.AppendResult appendStats = appendExamples(compressedDataFile, newExamples);
+            if (progress != null)
+                progress.deckBuilderDataAppended(format.getCode(), newExamples.size(),
+                        appendStats.jsonBytes(), appendStats.appendedBytes());
+            List<DeckTrainingExample> allExamples = new ArrayList<>(historicalExamples);
+            allExamples.addAll(newExamples);
             TrainingSplit split = splitByDeckFingerprint(allExamples);
             int trainingWins = countWins(split.training());
             int trainingLosses = split.training().size() - trainingWins;
@@ -200,7 +259,7 @@ public final class DeckBuilderTrainer {
                     selectTrainingDecks(candidates, selectedModel, library, seed ^ 0x37D4E18L);
             TrainingResult trainingResult = new TrainingResult(
                     selectedModel, generatedDecks, candidatesPerGeneration, totalGames - skippedGames,
-                    candidateWins, candidateLosses, allExamples.size(), split.training().size(),
+                    candidateWins, candidateLosses, allExamples.size(), newExamples.size(), split.training().size(),
                     split.validation().size(), selectedAlgorithm, validationAccuracy, incumbentAccuracy,
                     promoted, skippedGames);
             if (progress != null)
@@ -247,6 +306,25 @@ public final class DeckBuilderTrainer {
         scored.sort((left, right) -> Double.compare(right.score(), left.score()));
         int selectionPool = Math.max(1, (scored.size() + 4) / 5);
         return scored.get(new Random(seed).nextInt(selectionPool)).deck();
+    }
+
+    private static LotroDeck createTrainingDeck(
+            LotroFormat format,
+            LotroCardBlueprintLibrary library,
+            Classifier<double[]> model,
+            boolean modelGuided,
+            long seed,
+            Set<String> heldOutDeckFingerprints) {
+        for (int attempt = 0; attempt < 100; attempt++) {
+            long candidateSeed = seed + 31L * attempt;
+            LotroDeck deck = modelGuided && model != null
+                    ? createDeck(format, library, model, DEFAULT_CANDIDATE_POOL_SIZE, candidateSeed)
+                    : createDeck(format, library, null, QUALITY_SCREEN_CANDIDATE_POOL_SIZE, candidateSeed);
+            if (!heldOutDeckFingerprints.contains(fingerprint(format.getCode(), deck)))
+                return deck;
+        }
+        throw new IllegalStateException("Could not generate a deck outside the held-out deck manifest for "
+                + format.getCode());
     }
 
     private static List<LotroDeck> selectTrainingDecks(
@@ -421,38 +499,51 @@ public final class DeckBuilderTrainer {
         return model.predict(features) == 1 ? 1.0 : 0.0;
     }
 
-    private static void appendExamples(Path file, List<DeckTrainingExample> examples) {
+    static TrainingDataIO.AppendResult appendExamples(
+            Path file, List<DeckTrainingExample> examples) {
         try {
-            Files.createDirectories(file.getParent());
-            try (var writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8,
-                    StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-                for (DeckTrainingExample example : examples) {
-                    JSONObject object = new JSONObject();
-                    object.put("schema", 4);
-                    object.put("deckKey", example.deckKey());
-                    object.put("features", example.features());
-                    object.put("won", example.won());
-                    writer.write(JSON.toJSONString(object));
-                    writer.newLine();
-                }
-            }
+            List<String> lines = examples.stream().map(example -> {
+                JSONObject object = new JSONObject();
+                object.put("schema", 4);
+                object.put("deckKey", example.deckKey());
+                object.put("features", example.features());
+                object.put("won", example.won());
+                return JSON.toJSONString(object);
+            }).toList();
+            return TrainingDataIO.appendCompressedLines(file, lines);
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to save deck-builder outcomes to " + file, e);
         }
     }
 
-    private static List<DeckTrainingExample> loadExamples(Path file, int expectedFeatureCount) {
-        if (!Files.isRegularFile(file))
-            return List.of();
+    static List<DeckTrainingExample> loadExamples(
+            Path file, Path compressedFile, int expectedFeatureCount) {
+        return loadExamples(file, compressedFile, expectedFeatureCount, Integer.MAX_VALUE);
+    }
+
+    static List<DeckTrainingExample> loadExamples(
+            Path file, Path compressedFile, int expectedFeatureCount, int maxRecords) {
+        return loadExamples(file, compressedFile, expectedFeatureCount, maxRecords, Set.of());
+    }
+
+    static List<DeckTrainingExample> loadExamples(
+            Path file,
+            Path compressedFile,
+            int expectedFeatureCount,
+            int maxRecords,
+            Set<String> heldOutDeckFingerprints) {
+        if (maxRecords < 1)
+            throw new IllegalArgumentException("Maximum historical deck-builder examples must be positive");
+        Set<String> heldOut = Set.copyOf(heldOutDeckFingerprints);
 
         List<DeckTrainingExample> examples = new ArrayList<>();
-        try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
-            String line;
-            int lineNumber = 0;
-            while ((line = reader.readLine()) != null) {
-                lineNumber++;
+        SplittableRandom random = new SplittableRandom(
+                31L * file.toAbsolutePath().normalize().hashCode() + expectedFeatureCount);
+        long[] recordsSeen = {0};
+        try {
+            TrainingDataIO.forEachLine(file, compressedFile, (source, lineNumber, line) -> {
                 if (line.isBlank())
-                    continue;
+                    return;
                 try {
                     JSONObject object = JSON.parseObject(line);
                     if (object.getIntValue("schema") != 4)
@@ -465,14 +556,25 @@ public final class DeckBuilderTrainer {
                         if (!Double.isFinite(feature))
                             throw new IllegalArgumentException("Non-finite deck feature");
                     }
-                    examples.add(new DeckTrainingExample(
-                            deckKey, features, object.getBooleanValue("won")));
+                    DeckTrainingExample example = new DeckTrainingExample(
+                            deckKey, features, object.getBooleanValue("won"));
+                    if (heldOut.contains(deckKey))
+                        return;
+                    recordsSeen[0]++;
+                    if (examples.size() < maxRecords) {
+                        examples.add(example);
+                    } else {
+                        long replacementIndex = random.nextLong(recordsSeen[0]);
+                        if (replacementIndex < maxRecords)
+                            examples.set((int) replacementIndex, example);
+                    }
                 } catch (RuntimeException e) {
-                    throw new IllegalStateException("Invalid deck outcome at " + file + ":" + lineNumber, e);
+                    throw new IllegalStateException("Invalid deck outcome at " + source + ":" + lineNumber, e);
                 }
-            }
+            });
         } catch (IOException e) {
-            throw new UncheckedIOException("Unable to load deck-builder outcomes from " + file, e);
+            throw new UncheckedIOException(
+                    "Unable to load deck-builder outcomes from " + file + " and " + compressedFile, e);
         }
         return examples;
     }
@@ -493,7 +595,7 @@ public final class DeckBuilderTrainer {
         return (int) examples.stream().filter(DeckTrainingExample::won).count();
     }
 
-    private static String fingerprint(String formatCode, LotroDeck deck) {
+    public static String fingerprint(String formatCode, LotroDeck deck) {
         List<String> sortedCards = new ArrayList<>(deck.getDrawDeckCards());
         sortedCards.sort(String::compareTo);
         String canonical = formatCode + "|" + deck.getRingBearer() + "|" + deck.getRing() + "|"
@@ -514,6 +616,7 @@ public final class DeckBuilderTrainer {
             int wins,
             int losses,
             int accumulatedExamples,
+            int recentExamples,
             int trainingExamples,
             int validationExamples,
             String algorithm,

@@ -1,8 +1,10 @@
 package com.gempukku.lotro.bots.simulation;
 
 import com.gempukku.lotro.bots.BotDecisionFallback;
+import com.gempukku.lotro.bots.TrainingDiagnosticTrace;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.AwaitingDecisionType;
+import com.alibaba.fastjson2.JSON;
 import org.junit.Test;
 
 import java.util.Map;
@@ -10,6 +12,7 @@ import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -123,6 +126,58 @@ public class DecisionCycleGuardTest {
                 "max", new String[]{"1"}));
 
         assertNull(BotDecisionFallback.alternativeAnswer(null, "fp", decision, "temp0"));
+    }
+
+    @Test
+    public void fingerprintsAnUnresolvableCycleWithoutPersistingPromptsOrCardIds() {
+        AwaitingDecision decision = mock(AwaitingDecision.class);
+        when(decision.getDecisionType()).thenReturn(AwaitingDecisionType.ARBITRARY_CARDS);
+        when(decision.getText()).thenReturn("private prompt");
+        when(decision.getDecisionParameters()).thenReturn(Map.of(
+                "cardId", new String[]{"private-card-id"},
+                "selectable", new String[]{"true"},
+                "min", new String[]{"1"},
+                "max", new String[]{"1"}));
+
+        DecisionCycleGuard guard = new DecisionCycleGuard();
+        String signature = "private visible state";
+        for (int repetition = 0; repetition < 4; repetition++)
+            guard.record(signature, AwaitingDecisionType.ARBITRARY_CARDS,
+                    "private prompt -> private-card-id", "private-card-id");
+
+        DecisionCycleGuard.RepeatedCycle cycle = guard.findRepeatedCycle(signature).orElseThrow();
+        assertNull(BotDecisionFallback.alternativeAnswer(null, "fp", decision, cycle.repeatedAnswer()));
+        TrainingDiagnosticTrace trace = TrainingDiagnosticTrace.create(
+                "unresolvable-cycle", "king_block", "SKIRMISH", decision, signature,
+                cycle.repeatedAnswer(), null, cycle.length(), cycle.diagnosticPattern());
+        String json = JSON.toJSONString(trace);
+
+        assertFalse(json.contains("private"));
+        assertEquals(64, trace.decisionFingerprint().length());
+        assertEquals(64, trace.observerStateFingerprint().length());
+        assertEquals(1, trace.cycleLength());
+        assertEquals("opaque", trace.cyclePattern().getFirst().answer().kind());
+        assertNotNull(trace.cyclePattern().getFirst().decisionFingerprint());
+    }
+
+    @Test
+    public void fingerprintsAnInvalidAnswerWithoutPersistingChoiceText() {
+        AwaitingDecision decision = mock(AwaitingDecision.class);
+        when(decision.getDecisionType()).thenReturn(AwaitingDecisionType.CARD_ACTION_CHOICE);
+        when(decision.getText()).thenReturn("private invalid-answer prompt");
+        when(decision.getDecisionParameters()).thenReturn(Map.of(
+                "actionText", new String[]{"private card title"},
+                "cardId", new String[]{"private-card-id"}));
+
+        TrainingDiagnosticTrace trace = TrainingDiagnosticTrace.create(
+                "invalid-answer-fallback", "king_block", "FELLOWSHIP", decision,
+                "private observer state", "private-card-id", "0", 0, java.util.List.of());
+        String json = JSON.toJSONString(trace);
+
+        assertFalse(json.contains("private"));
+        assertEquals("opaque", trace.proposedAnswer().kind());
+        assertEquals("choice-index", trace.acceptedAnswer().kind());
+        assertEquals(Integer.valueOf(0), trace.acceptedAnswer().index());
     }
 
     @Test

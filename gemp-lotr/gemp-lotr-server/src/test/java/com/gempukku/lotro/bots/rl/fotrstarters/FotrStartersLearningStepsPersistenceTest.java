@@ -9,6 +9,7 @@ import com.gempukku.lotro.bots.rl.fotrstarters.models.cardaction.GenericCardActi
 import com.gempukku.lotro.bots.rl.semanticaction.CardActionChoiceAction;
 import com.gempukku.lotro.logic.decisions.CardActionSelectionDecision;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
+import com.gempukku.lotro.bots.training.TrainingDataIO;
 import com.gempukku.lotro.bots.training.TrainingProgress;
 import com.gempukku.lotro.bots.training.TrainingRunMetricsWriter;
 import org.junit.Rule;
@@ -20,6 +21,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -97,7 +100,103 @@ public class FotrStartersLearningStepsPersistenceTest {
         assertTrue(compaction.getString("message").contains("from 10 to 3 records"));
     }
 
+    @Test
+    public void samplingWithoutCompactionPreservesHistoricalFile() throws Exception {
+        Path dataDirectory = temporaryFolder.newFolder("preserved-data").toPath();
+        Path recordsFile = dataDirectory.resolve("movie-block-generic-card-action-choice.jsonl");
+        Files.write(recordsFile, java.util.stream.IntStream.range(0, 10)
+                .mapToObj(FotrStartersLearningStepsPersistenceTest::trainingRecord)
+                .map(step -> step.toJson().toJSONString()).toList(), StandardCharsets.UTF_8);
+        byte[] before = Files.readAllBytes(recordsFile);
+        FotrStartersLearningStepsPersistence persistence = new FotrStartersLearningStepsPersistence(
+                dataDirectory, compaction -> { throw new AssertionError("Unexpected compaction"); },
+                stats -> { }, false);
+
+        assertEquals(3, persistence.load(new GenericCardActionChoiceTrainer(), 3).size());
+        org.junit.Assert.assertArrayEquals(before, Files.readAllBytes(recordsFile));
+    }
+
+    @Test
+    public void countsInputStepsTrainerRecordsAndExactAppendedBytes() throws Exception {
+        Path dataDirectory = temporaryFolder.newFolder("appended-data").toPath();
+        AtomicReference<FotrStartersLearningStepsPersistence.AppendStats> observed = new AtomicReference<>();
+        FotrStartersLearningStepsPersistence persistence = new FotrStartersLearningStepsPersistence(
+                dataDirectory, compaction -> { }, observed::set, false);
+        persistence.save(List.of(trainingRecord(1), trainingRecord(2)));
+        long bytes;
+        long records;
+        try (var files = Files.list(dataDirectory)) {
+            List<Path> paths = files.toList();
+            bytes = 0;
+            records = 0;
+            for (Path path : paths) {
+                bytes += Files.size(path);
+                long[] fileRecords = {0};
+                Path legacyFile = path.getFileName().toString().endsWith(".gz")
+                        ? path.resolveSibling(path.getFileName().toString().substring(
+                        0, path.getFileName().toString().length() - 3))
+                        : path;
+                Path compressedFile = legacyFile.resolveSibling(legacyFile.getFileName() + ".gz");
+                TrainingDataIO.forEachLine(legacyFile, compressedFile,
+                        (source, lineNumber, line) -> fileRecords[0]++);
+                records += fileRecords[0];
+            }
+        }
+        assertEquals(2, observed.get().inputSteps());
+        assertEquals(2, persistence.load(new GenericCardActionChoiceTrainer(), 10).size());
+        assertEquals(records, observed.get().trainerRecords());
+        assertEquals(bytes, observed.get().appendedBytes());
+        assertTrue(observed.get().jsonBytes() > observed.get().appendedBytes());
+        assertTrue(observed.get().appendedBytes() > 0);
+    }
+
+    @Test
+    public void loadsLegacyJsonlAndMultipleCompressedAppendsTogether() throws Exception {
+        Path dataDirectory = temporaryFolder.newFolder("mixed-data").toPath();
+        Path legacyFile = dataDirectory.resolve("movie-block-generic-card-action-choice.jsonl");
+        Files.write(legacyFile, java.util.stream.IntStream.range(0, 5)
+                .mapToObj(FotrStartersLearningStepsPersistenceTest::trainingRecord)
+                .map(step -> step.toJson().toJSONString()).toList(), StandardCharsets.UTF_8);
+        FotrStartersLearningStepsPersistence persistence = new FotrStartersLearningStepsPersistence(
+                dataDirectory, compaction -> { }, stats -> { }, false);
+
+        persistence.save(List.of(trainingRecord(10), trainingRecord(11)));
+        persistence.save(List.of(trainingRecord(12), trainingRecord(13)));
+
+        assertEquals(9, persistence.load(new GenericCardActionChoiceTrainer(), 20).size());
+        assertEquals(5, Files.readAllLines(legacyFile).size());
+        assertTrue(Files.isRegularFile(
+                legacyFile.resolveSibling(legacyFile.getFileName() + ".gz")));
+    }
+
+    @Test
+    public void holdoutFilteringExcludesReservedAndUnattributedRecordsAndReadsLegacyJson() throws Exception {
+        Path dataDirectory = temporaryFolder.newFolder("holdout-data").toPath();
+        Path recordsFile = dataDirectory.resolve("movie-block-generic-card-action-choice.jsonl");
+        LearningStep heldOut = trainingRecord(1, List.of("reserved-deck"));
+        LearningStep eligible = trainingRecord(2, List.of("training-deck"));
+        JSONObject legacyRecord = trainingRecord(3).toJson();
+        legacyRecord.remove("deckFingerprints");
+        Files.write(recordsFile, List.of(
+                heldOut.toJson().toJSONString(), eligible.toJson().toJSONString(),
+                legacyRecord.toJSONString()), StandardCharsets.UTF_8);
+        FotrStartersLearningStepsPersistence persistence = new FotrStartersLearningStepsPersistence(
+                dataDirectory, compaction -> { }, stats -> { }, false, Set.of("reserved-deck"));
+
+        List<LearningStep> loaded = persistence.load(new GenericCardActionChoiceTrainer(), 10);
+
+        assertEquals(List.of("game-2"), loaded.stream().map(step -> step.gameId).toList());
+        assertEquals(List.of("training-deck"), loaded.getFirst().deckFingerprints);
+        assertEquals(new FotrStartersLearningStepsPersistence.HoldoutFilterSummary(1, 1),
+                persistence.holdoutFilterSummary());
+        assertEquals(List.of(), LearningStep.fromJson(legacyRecord.toJSONString()).deckFingerprints);
+    }
+
     private static LearningStep trainingRecord(int index) {
+        return trainingRecord(index, List.of());
+    }
+
+    private static LearningStep trainingRecord(int index, List<String> deckFingerprints) {
         CardActionSelectionDecision decision = new CardActionSelectionDecision(
                 index,
                 "Optional responses",
@@ -110,7 +209,7 @@ public class FotrStartersLearningStepsPersistenceTest {
         };
         CardActionChoiceAction action = new CardActionChoiceAction("", decision, null);
         LearningStep step = new LearningStep(
-                new double[]{index}, action, true, decision, "game-" + index);
+                new double[]{index}, action, true, decision, "game-" + index, deckFingerprints);
         step.reward = index % 2;
         return step;
     }

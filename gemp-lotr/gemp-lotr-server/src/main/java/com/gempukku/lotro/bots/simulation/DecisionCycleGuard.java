@@ -4,6 +4,7 @@ import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.AwaitingDecisionType;
 import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.GameState;
+import com.gempukku.lotro.bots.TrainingDiagnosticTrace;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -192,45 +193,23 @@ final class DecisionCycleGuard {
     }
 
     static String formatDecisionOutcome(
-            String playerId,
             String phase,
             AwaitingDecision decision,
             String answer,
             boolean forcedPass) {
+        TrainingDiagnosticTrace.AnswerOutcome answerOutcome =
+                TrainingDiagnosticTrace.answerOutcome(answer, decision.getDecisionType());
         StringBuilder summary = new StringBuilder()
-                .append(playerId)
-                .append('/')
                 .append(phase)
-                .append(' ')
+                .append('/')
                 .append(decision.getDecisionType())
-                .append(": ")
-                .append(decision.getText());
-
-        if (decision.getDecisionType() == AwaitingDecisionType.CARD_ACTION_CHOICE) {
-            if (answer.isEmpty()) {
-                summary.append(" -> PASS");
-            } else {
-                int actionIndex = Integer.parseInt(answer);
-                summary.append(" -> ")
-                        .append(parameterAt(decision, "actionText", actionIndex))
-                        .append(" [cardId=")
-                        .append(parameterAt(decision, "cardId", actionIndex))
-                        .append(']');
-            }
-        } else if (decision.getDecisionType() == AwaitingDecisionType.MULTIPLE_CHOICE) {
-            int choiceIndex = Integer.parseInt(answer);
-            summary.append(" -> ").append(parameterAt(decision, "results", choiceIndex));
-        } else {
-            summary.append(" -> ").append(answer.isEmpty() ? "<empty>" : answer);
-        }
+                .append(" -> ")
+                .append(answerOutcome.kind());
+        if (answerOutcome.index() != null)
+            summary.append('[').append(answerOutcome.index()).append(']');
         if (forcedPass)
             summary.append(" [cycle breaker]");
         return summary.toString();
-    }
-
-    private static String parameterAt(AwaitingDecision decision, String name, int index) {
-        String[] values = decision.getDecisionParameters().get(name);
-        return values != null && index >= 0 && index < values.length ? values[index] : "unspecified";
     }
 
     record RepeatedCycle(int length, List<DecisionRecord> decisions) {
@@ -258,6 +237,15 @@ final class DecisionCycleGuard {
                     .toList();
             return String.join(" | ", summaries) + " (cycle length " + length + ", repeated "
                     + REQUIRED_CYCLE_REPETITIONS + " times)";
+        }
+
+        List<TrainingDiagnosticTrace.CycleDecision> diagnosticPattern() {
+            return decisions.stream()
+                    .map(decision -> new TrainingDiagnosticTrace.CycleDecision(
+                            decision.decisionType().name(),
+                            TrainingDiagnosticTrace.fingerprint(decision.signature()),
+                            TrainingDiagnosticTrace.answerOutcome(decision.answer(), decision.decisionType())))
+                    .toList();
         }
     }
 
