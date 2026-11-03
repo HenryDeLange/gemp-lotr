@@ -12,11 +12,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import smile.classification.Classifier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,17 +29,107 @@ class BotModelTrainingPlanTest {
     Path temporaryDirectory;
 
     @Test
+    void deckBuilderOnlyRequiresAReferenceManifestAndForbidsDecisionCompaction() throws Exception {
+        Path configFile = temporaryDirectory.resolve("deck-only.properties");
+        Path reference = temporaryDirectory.resolve("references.json");
+        Files.writeString(reference, "manifest");
+        Files.writeString(configFile, "training.mode=deck-builder-only\n");
+        assertThrows(IllegalArgumentException.class,
+                () -> BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + configFile}));
+        Files.writeString(configFile, "training.mode=deck-builder-only\n"
+                + "training.deckbuilder.reference.manifest=references.json\n");
+        var config = BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + configFile});
+        assertTrue(config.deckBuilderOnly());
+        assertEquals(reference.toAbsolutePath(), config.deckBuilderReferenceManifest());
+        var metadata = BotModelTrainingMain.trainingMetadata(config, temporaryDirectory);
+        assertEquals("deck-builder-only", metadata.get("trainingMode"));
+        assertEquals("paired-arguments-v1", metadata.get("deckBuilderReferenceSchedule"));
+        assertEquals(64, ((String) metadata.get("deckBuilderReferenceManifestSha256")).length());
+
+        Files.writeString(configFile, "training.mode=deck-builder-only\n"
+                + "training.deckbuilder.reference.manifest=references.json\n"
+                + "training.data.compact.on.load=true\n");
+        assertThrows(IllegalArgumentException.class,
+                () -> BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + configFile}));
+        Files.writeString(configFile, "training.deckbuilder.reference.manifest=references.json\n");
+        assertThrows(IllegalArgumentException.class,
+                () -> BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + configFile}));
+        Files.writeString(configFile, "training.mode=unknown\n");
+        assertThrows(IllegalArgumentException.class,
+                () -> BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + configFile}));
+    }
+
+    @Test
+    void deckBuilderOnlyRunOverridesAreValidatedWithoutChangingThePropertiesFile() throws Exception {
+        Path configFile = temporaryDirectory.resolve("deck-only-overrides.properties");
+        Files.writeString(temporaryDirectory.resolve("references.json"), "manifest");
+        Files.writeString(configFile, "training.mode=deck-builder-only\n"
+                + "training.deckbuilder.reference.manifest=references.json\n"
+                + "training.formats=fotr_block,movie\n"
+                + "training.generations=1\n"
+                + "training.deckbuilder.candidates.per.generation=4\n"
+                + "training.deckbuilder.games.per.candidate=4\n");
+
+        var config = BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + configFile}, Map.of(
+                "training.formats", "movie",
+                "training.generations", "3",
+                "training.deckbuilder.candidates.per.generation", "10",
+                "training.deckbuilder.games.per.candidate", "20",
+                "training.cpu.threads", "2"));
+
+        assertTrue(config.deckBuilderOnly());
+        assertEquals(List.of("movie"), config.formats());
+        assertEquals(3, config.generations());
+        assertEquals(10, config.deckBuilderCandidatesPerGeneration());
+        assertEquals(20, config.deckBuilderGamesPerCandidate());
+        assertEquals(2, config.threads());
+        assertTrue(Files.readString(configFile).contains("training.generations=1"));
+
+        Files.writeString(configFile, "training.mode=full\n"
+                + "training.formats=fotr_block,movie\n");
+        assertThrows(IllegalArgumentException.class,
+                () -> BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + configFile}));
+    }
+
+    @Test
+    void deckBuilderOnlyPlanContainsNoPolicyTrainingOrEvaluation() {
+        var plan = BotModelTrainingMain.deckBuilderOnlyPlan(List.of("fotr_block", "movie"), 2, 12);
+        assertEquals(4, plan.size());
+        assertEquals(List.of("fotr_block", "movie", "fotr_block", "movie"),
+                plan.stream().map(PlannedStage::format).toList());
+        assertEquals(List.of(1, 1, 2, 2), plan.stream().map(PlannedStage::generation).toList());
+        assertTrue(plan.stream().allMatch(stage -> stage.name().endsWith("deck-builder-evaluation")
+                && stage.total() == 12));
+    }
+
+    @Test
+    void deckBuilderOnlyAllowsAnAbsentRankerButRejectsACorruptOne() throws Exception {
+        Path directory = temporaryDirectory.resolve("ranker");
+        assertNull(BotModelTrainingMain.loadDeckBuilderModel(directory, "movie", true));
+        Files.createDirectories(directory);
+        Files.writeString(directory.resolve("DeckBuilderTrainer.model"), "corrupt");
+        assertThrows(IllegalStateException.class,
+                () -> BotModelTrainingMain.loadDeckBuilderModel(directory, "movie", true));
+    }
+
+    @Test
     void trainingSafetySettingsAreExplicitAndRejectInvalidBooleans() throws Exception {
         Path file = temporaryDirectory.resolve("training.properties");
         Files.writeString(file, "training.data.compact.on.load=false\n"
                 + "training.transfer.guard.enabled=true\ntraining.action.pass.gate.enabled=true\n"
+                + "training.bid.max.burdens=1\n"
                 + "training.require.incumbent.models=true\n"
                 + "training.deckbuilder.max.history.records=1234\n"
+                + "training.model.game-balanced-sampling=true\n"
                 + "models.directory=isolated-models\n");
         var config = BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + file});
         assertFalse(config.compactTrainingData());
+        assertFalse(config.inputFingerprintsEnabled());
+        assertEquals("per-trainer", config.decisionDataLayout().setting());
+        assertTrue(config.gameBalancedSampling());
         assertTrue(config.transferGuardEnabled());
         assertTrue(config.genericPassGateEnabled());
+        assertEquals(1, config.maximumBurdensToBid());
         assertTrue(config.requireIncumbentModels());
         assertEquals(1234, config.deckBuilderMaxHistoryRecords());
         assertEquals(temporaryDirectory.resolve("isolated-models").toAbsolutePath(), config.modelDirectory());
@@ -47,6 +140,8 @@ class BotModelTrainingPlanTest {
         assertTrue(config.compactTrainingData());
         assertFalse(config.transferGuardEnabled());
         assertFalse(config.genericPassGateEnabled());
+        assertFalse(config.gameBalancedSampling());
+        assertEquals(9, config.maximumBurdensToBid());
         assertEquals(DeckBuilderTrainer.DEFAULT_MAX_HISTORY_RECORDS,
                 config.deckBuilderMaxHistoryRecords());
 
@@ -64,9 +159,64 @@ class BotModelTrainingPlanTest {
         assertThrows(IllegalArgumentException.class,
                 () -> BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + file}));
 
+        Files.writeString(file, "training.data.layout=shared-v1\n");
+        config = BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + file});
+        assertEquals("shared-v1", config.decisionDataLayout().setting());
+        assertEquals("shared-v1", BotModelTrainingMain.trainingMetadata(config, temporaryDirectory)
+                .get("decisionDataLayout"));
+        Files.writeString(file, "training.data.layout=shared-v1\ntraining.data.compact.on.load=true\n");
+        assertThrows(IllegalArgumentException.class,
+                () -> BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + file}));
+        Files.writeString(file, "training.data.layout=invalid\n");
+        assertThrows(IllegalArgumentException.class,
+                () -> BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + file}));
+
+        Files.writeString(file, "training.metrics.input.fingerprints.enabled=maybe\n");
+        assertThrows(IllegalArgumentException.class,
+                () -> BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + file}));
+
+        Files.writeString(file, "training.bid.max.burdens=10\n");
+        assertThrows(IllegalArgumentException.class,
+                () -> BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + file}));
+
         Files.writeString(file, "training.deckbuilder.max.history.records=0\n");
         assertThrows(IllegalArgumentException.class,
                 () -> BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + file}));
+    }
+
+    @Test
+    void runMetadataFingerprintsStartingModelsAndOptionallyTheFullCorpus() throws Exception {
+        Path dataDirectory = temporaryDirectory.resolve("corpus");
+        Path modelSnapshot = temporaryDirectory.resolve("staged-models");
+        Path modelFile = modelSnapshot.resolve(
+                ModelIO.OBSERVATION_SCHEMA_DIRECTORY).resolve("movie-trilogy/Policy.model");
+        Path dataFile = dataDirectory.resolve(
+                ModelIO.TRAINING_DATA_SCHEMA_DIRECTORY).resolve("movie_block.jsonl.gz");
+        Files.createDirectories(modelFile.getParent());
+        Files.createDirectories(dataFile.getParent());
+        Files.writeString(modelFile, "starting-model");
+        Files.writeString(dataFile, "starting-data");
+
+        Path configFile = temporaryDirectory.resolve("fingerprints.properties");
+        Files.writeString(configFile, "models.directory=models\n"
+                + "training.data.directory=corpus\n"
+                + "training.metrics.input.fingerprints.enabled=true\n"
+                + "training.model.game-balanced-sampling=true\n");
+        var config = BotModelTrainingMain.TrainingConfig.load(new String[]{"--config=" + configFile});
+        Map<String, Object> metadata = BotModelTrainingMain.trainingMetadata(config, modelSnapshot);
+
+        assertEquals(Boolean.TRUE, metadata.get("trainingDataFingerprintEnabled"));
+        assertEquals(Boolean.TRUE, metadata.get("gameBalancedSampling"));
+        assertEquals(9, metadata.get("maximumBurdensToBid"));
+        assertEquals(1, metadata.get("startingModelFileCount"));
+        assertEquals(1, metadata.get("startingTrainingDataFileCount"));
+        assertEquals(64, ((String) metadata.get("startingModelFilesSha256")).length());
+        String trainingDataHash = (String) metadata.get("startingTrainingDataFilesSha256");
+        assertEquals(64, trainingDataHash.length());
+
+        Files.writeString(dataFile, "changed-data");
+        Map<String, Object> changedMetadata = BotModelTrainingMain.trainingMetadata(config, modelSnapshot);
+        assertNotEquals(trainingDataHash, changedMetadata.get("startingTrainingDataFilesSha256"));
     }
 
     @Test
@@ -91,10 +241,13 @@ class BotModelTrainingPlanTest {
         List<String> formats = List.of("movie");
         assertThrows(IllegalStateException.class,
                 () -> BotModelTrainingMain.validateRequiredIncumbentModels(temporaryDirectory, formats));
+        assertThrows(IllegalStateException.class,
+                () -> BotModelTrainingMain.validateRequiredPolicyModels(temporaryDirectory, formats));
         Path policy = ModelIO.resolveModelDirectory(temporaryDirectory, "movie");
         var trainers = FotrStarterTrainerCatalog.createAll();
         for (var trainer : trainers)
             ModelIO.saveModel(trainer.getClass(), new ConstantModel(), policy);
+        BotModelTrainingMain.validateRequiredPolicyModels(temporaryDirectory, formats);
         ModelIO.saveModel(DeckBuilderTrainer.class, new ConstantModel(),
                 ModelIO.resolveDeckBuilderDirectory(temporaryDirectory, "movie"));
         BotModelTrainingMain.validateRequiredIncumbentModels(temporaryDirectory, formats);

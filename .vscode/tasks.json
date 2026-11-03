@@ -15,6 +15,30 @@
         "cwd": "${workspaceFolder}"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Ensure Deck-builder Training Reference Manifest",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\.vscode\\prepare-deck-builder-training.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Prepare Deck-builder Training",
+      "dependsOn": [
+        "Build GEMP Projects",
+        "Ensure Deck-builder Training Reference Manifest"
+      ],
+      "dependsOrder": "sequence"
     }
   ]
 }

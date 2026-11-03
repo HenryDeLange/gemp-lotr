@@ -14,7 +14,6 @@ import com.gempukku.lotro.packs.ProductLibrary;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -36,6 +35,12 @@ public final class MovieBlockDeckFactory {
             "RotK - Aragorn Starter", "RotK - Eomer Starter",
             "SoG - Merry Starter", "SoG - Pippin Starter",
             "MD - Frodo Starter", "MD - Sam Starter");
+
+    public enum CultureComposition {
+        MIXED,
+        FOCUSED,
+        MULTICULTURE
+    }
 
     private MovieBlockDeckFactory() {
     }
@@ -198,8 +203,12 @@ public final class MovieBlockDeckFactory {
         DeckPools pools = createPools(format, library);
         Random random = new Random(seed);
         List<LotroDeck> decks = new ArrayList<>(deckCount);
-        for (int i = 0; i < deckCount; i++)
-            decks.add(createLegalDeck(formatCode, format, pools, random, i + 1));
+        for (int i = 0; i < deckCount; i++) {
+            CultureComposition composition = i % 2 == 0
+                    ? CultureComposition.FOCUSED : CultureComposition.MULTICULTURE;
+            decks.add(createLegalDeck(formatCode, format, pools, random, i + 1, Set.of(),
+                    composition.name().toLowerCase(java.util.Locale.ROOT), composition));
+        }
         return List.copyOf(decks);
     }
 
@@ -208,9 +217,26 @@ public final class MovieBlockDeckFactory {
             LotroFormat format,
             LotroCardBlueprintLibrary library,
             long seed) {
+        CultureComposition composition = new Random(seed).nextBoolean()
+                ? CultureComposition.FOCUSED : CultureComposition.MULTICULTURE;
+        return createRandomLegalDeck(formatCode, format, library, seed, composition);
+    }
+
+    public static LotroDeck createRandomLegalDeck(
+            String formatCode,
+            LotroFormat format,
+            LotroCardBlueprintLibrary library,
+            long seed,
+            CultureComposition composition) {
         if (!List.of("fotr_block", "ttt_block", "king_block", "movie").contains(formatCode))
             throw new IllegalArgumentException("Unsupported bot block format: " + formatCode);
-        return createLegalDeck(formatCode, format, createPools(format, library), new Random(seed), 1);
+        if (composition == null)
+            throw new IllegalArgumentException("Deck culture composition is required");
+        if (composition == CultureComposition.MIXED)
+            composition = new Random(seed).nextBoolean()
+                    ? CultureComposition.FOCUSED : CultureComposition.MULTICULTURE;
+        return createLegalDeck(formatCode, format, createPools(format, library), new Random(seed), 1,
+                Set.of(), composition.name().toLowerCase(java.util.Locale.ROOT), composition);
     }
 
     public static List<LotroDeck> createCardCoverageDecks(
@@ -344,8 +370,10 @@ public final class MovieBlockDeckFactory {
             LotroFormat format,
             DeckPools pools,
             Random random,
-            int deckIndex) {
-        return createLegalDeck(formatCode, format, pools, random, deckIndex, Set.of(), "generated bot deck");
+            int deckIndex,
+            Set<String> coveragePriority,
+            String deckType) {
+        return createLegalDeck(formatCode, format, pools, random, deckIndex, coveragePriority, deckType, null);
     }
 
     private static LotroDeck createLegalDeck(
@@ -355,7 +383,8 @@ public final class MovieBlockDeckFactory {
             Random random,
             int deckIndex,
             Set<String> coveragePriority,
-            String deckType) {
+            String deckType,
+            CultureComposition composition) {
         List<String> lastValidation = List.of();
         for (int attempt = 0; attempt < DECK_GENERATION_ATTEMPTS; attempt++) {
             CardOption ringBearer = choose(pools.ringBearers(), random, coveragePriority);
@@ -369,6 +398,7 @@ public final class MovieBlockDeckFactory {
                     .filter(card -> !card.blueprint().getTitle().equals(ringBearer.blueprint().getTitle()))
                     .toList();
             Culture fellowshipCulture = ringBearer.blueprint().getCulture();
+            List<CardOption> fellowshipCultureCards = cardsOfCulture(pools.freePeople(), fellowshipCulture);
             List<CardOption> cultureCompanions = companions.stream()
                     .filter(card -> card.blueprint().getCulture() == fellowshipCulture)
                     .toList();
@@ -390,12 +420,19 @@ public final class MovieBlockDeckFactory {
                             .count() >= 4)
                     .toList();
             List<CardOption> shadowCards = pools.shadow();
+            Culture selectedShadowCulture = null;
             if (!viableShadowCultures.isEmpty()) {
-                Culture shadowCulture = chooseCulture(viableShadowCultures, random);
+                selectedShadowCulture = chooseCulture(viableShadowCultures, random);
+                Culture minionCulture = selectedShadowCulture;
                 minions = allMinions.stream()
-                        .filter(card -> card.blueprint().getCulture() == shadowCulture)
+                        .filter(card -> card.blueprint().getCulture() == minionCulture)
                         .toList();
             }
+            List<CardOption> shadowCultureCards = cardsOfCulture(pools.shadow(), selectedShadowCulture);
+            Culture secondFellowshipCulture = composition == CultureComposition.MULTICULTURE
+                    ? chooseAlternativeCulture(pools.freePeople(), fellowshipCulture, random) : null;
+            Culture secondShadowCulture = composition == CultureComposition.MULTICULTURE
+                    ? chooseAlternativeCulture(pools.shadow(), selectedShadowCulture, random) : null;
 
             int freePeopleDrawCount = (pools.drawDeckSize() + 1) / 2;
             int shadowDrawCount = pools.drawDeckSize() - freePeopleDrawCount;
@@ -407,8 +444,18 @@ public final class MovieBlockDeckFactory {
             int freePeopleStart = drawCards.size();
             addRandomCards(drawCards, companions, companionCount, selectedTitles, coveragePriority, random);
             int selectedCompanions = drawCards.size() - freePeopleStart;
-            addRandomCards(drawCards, pools.freePeople(), freePeopleDrawCount - selectedCompanions,
-                    selectedTitles, coveragePriority, random);
+            int remainingFreePeople = freePeopleDrawCount - selectedCompanions;
+            if (composition == CultureComposition.FOCUSED) {
+                addRandomCards(drawCards, fellowshipCultureCards, remainingFreePeople,
+                        selectedTitles, coveragePriority, random);
+            } else if (composition == CultureComposition.MULTICULTURE) {
+                addCultureBalancedCards(drawCards, fellowshipCultureCards,
+                        cardsOfCulture(pools.freePeople(), secondFellowshipCulture), remainingFreePeople,
+                        selectedTitles, random);
+            } else {
+                addRandomCards(drawCards, pools.freePeople(), remainingFreePeople,
+                        selectedTitles, coveragePriority, random);
+            }
             int selectedFreePeople = drawCards.size() - freePeopleStart;
             if (selectedFreePeople < freePeopleDrawCount)
                 addRandomCards(drawCards, pools.freePeople(), freePeopleDrawCount - selectedFreePeople,
@@ -416,8 +463,19 @@ public final class MovieBlockDeckFactory {
 
             int shadowStart = drawCards.size();
             addRandomCards(drawCards, minions, minionCount, selectedTitles, coveragePriority, random);
-            addRandomCards(drawCards, shadowCards, shadowDrawCount - minionCount,
-                    selectedTitles, coveragePriority, random);
+            int selectedMinions = drawCards.size() - shadowStart;
+            int remainingShadow = shadowDrawCount - selectedMinions;
+            if (composition == CultureComposition.FOCUSED) {
+                addRandomCards(drawCards, shadowCultureCards, remainingShadow,
+                        selectedTitles, coveragePriority, random);
+            } else if (composition == CultureComposition.MULTICULTURE) {
+                addCultureBalancedCards(drawCards, shadowCultureCards,
+                        cardsOfCulture(pools.shadow(), secondShadowCulture), remainingShadow,
+                        selectedTitles, random);
+            } else {
+                addRandomCards(drawCards, shadowCards, remainingShadow,
+                        selectedTitles, coveragePriority, random);
+            }
             int selectedShadow = drawCards.size() - shadowStart;
             if (selectedShadow < shadowDrawCount)
                 addRandomCards(drawCards, pools.shadow(), shadowDrawCount - selectedShadow,
@@ -440,6 +498,72 @@ public final class MovieBlockDeckFactory {
         }
         throw new IllegalStateException("Could not generate a valid " + formatCode + " " + deckType + " after "
                 + DECK_GENERATION_ATTEMPTS + " attempts: " + String.join("; ", lastValidation));
+    }
+
+    private static List<CardOption> cardsOfCulture(List<CardOption> cards, Culture culture) {
+        if (culture == null)
+            return List.of();
+        return cards.stream().filter(card -> card.blueprint().getCulture() == culture).toList();
+    }
+
+    private static Culture chooseAlternativeCulture(List<CardOption> cards, Culture primary, Random random) {
+        List<Culture> alternatives = cards.stream()
+                .map(card -> card.blueprint().getCulture())
+                .filter(java.util.Objects::nonNull)
+                .filter(culture -> culture != primary)
+                .distinct()
+                .toList();
+        return alternatives.isEmpty() ? null : chooseCulture(alternatives, random);
+    }
+
+    private static void addCultureBalancedCards(
+            List<CardOption> result,
+            List<CardOption> primaryCards,
+            List<CardOption> secondaryCards,
+            int requested,
+            Set<String> selectedTitles,
+            Random random) {
+        if (requested <= 0)
+            return;
+
+        List<CardOption> shuffledPrimary = new ArrayList<>(primaryCards);
+        List<CardOption> shuffledSecondary = new ArrayList<>(secondaryCards);
+        Collections.shuffle(shuffledPrimary, random);
+        Collections.shuffle(shuffledSecondary, random);
+        int targetSize = result.size() + requested;
+        int primaryIndex = 0;
+        int secondaryIndex = 0;
+        boolean choosePrimary = true;
+        while (result.size() < targetSize) {
+            int previousSize = result.size();
+            if (choosePrimary) {
+                primaryIndex = addNextCard(result, shuffledPrimary, primaryIndex, selectedTitles);
+                if (result.size() == previousSize)
+                    secondaryIndex = addNextCard(result, shuffledSecondary, secondaryIndex, selectedTitles);
+            } else {
+                secondaryIndex = addNextCard(result, shuffledSecondary, secondaryIndex, selectedTitles);
+                if (result.size() == previousSize)
+                    primaryIndex = addNextCard(result, shuffledPrimary, primaryIndex, selectedTitles);
+            }
+            if (result.size() == previousSize)
+                break;
+            choosePrimary = !choosePrimary;
+        }
+    }
+
+    private static int addNextCard(
+            List<CardOption> result,
+            List<CardOption> candidates,
+            int index,
+            Set<String> selectedTitles) {
+        while (index < candidates.size()) {
+            CardOption card = candidates.get(index++);
+            if (selectedTitles.add(card.blueprint().getTitle())) {
+                result.add(card);
+                break;
+            }
+        }
+        return index;
     }
 
     private static void addRandomCards(

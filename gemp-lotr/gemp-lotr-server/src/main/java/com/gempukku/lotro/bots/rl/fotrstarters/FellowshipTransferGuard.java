@@ -2,6 +2,7 @@ package com.gempukku.lotro.bots.rl.fotrstarters;
 
 import com.gempukku.lotro.common.CardType;
 import com.gempukku.lotro.common.Phase;
+import com.gempukku.lotro.bots.TrainingEventReporter;
 import com.gempukku.lotro.game.PhysicalCard;
 import com.gempukku.lotro.game.state.GameState;
 import com.gempukku.lotro.logic.GameUtils;
@@ -11,37 +12,48 @@ import com.gempukku.lotro.logic.decisions.CardActionSelectionDecision;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 final class FellowshipTransferGuard {
     private static final String FELLOWSHIP_ACTIONS = "Play Fellowship action or Pass";
     private final String player;
+    private final TrainingEventReporter eventReporter;
     private final Set<Integer> movedCards = new HashSet<>();
+    private final Map<Integer, Set<Integer>> visitedBearersByCard = new HashMap<>();
     private int turn = -1;
     private PendingTransfer pending;
 
-    FellowshipTransferGuard(String player) {
+    FellowshipTransferGuard(String player, TrainingEventReporter eventReporter) {
         this.player = player;
+        this.eventReporter = eventReporter;
     }
 
     void observe(GameState state, AwaitingDecision decision) {
+        if (pending != null) {
+            PhysicalCard card = state.findCardById(pending.cardId());
+            if (card != null && card.getAttachedTo() != null
+                    && card.getAttachedTo().getCardId() != pending.bearerId()) {
+                movedCards.add(pending.cardId());
+                Set<Integer> visitedBearers = visitedBearersByCard.computeIfAbsent(
+                        pending.cardId(), ignored -> new HashSet<>());
+                visitedBearers.add(pending.bearerId());
+                int currentBearerId = card.getAttachedTo().getCardId();
+                if (!visitedBearers.add(currentBearerId) && eventReporter != null)
+                    eventReporter.recordFellowshipTransferReversal();
+                pending = null;
+            } else if (isFellowshipActionMenu(decision)) {
+                pending = null;
+            }
+        }
+
         if (state.getCurrentPhase() != Phase.FELLOWSHIP || state.getTurnNumber() != turn) {
             clear();
             if (state.getCurrentPhase() == Phase.FELLOWSHIP)
                 turn = state.getTurnNumber();
-        }
-        if (pending == null)
-            return;
-
-        PhysicalCard card = state.findCardById(pending.cardId());
-        if (card != null && card.getAttachedTo() != null
-                && card.getAttachedTo().getCardId() != pending.bearerId()) {
-            movedCards.add(pending.cardId());
-            pending = null;
-        } else if (isFellowshipActionMenu(decision)) {
-            pending = null;
         }
     }
 
@@ -110,6 +122,7 @@ final class FellowshipTransferGuard {
 
     void clear() {
         movedCards.clear();
+        visitedBearersByCard.clear();
         pending = null;
         turn = -1;
     }

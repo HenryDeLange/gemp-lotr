@@ -157,6 +157,7 @@ final class DecisionCycleGuard {
             if (repeated) {
                 return Optional.of(new RepeatedCycle(
                         cycleLength,
+                        repeatedLength,
                         List.copyOf(history.subList(start, start + cycleLength))));
             }
         }
@@ -212,7 +213,7 @@ final class DecisionCycleGuard {
         return summary.toString();
     }
 
-    record RepeatedCycle(int length, List<DecisionRecord> decisions) {
+    record RepeatedCycle(int length, int repeatedHistoryDecisions, List<DecisionRecord> decisions) {
         String repeatedAnswer() {
             return decisions.getFirst().answer();
         }
@@ -226,7 +227,8 @@ final class DecisionCycleGuard {
                     && !nextDecision.answer().isEmpty()) {
                 return Optional.of(new DeferredEscape(
                         nextDecision.signature(),
-                        nextDecision.answer()));
+                        nextDecision.answer(),
+                        repeatedHistoryDecisions));
             }
             return Optional.empty();
         }
@@ -256,6 +258,6 @@ final class DecisionCycleGuard {
             String answer) {
     }
 
-    record DeferredEscape(String signature, String repeatedAnswer) {
+    record DeferredEscape(String signature, String repeatedAnswer, int repeatedHistoryDecisions) {
     }
 }

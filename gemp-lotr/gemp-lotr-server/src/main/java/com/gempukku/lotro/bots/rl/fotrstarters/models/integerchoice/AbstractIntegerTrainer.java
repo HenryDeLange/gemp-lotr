@@ -34,19 +34,46 @@ public abstract class AbstractIntegerTrainer extends AbstractTrainer {
         double[] probs = new double[classes.length];
         model.predict(stateVector, probs);
         int minimum = integerBound(decision, "min", 0);
-        int maximum = Math.min(getMaxChoice(), integerBound(decision, "max", getMaxChoice()));
+        int maximum = getMaximumChoice(decision, minimum);
         if (minimum < 0 || maximum < minimum)
             throw new IllegalArgumentException("Invalid integer choice range for "
                     + decision.getText() + ": " + minimum + ".." + maximum);
-        int predictedValue = sampleClass(classes, probs, minimum, maximum);
-        return String.valueOf(predictedValue);
+        IntegerChoiceSample sample = sampleClassWithAlternativeMaximum(
+                classes, probs, minimum, maximum, maximum);
+        return String.valueOf(sample.selectedValue());
     }
 
-    private int sampleClass(int[] classes, double[] probabilities, int minimum, int maximum) {
+    protected int getMaximumChoice(AwaitingDecision decision, int minimum) {
+        return Math.min(getMaxChoice(), integerBound(decision, "max", getMaxChoice()));
+    }
+
+    protected IntegerChoiceSample sampleClassWithAlternativeMaximum(
+            int[] classes,
+            double[] probabilities,
+            int minimum,
+            int maximum,
+            int alternativeMaximum) {
+        return sampleClassWithAlternativeMaximum(
+                classes, probabilities, minimum, maximum, alternativeMaximum, Math.random());
+    }
+
+    protected IntegerChoiceSample sampleClassWithAlternativeMaximum(
+            int[] classes,
+            double[] probabilities,
+            int minimum,
+            int maximum,
+            int alternativeMaximum,
+            double quantile) {
         if (classes.length == 0 || classes.length != probabilities.length)
             throw new IllegalStateException(getClass().getSimpleName() + " has an invalid class distribution");
+        if (maximum < minimum || alternativeMaximum < maximum)
+            throw new IllegalArgumentException("Invalid integer choice bounds");
+        if (!Double.isFinite(quantile) || quantile < 0.0 || quantile >= 1.0)
+            throw new IllegalArgumentException("Choice quantile must be in [0, 1)");
         double totalProbability = 0.0;
+        double alternativeTotalProbability = 0.0;
         int lastLegalClass = -1;
+        int lastAlternativeClass = -1;
         for (int index = 0; index < probabilities.length; index++) {
             double probability = probabilities[index];
             if (!Double.isFinite(probability) || probability < 0.0)
@@ -56,24 +83,48 @@ public abstract class AbstractIntegerTrainer extends AbstractTrainer {
                 totalProbability += probability;
                 lastLegalClass = classes[index];
             }
+            if (classes[index] >= minimum && classes[index] <= alternativeMaximum) {
+                alternativeTotalProbability += probability;
+                lastAlternativeClass = classes[index];
+            }
         }
         if (!Double.isFinite(totalProbability) || totalProbability <= 0.0 || lastLegalClass < 0)
             throw new IllegalStateException(getClass().getSimpleName()
                     + " assigned no probability to a legal integer choice");
+        if (!Double.isFinite(alternativeTotalProbability) || alternativeTotalProbability <= 0.0
+                || lastAlternativeClass < 0)
+            throw new IllegalStateException(getClass().getSimpleName()
+                    + " assigned no probability to an alternative integer choice");
 
-        double selectedProbability = Math.random() * totalProbability;
+        int selected = selectClass(classes, probabilities, minimum, maximum,
+                quantile * totalProbability, lastLegalClass);
+        int alternative = selectClass(classes, probabilities, minimum, alternativeMaximum,
+                quantile * alternativeTotalProbability, lastAlternativeClass);
+        return new IntegerChoiceSample(selected, alternative);
+    }
+
+    private static int selectClass(
+            int[] classes,
+            double[] probabilities,
+            int minimum,
+            int maximum,
+            double selectedProbability,
+            int lastLegalClass) {
         double cumulative = 0.0;
-        for (int i = 0; i < probabilities.length; i++) {
-            if (classes[i] < minimum || classes[i] > maximum)
+        for (int index = 0; index < probabilities.length; index++) {
+            if (classes[index] < minimum || classes[index] > maximum)
                 continue;
-            cumulative += probabilities[i];
+            cumulative += probabilities[index];
             if (selectedProbability < cumulative)
-                return classes[i];
+                return classes[index];
         }
         return lastLegalClass;
     }
 
-    private static int integerBound(AwaitingDecision decision, String name, int defaultValue) {
+    protected record IntegerChoiceSample(int selectedValue, int alternativeValue) {
+    }
+
+    protected static int integerBound(AwaitingDecision decision, String name, int defaultValue) {
         Map<String, String[]> parameters = decision.getDecisionParameters();
         String[] value = parameters == null ? null : parameters.get(name);
         if (value == null || value.length == 0)

@@ -1,6 +1,7 @@
 package com.gempukku.lotro.bots.rl.fotrstarters.models;
 
 import smile.classification.Classifier;
+import smile.classification.LogisticRegression;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -10,6 +11,7 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.Objects;
 
 public class ModelIO {
@@ -95,6 +97,34 @@ public class ModelIO {
         } catch (IOException | ClassNotFoundException | ClassCastException | LinkageError e) {
             throw new IllegalStateException("Failed to load model " + trainerClass.getSimpleName() + " from " + file, e);
         }
+    }
+
+    public static double[] adaptModelInputVector(Classifier<double[]> model, double[] features,
+                                                 int legacyFeatureCount) {
+        Objects.requireNonNull(model, "model");
+        Objects.requireNonNull(features, "features");
+        if (legacyFeatureCount < 0 || legacyFeatureCount > features.length)
+            throw new IllegalArgumentException("Invalid legacy feature count: " + legacyFeatureCount);
+
+        Integer expectedFeatureCount = getLogisticRegressionFeatureCount(model);
+        if (expectedFeatureCount == null || expectedFeatureCount == features.length)
+            return features;
+        if (expectedFeatureCount == legacyFeatureCount && legacyFeatureCount < features.length)
+            return Arrays.copyOf(features, legacyFeatureCount);
+
+        throw new IllegalStateException("Model expects " + expectedFeatureCount
+                + " features, but current vector has " + features.length
+                + " and its compatible legacy prefix has " + legacyFeatureCount);
+    }
+
+    private static Integer getLogisticRegressionFeatureCount(Classifier<double[]> model) {
+        if (model instanceof LogisticRegression.Binomial binomial)
+            return binomial.coefficients().length - 1;
+        if (model instanceof LogisticRegression.Multinomial multinomial) {
+            double[][] coefficients = multinomial.coefficients();
+            return coefficients.length == 0 ? 0 : coefficients[0].length - 1;
+        }
+        return null;
     }
 
     private static Path getModelFile(Class<?> trainerClass, Path directory) {

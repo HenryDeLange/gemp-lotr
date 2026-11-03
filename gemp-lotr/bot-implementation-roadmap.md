@@ -11,6 +11,8 @@ and be evaluated against frozen opponents before replacing a published model.
 Maintain this document as work progresses: mark only verified work complete,
 record newly discovered problems in the appropriate phase, and keep the next
 action and outstanding validation visible.
+Use [the implementation checklist](bot-implementation-checklist.md) for
+prioritized coding deliverables and their separate evaluation requirements.
 
 ## Baseline
 
@@ -21,9 +23,11 @@ inspected on 2026-11-02. Repeated decisions are a suspected contributor, but
 the corpus also stores separate per-trainer records and deck-builder outcomes.
 Existing run records cannot establish how much each cause contributes.
 
-The same four formats are currently supported by the bot: `fotr_block`,
-`ttt_block`, `king_block`, and `movie`. Movie includes Reflections. The full
-requested set of game modes and variants still needs an explicit inventory.
+The bot's selected core scope is covered by `fotr_block` (sets 1-3),
+`ttt_block` (4-6), `king_block` (7, 8, 10), and `movie` (sets 1-10, including
+Reflections set 9). A catalog review found no additional eligible core format.
+PC/errata, playtest, subset, alternate-ban/deck-rule, broader-set and limited
+variants are catalogued as out of scope in the implementation checklist.
 
 ## Completed increment: baseline instrumentation and assignment parity
 
@@ -94,15 +98,12 @@ requested set of game modes and variants still needs an explicit inventory.
 - [ ] Compare all per-batch rates across controlled runs. A read-only
   `bot-benchmarks/compare-training-rates.cjs` utility compares matched batches,
   flags metadata differences, and suppresses deltas when run controls differ.
-  The complete 10:44Z and 13:27Z reports are both retained, but their holdout
-  manifests differ and neither records starting model/corpus fingerprints or
-  full game randomness, so the observed rates are not a controlled comparison.
-- [ ] Capture privacy-safe traces for the reported King Block unresolvable
-  cycle and invalid answers; reproduce them as deterministic regression tests.
-  New failures can emit stage-limited, process-keyed fingerprints without raw
-  prompts, choices, IDs, answers, or hidden opponent state. Deterministic
-  synthetic cycle/fallback tests cover redaction, but the original King Block
-  case remains unreproduced because its source trace was not retained.
+  Run metadata and comparison safeguards are implemented: starting model files
+  are fingerprinted, full-corpus hashing is opt-in because it scans every
+  training JSONL file, and deltas require valid matching model/corpus
+  fingerprints and holdout-manifest hashes. The complete 10:44Z and 13:27Z
+  reports predate those fingerprints and use different holdout controls, so
+  their observed rates still are not a controlled comparison.
 - [x] Add an experimental shared-model Pass veto: if the generic action model
   ranks Pass above every offered action, it can override a phase-specific
   model's action choice. Keep it disabled for ordinary live play by default,
@@ -112,11 +113,15 @@ requested set of game modes and variants still needs an explicit inventory.
   comparing their scores across action categories; test optional zero-card
   selection without changing mandatory choices. Candidate and opponent
   safeguards are now independently configurable; benchmark reports include
-  candidate veto counts by phase and transfer constraints per matchup, and
-  `compare-bot-benchmarks.cjs` rejects unmatched model/deck controls. Run the
-  matched evaluation and action-level usefulness review remain pending.
+  candidate veto counts by phase and transfer constraints per matchup.
+  Version-5 reports also retain per-game bids, cap-constrained choices,
+  transfer reversals, and cycle recoveries; the comparator reports per-100
+  attempted-game rates, including skipped games. It still cannot identify
+  individual action utility. The matched evaluation and usefulness review
+  remain pending.
   Regression tests confirm a minimum-zero arbitrary-card choice remains
-  separate from Pass gating and non-card-action choices are not gated.
+  separate from Pass gating, mandatory card choices cannot be skipped, and
+  non-card-action choices are not gated.
 - [x] Implement and unit-/engine-test a switchable bot-only safeguard that
   allows the first completed voluntary Fellowship transfer but filters later
   voluntary transfers of that item in the same phase. Preserve mandatory
@@ -124,20 +129,55 @@ requested set of game modes and variants still needs an explicit inventory.
 - [ ] Replace or refine the conservative safeguard if evaluation shows that
   suppressing beneficial second transfers harms play. Test exploration and
   more varied card-effect/attachment scenarios and improve reversal attribution.
-  The new candidate-only constraint counts support matched review; do not
-  change the rule until results show whether it suppresses beneficial plays.
-- [ ] Improve skirmish relevance and assignment choices, preserving useful
-  indirect actions and intentional card cycling. Skirmish-order decisions now
-  score the actual pending one-minion subskirmish when assignments are nested,
-  preserve the exact selected minion, and record its Fellowship-character
-  context for training; broader matchup features and assignment-strategy
-  improvements remain pending. Skirmish-order decisions now
-  score the actual pending one-minion subskirmish when assignments are nested,
-  and record its Fellowship-character context for training; broader matchup
-  features and assignment-strategy improvements remain pending.
+  The new candidate-only constraint counts and privacy-safe per-game reversal
+  attribution support matched review; no card identities are written to reports.
+  Do not change the rule until results show whether it suppresses beneficial
+  plays.
+- [x] Extend assignment scoring with predicted Shadow wins (including ties),
+  overwhelm, Damage, projected Fellowship casualties, and actual Ring-bearer
+  exposure. Ring-bearer context is serialized with bot training actions, and
+  legacy assignment records without it are excluded from assignment-model
+  fitting. Existing models use their original feature prefix until retrained.
+  These matchup predictions use printed strength and Damage, not every active
+  modifier; candidate legality still comes from the game engine.
+- [ ] Evaluate broader skirmish relevance and assignment strategy while
+  preserving useful indirect actions and intentional card cycling. Skirmish
+  order scores the actual pending one-minion subskirmish when assignments are
+  nested, preserves the exact selected minion, and records its Fellowship
+  character for training. Free Peoples candidates include additional Defender
+  assignments, and the 10,000-candidate cap is distributed across legal
+  branches for both sides. Curated-position tests, retraining, and held-out
+  gameplay evaluation remain necessary; no strength gain is claimed.
+- [ ] Improve combat risk, Ring-bearer safety, assignment, reconcile, and hand
+  cycling using curated positions and full-game evaluation. Active skirmishes
+  now expose Ring-bearer danger even when no pending assignment remains,
+  including Shadow-side decisions and Shadow-win ties, without changing the
+  feature-vector size. The existing risk value now distinguishes a survivable
+  loss from projected death by overwhelm or wounds plus available Damage
+  bonuses. Focused feature tests cover ties, lethal Damage bonuses, and
+  overwhelm; retraining and held-out gameplay evaluation remain pending.
+- [x] Add starting-fellowship candidate features for candidate culture,
+  culture/strategy overlap with the selected fellowship, same-culture cards
+  left in the bot's deck, and candidate cost relative to cost already spent.
+  Selection still considers only the engine's reachable legal options,
+  including its cost and uniqueness restrictions; no opponent deck information
+  is exposed. Legacy state layouts safely omit unrecoverable synergy values,
+  and legacy models use the original candidate-vector prefix until retrained.
+- [ ] Retrain and evaluate starting-fellowship selection on held-out games.
+  The existing 0.5 stop threshold and pass training labels remain in place;
+  no strength gain is claimed until controlled evaluation.
 - [ ] Evaluate, rather than blindly impose, a configurable low-burden bid.
+  An opt-in 0-9 bid cap is now supported in training and as independent
+  candidate/frozen-opponent benchmark settings; the engine's legal minimum
+  always takes precedence. The default remains 9. Version-5 benchmark reports
+  capture actual bid amounts, whether the cap constrained a model or observed
+  fallback choice, and when the engine minimum exceeded the cap. Matched
+  gameplay evaluation is still pending.
 - [ ] Target at least 90% fewer reversals and cycle escapes without loss of
-  benchmark strength. Verify the denominator and per-format behavior.
+  benchmark strength. Version-5 reports count completed transfer reversals and
+  cycle recoveries per format; comparison rates use attempted games, including
+  skipped games, as the denominator. Verify the target and strength gate with
+  matched per-format runs.
 
 The 2026-11-02 user-started run completed all four formats: 2,800 games and
 43 model-fitting tasks over 42.9 minutes, with zero skipped games and no
@@ -263,17 +303,68 @@ reports do not hash the starting model or corpus, the corpus changed, and
 stochastic game choices are not fully seeded. The new manifest also means the
 evaluation deck pools were not identical.
 
-## Later: openings, training data, and model quality
+The later user-started run,
+`[bot-training-20261102T154153.629Z-376f33cc-a2b2-46bb-ba3f-d51bbe79acff.jsonl](bot-training-runs/bot-training-20261102T154153.629Z-376f33cc-a2b2-46bb-ba3f-d51bbe79acff.jsonl),
+completed all 2,843 planned tasks in 295.5 seconds, with 47 starting models
+and 43 model fits. It emitted no warning/error events and selected no policy
+or deck-builder candidate. Across 2,400 diagnostic games it recorded 4 cycle
+recoveries, 826 transfer constraints, and 9,146 Pass vetoes, with no model or
+invalid-answer fallbacks. The 1,600 training games added 210,554 input steps,
+181,242 trainer records, 709,849,890 bytes of decision JSON, and 58,429,415
+physical append bytes. Starting-model fingerprints were recorded, but full
+corpus hashing was disabled.
 
-- [ ] Improve starting fellowship selection over reachable legal choices,
-  considering cost, abilities, synergy, uniqueness, and deck composition.
-- [ ] Improve combat risk, Ring-bearer safety, assignment, reconcile, and hand
-  cycling using curated positions and full-game evaluation.
+Comparison with the 13:27Z report returned `configuration-mismatch` and
+suppressed all 60 rate deltas: the earlier report lacks the starting-model
+fingerprint, and the later run lacks a corpus fingerprint. The lower observed
+diagnostic and data counts are therefore not evidence of improvement.
+
+The latest user-started run,
+`[bot-training-20261103T053633.194Z-ee5d6d7d-cd1b-4024-923d-6d31df17aa68.jsonl](bot-training-runs/bot-training-20261103T053633.194Z-ee5d6d7d-cd1b-4024-923d-6d31df17aa68.jsonl),
+completed 2,843 planned tasks in 306.7 seconds with no warning/error events
+or skipped games. It attempted 43 decision-model fits and trained 38;
+20 policy-comparison records covered five candidates at 40 games per format.
+The 1,600 training games added 210,841 input steps and 180,845 trainer
+records, with 708,349,399 bytes of decision JSON written as 58,234,695
+physical bytes (91.8% smaller). Four deck builders each added 100 outcomes.
+The 47 starting-model fingerprints were recorded, but full corpus hashing was
+disabled.
+
+`GenericArbitraryCardsTrainer` was selected into the isolated experiment
+release after 96/160 games (60%, aggregate 95% Wilson lower bound 52.3%):
+26/40 Fellowship, 27/40 Towers, 22/40 King, and 21/40 Movie. This is a
+screening result, not a release-grade strength claim: each format has only
+40 games and game randomness is not fully controlled; no live model was
+promoted. `ReconcileTrainer` reached 87.41% held-out accuracy versus 85.99%
+for its incumbent across 231,467 examples, but was not selected for game
+evaluation. No deck-builder candidate was selected.
+
+Batch diagnostics across 2,400 policy-simulation games recorded 7 cycle
+recoveries, 759 transfer constraints, and 9,015 generic Pass vetoes. The
+run-level guard totals instead report 917 transfer constraints and 10,726
+Pass vetoes; these scopes do not reconcile yet and must not be collapsed into
+a single count. Neither those totals nor this run establish the causal impact
+of the Pass gate or transfer guard.
+
+## Later: training data and model quality
+
 - [ ] Measure bytes and examples per game, duplication across trainers, and
   cycle contamination separately from deck-builder data.
-- [ ] Design a versioned compact corpus and game-balanced, category-aware
+- [x] Add opt-in deterministic game/label-balanced sampling to policy-model
+  fitting. It operates after whole-game splitting, leaves held-out weights and
+  stored examples unchanged, records its setting in run metadata, defaults
+  off, and is enabled only in the isolated training configuration. This
+  binary-label experiment does not yet address rare-category coverage or
+  versioned corpus storage.
+- [ ] Design a versioned compact corpus and category-aware
   sampling. Preserve game-level holdouts, rare decisions, provenance, existing
   data, and atomic model publication; compare old, new, and mixed datasets.
+  The opt-in `shared-v1` append layout stores one copy of each relevant step,
+  retaining the matching trainer names and original game/deck provenance.
+  New readers merge it with legacy files, and compaction is forbidden. Tests
+  verify matching trainer inputs, mixed files, holdouts and corruption handling.
+  It scans the shared file per trainer, so fitting cost, category-aware
+  sampling, representative space/coverage comparisons and strength remain open.
 - [ ] Aim for at least 50% fewer bytes per equivalent game without losing
   decision coverage or benchmark strength.
 - [ ] Investigate calibrated value prediction and credit assignment, including
@@ -286,11 +377,21 @@ evaluation deck pools were not identical.
 ## Later: tooling, coverage, and architecture
 
 - [ ] Add independent deck-builder training with a frozen playing policy and a
-  diverse, seat-balanced reference pool.
+  diverse, seat-balanced reference pool. An opt-in deck-builder-only mode now
+  loads a complete policy once from the staging snapshot and verifies its
+  policy files before publication. It uses a fixed, validated, holdout-disjoint
+  manifest of starter and generated reference decks and skips decision-data
+  collection and policy fitting. Each reference matchup is paired across
+  simulator argument positions; actual seats are still assigned by bidding and
+  have not been balanced or measured for these runs. Historical ranker data
+  lacks policy/reference provenance, so use an isolated corpus for a truly
+  frozen-policy dataset. Actual-seat accounting and held-out gameplay
+  evaluation remain pending.
 - [ ] Profile simulation, data I/O, compaction, fitting, memory, and worker
   counts before changing `training.model.threads` or hardware assumptions.
-- [ ] Inventory eligible game modes and Reflections variants beyond the
-  currently supported four training formats.
+- [x] Inventory eligible game modes and Reflections variants beyond the
+  currently supported four training formats; see the scope and exclusions in
+  the implementation checklist.
 - [ ] Consider a separate training Maven module after the runtime/training
   dependency direction is clear; do not introduce a circular dependency.
 - [ ] Verify ownership and recovery requirements before removing old promotion
@@ -304,10 +405,15 @@ strength and training work.
 - [ ] Build an optional local card-image cache with configurable wiki/local URL
   preference and fallback, refresh support for new or changed images, dev
   launch integration, and a status/refresh UI.
-- [ ] Add a Game Hall Discord-panel setting that is off by default in
-  development.
-- [ ] Make scheduled tournament-queue and undelivered league-notification DAO
-  polling configurable and off by default in development.
+- [x] Add a Game Hall Discord-panel setting that is off by default in
+  development and on in production. Test both settings and the production
+  default.
+- [x] Make scheduled tournament-queue and undelivered league-notification DAO
+  polling configurable, off by default in development and on in production.
+  The tournament setting skips scheduled-queue DAO polling; the notification
+  setting suppresses only its per-request DAO lookup, leaving other delivery
+  checks unchanged. Enabled/disabled behavior and both configuration defaults
+  are covered by focused tests.
 - [x] Seed all 18 official Fellowship/Towers/King starter products into the
   local H2 `Librarian` deck library, idempotently and with catalog-verified
   names, formats, and serialized contents.
@@ -328,10 +434,57 @@ the limitation until it is resolved.
 
 ## Validation log
 
+- 2026-11-03: Added opt-in shared-v1 decision records, mixed-layout readers,
+  layout metadata and separate logical-membership/physical-record telemetry.
+  A single completed base-policy Fellowship Block simulation produced 26
+  decisions, 25 trainer memberships and 15 shared records; appending the same
+  episode took 11,100 per-trainer bytes versus 4,402 shared bytes. Every
+  trainer's loaded examples matched. A later stochastic test game used 25,649
+  versus 13,511 bytes (71 input decisions, 62 memberships, 43 shared records).
+  These individual games and append batches are not a representative corpus,
+  throughput or strength comparison. The full-corpus 50% target and evaluation
+  are still open. Focused validation passed 47 Java tests with one optional
+  incumbent test skipped, nine Node tests and `git diff --check`.
+
+  ```powershell
+  mvn -q -f gemp-lotr\pom.xml -pl gemp-lotr-server -am "-Dtest=FotrStartersLearningStepsPersistenceTest,MovieBlockSimulationTest,BotModelTrainingPlanTest,TrainingRunMetricsWriterTest,AbstractTrainerValidationTest,TrainingModelWorkspaceTest,DeckBuilderOnlyTrainingTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
+  node --test gemp-lotr\gemp-lotr-server\src\test\js\bot-training-dashboard.test.cjs gemp-lotr\gemp-lotr-server\src\test\js\training-run-comparison.test.cjs
+  ```
+
+- 2026-11-03: Implemented deck-builder-only mode and corrected the existing
+  reference schedule so opposite simulator argument positions use the same
+  reference deck. Focused integration tests run two generations in all four
+  formats with temporary synthetic policies and a temporary reference manifest,
+  verify the 43 policy model files are unchanged after publication, check that
+  only deck-builder outcome files are written, and reject reference/holdout
+  overlap. The focused Maven run passed 37 tests with one optional incumbent
+  snapshot test skipped; all eight comparison/dashboard Node tests and
+  `git diff --check` passed. These are functionality tests, not a gameplay
+  strength evaluation.
+
+  ```powershell
+  mvn -q -f gemp-lotr\pom.xml -pl gemp-lotr-server -am "-Dtest=DeckBuilderOnlyTrainingTest,BotModelTrainingPlanTest,DeckBuilderTrainerTest,DeckBuilderTrainerDataSplitTest,BotBenchmarkTest,TrainingModelWorkspaceTest" "-Dsurefire.failIfNoSpecifiedTests=false" test
+  node --test gemp-lotr\gemp-lotr-server\src\test\js\training-run-comparison.test.cjs gemp-lotr\gemp-lotr-server\src\test\js\bot-training-dashboard.test.cjs
+  ```
+
 - 2026-11-02: The training-rate comparison now suppresses per-batch deltas
   when run metadata is incompatible. All three Node comparison tests passed;
   comparing the retained 10:44Z and 13:27Z reports correctly flags the changed
   holdout manifest and emits no deltas.
+
+- 2026-11-02: Starting-model and opt-in training-corpus fingerprints are
+  recorded in run metadata, and the comparator now requires valid matching
+  fingerprints and file counts. The focused Maven tests passed (16 tests,
+  1 skipped) and all three Node comparison tests passed. The retained reports
+  are missing required fingerprints or holdout controls, so all 60 batch
+  deltas remain suppressed.
+
+- 2026-11-02: Starting-fellowship selection now honors optional stopping using
+  the model's 0.5 score threshold and labels pass choices against candidate
+  cards. Starting-fellowship observations include only the bot's own remaining
+  deck composition; opponent deck information stays count-only. All 14 focused
+  Java tests passed, including the hidden-information boundary tests. Held-out
+  strength evaluation remains pending.
 
 - 2026-11-02: 55 tests across 13 focused suites passed, including full simulated
   games in all four formats, checked assignment restrictions, repeat-guard
@@ -495,3 +648,55 @@ the limitation until it is resolved.
   successful reactor compilation. The reactor compile passes with the explicit
   dependency. The failed debugger launch was not retried; VS Code may need a
   Maven-project reload before the corrected classpath is used.
+
+- 2026-11-02: Improved high-cardinality assignment search by distributing the
+  10,000-candidate limit across legal branches for both players, with stable
+  card-ID traversal. Regression tests verify that capped searches still
+  consider every first-minion/character branch. Also corrected the assignment
+  test model's feature stride and emit canonical answers without empty
+  character groups. The focused run passed 27 tests across assignment,
+  information-boundary, and candidate-sampling suites; `git diff --check`
+  passed. No training or gameplay benchmark was run, so no strength gain is
+  claimed.
+
+- 2026-11-02: Added an opt-in maximum-burden bid cap (default 9) to live bot
+  configuration and training settings. The engine's minimum bid remains
+  authoritative if it exceeds the cap. Diagnostic benchmark v4 records
+  independent candidate/opponent caps, and the matched-report comparator
+  allows a cap as its sole candidate treatment; training-rate comparisons also
+  require and compare the configured cap. Twenty-five focused Java tests (one
+  skipped), seven Node tests, and `git diff --check` passed. The 15:41Z training
+  report is documented above, but it does not evaluate a bid-cap treatment;
+  matched gameplay evaluation remains pending.
+
+- 2026-11-02: Added starting-fellowship culture/strategy/deck/cost interactions
+  and assignment outcome/Ring-bearer features. Assignment training actions now
+  preserve Ring-bearer context; old actions without it are not used to fit the
+  revised assignment models. The obsolete historical King Block trace item was
+  removed. Twenty-five focused Java tests passed, including compatibility with
+  the current shipped starting-fellowship model; `git diff --check` passed.
+  No training run or gameplay benchmark was launched, so evaluation remains
+  open.
+
+- 2026-11-03: Added deterministic, opt-in game/label-balanced sampling for
+  shared-policy fitting. It runs after the whole-game split, leaves validation
+  weights and stored examples unchanged, defaults off, and is enabled only in
+  the isolated training configuration; run metadata records the setting.
+  Trainer and configuration tests passed, and `git diff --check` passed. No
+  full training run or gameplay benchmark was launched.
+
+## Focused-versus-multiculture deck generation
+
+- Added explicit focused and multiculture composition modes to legal deck
+  generation. Generated candidate pools alternate both styles, while the
+  benchmark can pair each candidate against all references from a held-out
+  manifest and preserve both simulator argument orders.
+- Tests passed for all four formats, validating legal focused/multiculture
+  decks, distinct culture concentration, strategy-synergy features, held-out
+  pool disjointness, and complete candidate/reference pairing. The three
+  focused suites passed 15 tests with no failures.
+- Verified all 47 archived incumbent model hashes against the release manifest
+  and prepared a separate 43-policy candidate copy. The standalone benchmark
+  launch ended without writing its requested manifest; no active debug session
+  or source diagnostic remained. The gameplay comparison is still pending, and
+  no strength conclusion is drawn.

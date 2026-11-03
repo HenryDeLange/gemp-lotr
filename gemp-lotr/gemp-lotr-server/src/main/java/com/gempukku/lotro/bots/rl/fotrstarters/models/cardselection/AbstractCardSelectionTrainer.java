@@ -24,6 +24,7 @@ public abstract class AbstractCardSelectionTrainer extends AbstractTrainer {
 
     protected abstract String getTextTrigger();
     protected boolean useNotChosen() { return false; }
+    protected boolean includePassOption() { return false; }
     protected String getZoneString() { return null; }
 
     @Override
@@ -58,7 +59,12 @@ public abstract class AbstractCardSelectionTrainer extends AbstractTrainer {
 
     @Override
     public String getAnswer(GameState gameState, AwaitingDecision decision, String playerName, RLGameStateFeatures features, ModelRegistry modelRegistry) {
+        String[] minimumValues = decision.getDecisionParameters().get("min");
+        int min = minimumValues == null || minimumValues.length == 0
+                ? 0 : Integer.parseInt(minimumValues[0]);
         int max = Integer.parseInt(decision.getDecisionParameters().get("max")[0]);
+        if (min < 0 || max < min)
+            throw new IllegalArgumentException("Invalid selection range for card decision: " + min + ".." + max);
         List<String> cardIds = Arrays.stream(decision.getDecisionParameters().get("cardId")).toList();
 
         Classifier<double[]> model = modelRegistry.getModel(getClass());
@@ -74,7 +80,7 @@ public abstract class AbstractCardSelectionTrainer extends AbstractTrainer {
                         wounds = gameState.getWounds(physicalCard);
                     }
                 }
-                double[] cardVector = CardFeatures.getCardFeatures(blueprintId, wounds);
+                double[] cardVector = getCardVector(blueprintId, wounds);
                 double[] extended = CardCandidateFeatures.append(stateVector, cardVector);
 
                 double[] probs = new double[2];
@@ -86,9 +92,31 @@ public abstract class AbstractCardSelectionTrainer extends AbstractTrainer {
         }
 
         scoredCards.sort(Comparator.comparingDouble(c -> -c.score));
-        List<String> sortedIds = new ArrayList<>();
-        scoredCards.forEach(scoredCard -> sortedIds.add(scoredCard.cardId));
-        return String.join(",", sortedIds.subList(0, max));
+        int maximumSelectable = Math.min(max, scoredCards.size());
+        if (maximumSelectable < min)
+            throw new IllegalStateException("Too few valid cards for selection decision: " + decision.getText());
+
+        double passScore = Double.NEGATIVE_INFINITY;
+        if (includePassOption() && maximumSelectable > min) {
+            try {
+                double[] passVector = CardCandidateFeatures.append(
+                        stateVector, getCardVector(CardFeatures.PASS, 0));
+                double[] probabilities = new double[2];
+                model.predict(passVector, probabilities);
+                passScore = probabilities[1];
+            } catch (CardNotFoundException e) {
+                throw new IllegalStateException("Unable to score the optional pass choice", e);
+            }
+        }
+
+        List<String> chosenIds = new ArrayList<>(maximumSelectable);
+        for (ScoredCard scoredCard : scoredCards) {
+            if (chosenIds.size() >= maximumSelectable)
+                break;
+            if (chosenIds.size() < min || !includePassOption() || scoredCard.score > passScore)
+                chosenIds.add(scoredCard.cardId);
+        }
+        return String.join(",", chosenIds);
     }
 
     @Override
@@ -141,9 +169,25 @@ public abstract class AbstractCardSelectionTrainer extends AbstractTrainer {
 
                 // Not chosen: ambiguous → skip
             }
+
+            if (includePassOption()
+                    && minimumSelectionCount(step.decision) == 0
+                    && (action.getChosenBlueprintIds().isEmpty() || step.reward > 0)) {
+                int label = action.getChosenBlueprintIds().isEmpty()
+                        ? (step.reward > 0 ? 1 : 0)
+                        : 0;
+                addLabeledPoints(data, List.of(CardFeatures.PASS), List.of(0),
+                        step.state, step.gameId, step.trainingWeight, label);
+            }
         }
 
         return data;
+    }
+
+    private static int minimumSelectionCount(AwaitingDecision decision) {
+        String[] minimumValues = decision.getDecisionParameters().get("min");
+        return minimumValues == null || minimumValues.length == 0
+                ? 0 : Integer.parseInt(minimumValues[0]);
     }
 
     protected void addLabeledPoints(List<LabeledPoint> data, List<String> blueprintIds, List<Integer> wounds,

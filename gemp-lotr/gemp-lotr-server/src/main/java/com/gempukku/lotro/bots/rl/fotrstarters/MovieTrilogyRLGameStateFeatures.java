@@ -3,6 +3,7 @@ package com.gempukku.lotro.bots.rl.fotrstarters;
 import com.gempukku.lotro.bots.rl.RLGameStateFeatures;
 import com.gempukku.lotro.common.CardType;
 import com.gempukku.lotro.common.Culture;
+import com.gempukku.lotro.common.Keyword;
 import com.gempukku.lotro.common.Phase;
 import com.gempukku.lotro.common.Side;
 import com.gempukku.lotro.bots.rl.fotrstarters.CardStrategyFeatures;
@@ -17,10 +18,13 @@ import com.gempukku.lotro.logic.timing.GameStats;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public final class MovieTrilogyRLGameStateFeatures implements RLGameStateFeatures {
+    private static final double SURVIVABLE_RING_BEARER_LOSS_RISK = 0.5;
     private static final List<CardType> CARD_TYPES = List.of(CardType.values());
     private static final List<Culture> CULTURES = List.of(Culture.values());
     private static final List<Side> SIDES = List.of(Side.values());
@@ -36,6 +40,25 @@ public final class MovieTrilogyRLGameStateFeatures implements RLGameStateFeature
             "freeCharacters", "minions", "selectable");
 
     public static final int TACTICAL_CONTEXT_FEATURE_COUNT = 48;
+    private static final int STATE_FEATURES_BEFORE_ZONES = 24
+            + PHASES.size() + AwaitingDecisionType.values().length;
+    private static final int ZONE_FEATURE_COUNT = 2 + CARD_TYPES.size() + CULTURES.size()
+            + SIDES.size() + CardStrategyFeatures.FEATURE_COUNT;
+    private static final int ZONE_COUNT = 10;
+    private static final int SKIRMISH_FEATURE_COUNT = 6;
+    private static final int DECISION_FEATURE_COUNT = 2 + DECISION_OPTION_KEYS.size()
+            + DECISION_TEXT_MARKERS.size();
+    public static final int STATE_FEATURE_COUNT = STATE_FEATURES_BEFORE_ZONES
+            + ZONE_COUNT * ZONE_FEATURE_COUNT + SKIRMISH_FEATURE_COUNT
+            + DECISION_FEATURE_COUNT + TACTICAL_CONTEXT_FEATURE_COUNT;
+    public static final int RAW_TWILIGHT_POOL_FEATURE_INDEX =
+            4 + 1 + PHASES.size() + AwaitingDecisionType.values().length;
+    public static final int SELF_IN_PLAY_CULTURE_FEATURE_OFFSET =
+            STATE_FEATURES_BEFORE_ZONES + 2 + CARD_TYPES.size();
+    public static final int SELF_IN_PLAY_STRATEGY_FEATURE_OFFSET =
+            STATE_FEATURES_BEFORE_ZONES + 2 + CARD_TYPES.size() + CULTURES.size() + SIDES.size();
+    public static final int SELF_DECK_CULTURE_FEATURE_OFFSET =
+            STATE_FEATURES_BEFORE_ZONES + 8 * ZONE_FEATURE_COUNT + 2 + CARD_TYPES.size();
     public static final int SELF_BURDEN_PRESSURE = 0;
     public static final int OPPONENT_BURDEN_PRESSURE = 1;
     public static final int SELF_RING_BEARER_HEALTH = 2;
@@ -91,6 +114,32 @@ public final class MovieTrilogyRLGameStateFeatures implements RLGameStateFeature
         this.formatCode = formatCode;
     }
 
+    public static double getSelfInPlayCultureCount(double[] state, Culture culture) {
+        int cultureIndex = CULTURES.indexOf(culture);
+        return getCurrentStateFeature(state, SELF_IN_PLAY_CULTURE_FEATURE_OFFSET + cultureIndex);
+    }
+
+    public static double getSelfDeckCultureCount(double[] state, Culture culture) {
+        int cultureIndex = CULTURES.indexOf(culture);
+        return getCurrentStateFeature(state, SELF_DECK_CULTURE_FEATURE_OFFSET + cultureIndex);
+    }
+
+    public static double getSelfInPlayStrategyCount(double[] state, int strategyIndex) {
+        if (strategyIndex < 0 || strategyIndex >= CardStrategyFeatures.FEATURE_COUNT)
+            throw new IllegalArgumentException("Invalid card strategy feature index: " + strategyIndex);
+        return getCurrentStateFeature(state, SELF_IN_PLAY_STRATEGY_FEATURE_OFFSET + strategyIndex);
+    }
+
+    public static double getStartingCostSpent(double[] state) {
+        return getCurrentStateFeature(state, RAW_TWILIGHT_POOL_FEATURE_INDEX);
+    }
+
+    private static double getCurrentStateFeature(double[] state, int featureIndex) {
+        if (state.length != STATE_FEATURE_COUNT || featureIndex < 0 || featureIndex >= state.length)
+            return 0.0;
+        return state[featureIndex];
+    }
+
     @Override
     public double[] extractFeatures(GameState gameState, AwaitingDecision decision, String playerId) {
         String opponentId = findOpponentId(gameState, playerId);
@@ -135,10 +184,15 @@ public final class MovieTrilogyRLGameStateFeatures implements RLGameStateFeature
                 appendPublicCardCountOnly(features, opponentDiscard.size());
             appendZoneFeatures(features, gameState.getDeadPile(playerId), playerId, gameState);
             appendZoneFeatures(features, gameState.getDeadPile(opponentId), opponentId, gameState);
-            appendPublicCardCountOnly(features, gameState.getDeck(playerId).size());
-            appendPublicCardCountOnly(features, gameState.getDeck(opponentId).size());
-            selfDeckSize = gameState.getDeck(playerId).size();
-            opponentDeckSize = gameState.getDeck(opponentId).size();
+            List<? extends PhysicalCard> selfDeck = gameState.getDeck(playerId);
+            if (decision.getText().toLowerCase(Locale.ROOT).contains("starting fellowship"))
+                appendZoneFeatures(features, selfDeck, playerId, gameState);
+            else
+                appendPublicCardCountOnly(features, selfDeck.size());
+            List<? extends PhysicalCard> opponentDeck = gameState.getDeck(opponentId);
+            appendPublicCardCountOnly(features, opponentDeck.size());
+            selfDeckSize = selfDeck.size();
+            opponentDeckSize = opponentDeck.size();
         } else {
             for (int i = 0; i < 10; i++)
                 appendEmptyZoneFeatures(features);
@@ -369,7 +423,7 @@ public final class MovieTrilogyRLGameStateFeatures implements RLGameStateFeature
         return vitality == 0 ? 0.0 : Math.min(1.0, wounds / (double) vitality);
     }
 
-    private static void appendSkirmishPlanningFeatures(
+    static void appendSkirmishPlanningFeatures(
             List<Double> features,
             GameState gameState,
             String playerId,
@@ -385,7 +439,8 @@ public final class MovieTrilogyRLGameStateFeatures implements RLGameStateFeature
         int pendingSelfLosses = 0;
         int pendingSelfOverwhelms = 0;
         int pendingStrengthDeficit = 0;
-        boolean pendingRingBearerDanger = false;
+        double pendingRingBearerRisk = 0.0;
+        Skirmish currentSkirmish = gameState.getSkirmish();
 
         for (Assignment assignment : getPendingAssignments(gameState)) {
             PhysicalCard fellowshipCharacter = assignment.getFellowshipCharacter();
@@ -411,9 +466,12 @@ public final class MovieTrilogyRLGameStateFeatures implements RLGameStateFeature
                 pendingSelfOverwhelms++;
             pendingStrengthDeficit += Math.max(0, opponentStrength - selfStrength);
 
-            PhysicalCard ringBearer = gameState.getRingBearer(fellowshipCharacter.getOwner());
-            if (ringBearer != null && ringBearer.getCardId() == fellowshipCharacter.getCardId() && shadowWins)
-                pendingRingBearerDanger = true;
+            if (shadowWins && isRingBearer(gameState, fellowshipCharacter)) {
+                boolean isCurrentSkirmish = isCurrentSkirmish(assignment, currentSkirmish);
+                pendingRingBearerRisk = Math.max(pendingRingBearerRisk, projectedRingBearerLossRisk(
+                        gameState, fellowshipCharacter, assignment.getShadowCharacters(), fellowshipStrength,
+                        shadowStrength, stats, isCurrentSkirmish));
+            }
         }
 
         features.add(normalizedCount(pendingCount, 9));
@@ -421,7 +479,6 @@ public final class MovieTrilogyRLGameStateFeatures implements RLGameStateFeature
         features.add(normalizedCount(pendingSelfOverwhelms, 9));
         features.add(normalizedCount(pendingStrengthDeficit, 45));
 
-        Skirmish currentSkirmish = gameState.getSkirmish();
         if (currentSkirmish == null || currentSkirmish.getFellowshipCharacter() == null
                 || currentSkirmish.getShadowCharacters().isEmpty()) {
             features.add(0.0);
@@ -435,14 +492,70 @@ public final class MovieTrilogyRLGameStateFeatures implements RLGameStateFeature
                     .mapToInt(character -> getCharacterStrength(character, null))
                     .sum()
                     : stats.getShadowSkirmishStrength();
-            boolean selfIsFellowship = playerId.equals(currentSkirmish.getFellowshipCharacter().getOwner());
             boolean shadowWins = shadowStrength >= fellowshipStrength;
+            if (shadowWins && isRingBearer(gameState, currentSkirmish.getFellowshipCharacter())) {
+                pendingRingBearerRisk = Math.max(pendingRingBearerRisk, projectedRingBearerLossRisk(
+                        gameState, currentSkirmish.getFellowshipCharacter(), currentSkirmish.getShadowCharacters(),
+                        fellowshipStrength, shadowStrength, stats, true));
+            }
+            boolean selfIsFellowship = playerId.equals(currentSkirmish.getFellowshipCharacter().getOwner());
             boolean selfLoses = selfIsFellowship ? shadowWins : !shadowWins;
             features.add(selfLoses ? 1.0 : 0.0);
             features.add(selfLoses ? 0.0 : 1.0);
         }
 
-        features.add(pendingRingBearerDanger ? 1.0 : 0.0);
+        features.add(pendingRingBearerRisk);
+    }
+
+    private static double projectedRingBearerLossRisk(
+            GameState gameState,
+            PhysicalCard ringBearer,
+            Collection<? extends PhysicalCard> shadowCharacters,
+            int fellowshipStrength,
+            int shadowStrength,
+            GameStats stats,
+            boolean isCurrentSkirmish) {
+        int vitality = Math.max(1, ringBearer.getBlueprint().getVitality());
+        if (stats != null) {
+            Map<Integer, Integer> vitalities = stats.getCharVitalities();
+            if (vitalities != null)
+                vitality = Math.max(1, vitalities.getOrDefault(ringBearer.getCardId(), vitality));
+        }
+
+        boolean overwhelmed = isCurrentSkirmish && stats != null
+                ? stats.isFpOverwhelmed()
+                : shadowStrength > 0
+                && (fellowshipStrength == 0 || shadowStrength >= 2 * fellowshipStrength);
+        if (overwhelmed)
+            return 1.0;
+
+        int damageBonus;
+        if (isCurrentSkirmish && stats != null) {
+            damageBonus = Math.max(0, stats.getShadowSkirmishDamageBonus());
+        } else {
+            damageBonus = shadowCharacters.stream()
+                    .mapToInt(character -> Math.max(0, character.getBlueprint().getKeywordCount(Keyword.DAMAGE)))
+                    .sum();
+        }
+
+        int woundsAfterLoss = gameState.getWounds(ringBearer) + 1 + damageBonus;
+        return woundsAfterLoss >= vitality ? 1.0 : SURVIVABLE_RING_BEARER_LOSS_RISK;
+    }
+
+    private static boolean isCurrentSkirmish(Assignment assignment, Skirmish skirmish) {
+        if (skirmish == null || skirmish.getFellowshipCharacter() == null
+                || assignment.getFellowshipCharacter().getCardId() != skirmish.getFellowshipCharacter().getCardId()
+                || assignment.getShadowCharacters().size() != skirmish.getShadowCharacters().size())
+            return false;
+
+        return assignment.getShadowCharacters().stream()
+                .allMatch(assigned -> skirmish.getShadowCharacters().stream()
+                        .anyMatch(current -> current.getCardId() == assigned.getCardId()));
+    }
+
+    private static boolean isRingBearer(GameState gameState, PhysicalCard fellowshipCharacter) {
+        PhysicalCard ringBearer = gameState.getRingBearer(fellowshipCharacter.getOwner());
+        return ringBearer != null && ringBearer.getCardId() == fellowshipCharacter.getCardId();
     }
 
     private static List<Assignment> getPendingAssignments(GameState gameState) {

@@ -20,7 +20,13 @@ public abstract class AbstractTrainer implements Trainer, DecisionAnswerer {
     abstract protected List<LabeledPoint> extractTrainingData(List<LearningStep> steps);
 
     public Classifier<double[]> trainWithPoints(List<LabeledPoint> points) {
-        List<LabeledPoint> sampledPoints = weightedTrainingSample(points);
+        return trainWithPoints(points, false);
+    }
+
+    private Classifier<double[]> trainWithPoints(List<LabeledPoint> points, boolean gameBalancedSampling) {
+        List<LabeledPoint> sampledPoints = gameBalancedSampling
+                ? gameAndLabelBalancedTrainingSample(points)
+                : weightedTrainingSample(points);
         double[][] x = sampledPoints.stream().map(LabeledPoint::x).toArray(double[][]::new);
         int[] y = sampledPoints.stream().mapToInt(LabeledPoint::y).toArray();
         return LogisticRegression.fit(x, y);
@@ -36,12 +42,19 @@ public abstract class AbstractTrainer implements Trainer, DecisionAnswerer {
     }
 
     public TrainingAttempt trainIfReadyWithMetrics(List<LearningStep> steps) {
-        return trainIfReadyWithMetrics(steps, null);
+        return trainIfReadyWithMetrics(steps, null, false);
     }
 
     public TrainingAttempt trainIfReadyWithMetrics(
             List<LearningStep> steps,
             Classifier<double[]> incumbentModel) {
+        return trainIfReadyWithMetrics(steps, incumbentModel, false);
+    }
+
+    public TrainingAttempt trainIfReadyWithMetrics(
+            List<LearningStep> steps,
+            Classifier<double[]> incumbentModel,
+            boolean gameBalancedSampling) {
         List<LabeledPoint> points = extractTrainingData(steps);
         long positiveCount = points.stream().filter(point -> point.y() > 0).count();
         long negativeCount = points.stream().filter(point -> point.y() == 0).count();
@@ -79,7 +92,7 @@ public abstract class AbstractTrainer implements Trainer, DecisionAnswerer {
         }
 
         long trainingStart = System.nanoTime();
-        Classifier<double[]> model = trainWithPoints(split.training());
+        Classifier<double[]> model = trainWithPoints(split.training(), gameBalancedSampling);
         long trainingMillis = (System.nanoTime() - trainingStart) / 1_000_000;
         double trainingAccuracy = weightedAccuracy(model, split.training());
         double validationAccuracy = weightedAccuracy(model, split.validation());
@@ -92,6 +105,10 @@ public abstract class AbstractTrainer implements Trainer, DecisionAnswerer {
         return new TrainingAttempt(Optional.of(result), points.size(), positiveCount, negativeCount,
                 split.training().size(), split.validation().size(), trainingAccuracy,
                 validationAccuracy, trainingMillis, "trained");
+    }
+
+    protected double[] getModelInputVector(Classifier<double[]> model, double[] features) {
+        return features;
     }
 
     static DatasetSplit splitByGame(List<LabeledPoint> points) {
@@ -121,16 +138,60 @@ public abstract class AbstractTrainer implements Trainer, DecisionAnswerer {
         if (points.isEmpty())
             return List.of();
 
-        double firstWeight = points.getFirst().weight();
-        if (points.stream().allMatch(point -> Double.compare(point.weight(), firstWeight) == 0))
-            return points;
+        double[] weights = points.stream().mapToDouble(LabeledPoint::weight).toArray();
+        return sampleWithWeights(points, weights);
+    }
 
+    static List<LabeledPoint> gameAndLabelBalancedTrainingSample(List<LabeledPoint> points) {
+        if (points.isEmpty())
+            return List.of();
+
+        Map<String, GameSamplingStats> statsByGame = new HashMap<>();
+        for (LabeledPoint point : points) {
+            if (point.gameId() == null || point.gameId().isBlank())
+                throw new IllegalArgumentException("Game-balanced sampling requires a non-blank game ID");
+
+            GameSamplingStats stats = statsByGame.computeIfAbsent(
+                    point.gameId(), ignored -> new GameSamplingStats());
+            stats.exampleCount++;
+            stats.totalWeight += point.weight();
+            stats.weightByLabel.merge(point.y(), point.weight(), Double::sum);
+        }
+
+        double[] weights = new double[points.size()];
+        for (int index = 0; index < points.size(); index++) {
+            LabeledPoint point = points.get(index);
+            GameSamplingStats stats = statsByGame.get(point.gameId());
+            double gameAverageWeight = stats.totalWeight / stats.exampleCount;
+            double labelWeight = stats.weightByLabel.get(point.y());
+            weights[index] = point.weight() / labelWeight
+                    * (gameAverageWeight / stats.weightByLabel.size());
+        }
+        return sampleWithWeights(points, weights);
+    }
+
+    private static List<LabeledPoint> sampleWithWeights(List<LabeledPoint> points, double[] weights) {
+        if (points.isEmpty())
+            return List.of();
+        if (points.size() != weights.length)
+            throw new IllegalArgumentException("Training sample weights must match the example count");
+
+        double firstWeight = weights[0];
+        boolean equalWeights = true;
         double[] cumulativeWeights = new double[points.size()];
         double totalWeight = 0.0;
         for (int index = 0; index < points.size(); index++) {
-            totalWeight += points.get(index).weight();
+            double weight = weights[index];
+            if (!Double.isFinite(weight) || weight <= 0.0)
+                throw new IllegalArgumentException("Training sample weights must be finite and positive");
+            equalWeights &= Double.compare(weight, firstWeight) == 0;
+            totalWeight += weight;
             cumulativeWeights[index] = totalWeight;
         }
+        if (equalWeights)
+            return points;
+        if (!Double.isFinite(totalWeight) || totalWeight <= 0.0)
+            throw new IllegalArgumentException("Total training sample weight must be finite and positive");
 
         SplittableRandom random = new SplittableRandom(0x5EEDL);
         List<LabeledPoint> sample = new ArrayList<>(points.size());
@@ -144,14 +205,20 @@ public abstract class AbstractTrainer implements Trainer, DecisionAnswerer {
         return sample;
     }
 
-    private static double weightedAccuracy(Classifier<double[]> model, List<LabeledPoint> examples) {
+    private static final class GameSamplingStats {
+        private int exampleCount;
+        private double totalWeight;
+        private final Map<Integer, Double> weightByLabel = new HashMap<>();
+    }
+
+    private double weightedAccuracy(Classifier<double[]> model, List<LabeledPoint> examples) {
         if (examples.isEmpty())
             throw new IllegalArgumentException("Validation set must contain at least one complete game");
         double correctWeight = 0.0;
         double totalWeight = 0.0;
         for (LabeledPoint point : examples) {
             totalWeight += point.weight();
-            if (model.predict(point.x()) == point.y())
+            if (model.predict(getModelInputVector(model, point.x())) == point.y())
                 correctWeight += point.weight();
         }
         return correctWeight * 100.0 / totalWeight;

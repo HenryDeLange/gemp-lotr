@@ -10,6 +10,10 @@ import com.gempukku.lotro.bots.simulation.SimulationStats;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryPoolMXBean;
+import java.lang.management.MemoryType;
+import java.lang.management.MemoryUsage;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -29,13 +33,18 @@ public final class TrainingProgress implements TrainingEventReporter {
     private final List<TrainingEvent> events = new ArrayList<>();
     private final List<PolicyComparison> policyComparisons = new ArrayList<>();
     private final List<BatchDecisionDiagnostics> batchDecisionDiagnostics = new ArrayList<>();
+    private final Map<CycleRecoveryKey, BatchDecisionTotals> batchDecisionTotals = new LinkedHashMap<>();
+    private final List<TrainingDataIOProfile> trainingDataIOProfiles = new ArrayList<>();
+    private final List<TrainingDataCompactionProfile> trainingDataCompactionProfiles = new ArrayList<>();
+    private final List<ModelTrainingProfile> modelTrainingProfiles = new ArrayList<>();
+    private final List<ModelWorkerProfile> modelWorkerProfiles = new ArrayList<>();
     private final Set<String> diagnosticTraceKindsThisStage = new HashSet<>();
     private final EnumMap<Severity, Long> eventCounts = new EnumMap<>(Severity.class);
-    private final Map<CycleRecoveryKey, Long> cycleRecoveries = new LinkedHashMap<>();
+    private final Map<CycleRecoveryKey, Long> pendingCycleRecoveries = new LinkedHashMap<>();
+    private final Map<CycleRecoveryKey, Long> pendingCycleTaintedDecisions = new LinkedHashMap<>();
     private final Map<CycleRecoveryKey, Long> transferConstraints = new LinkedHashMap<>();
     private final Map<CycleRecoveryKey, Long> genericPassGateVetoes = new LinkedHashMap<>();
     private final Map<String, TrainingDataTotals> trainingData = new LinkedHashMap<>();
-    private long cycleRecoveriesThisStage;
     private long transferConstraintsThisStage;
     private long passGateVetoesThisStage;
     private long decisionModelFallbacksThisStage;
@@ -108,12 +117,12 @@ public final class TrainingProgress implements TrainingEventReporter {
         next.completed = 0;
         next.total = total;
         next.result = "";
+        next.startedNanos = System.nanoTime();
         currentStage = next;
         stage = stageName;
         this.generation = generation;
         transferConstraintsThisStage = 0;
         passGateVetoesThisStage = 0;
-        cycleRecoveriesThisStage = 0;
         decisionModelFallbacksThisStage = 0;
         invalidAnswerFallbacksThisStage = 0;
         diagnosticTraceKindsThisStage.clear();
@@ -129,36 +138,114 @@ public final class TrainingProgress implements TrainingEventReporter {
             String fileName,
             long recordsBefore,
             int recordsAfter) {
+        trainingDataCompacted(sourceFormat, trainerName, fileName, recordsBefore, recordsAfter, 0);
+    }
+
+    public synchronized void trainingDataCompacted(
+            String sourceFormat,
+            String trainerName,
+            String fileName,
+            long recordsBefore,
+            int recordsAfter,
+            long durationMillis) {
+        TrainingDataCompactionProfile profile = new TrainingDataCompactionProfile(
+                sourceFormat, generation, trainerName, fileName, recordsBefore, recordsAfter, durationMillis);
+        trainingDataCompactionProfiles.add(profile);
+        appendMetrics("training_data_compaction", profile);
         String message = String.format(Locale.ROOT,
                     "%s training data for %s exceeded the %,d-record per-format cap; "
-                        + "compacted %s from %,d to %,d records.",
-                    sourceFormat, trainerName, recordsAfter,
-                fileName, recordsBefore, recordsAfter);
+                        + "compacted %s from %,d to %,d records in %,d ms.",
+                    sourceFormat, trainerName, recordsAfter, fileName, recordsBefore,
+                recordsAfter, durationMillis);
         recordEvent(Severity.WARNING, "training-data-compacted", trainerName, message, null);
     }
 
     public synchronized void decisionDataAppended(
             String sourceFormat, long inputSteps, long trainerRecords, long jsonBytes, long appendedBytes) {
+        decisionDataAppended(sourceFormat, inputSteps, trainerRecords, trainerRecords, jsonBytes, appendedBytes);
+    }
+
+    public synchronized void decisionDataAppended(
+            String sourceFormat, long inputSteps, long trainerRecords, long storedRecords,
+            long jsonBytes, long appendedBytes) {
+        decisionDataAppended(sourceFormat, inputSteps, trainerRecords, storedRecords,
+                jsonBytes, appendedBytes, 0);
+    }
+
+    public synchronized void decisionDataAppended(
+            String sourceFormat,
+            long inputSteps,
+            long trainerRecords,
+            long storedRecords,
+            long jsonBytes,
+            long appendedBytes,
+            long writeMillis) {
         TrainingDataTotals previous = trainingData.getOrDefault(sourceFormat,
-                new TrainingDataTotals(sourceFormat, 0, 0, 0, 0, 0, 0, 0));
+                new TrainingDataTotals(sourceFormat, 0, 0, 0, 0, 0, 0, 0, 0));
         TrainingDataTotals updated = new TrainingDataTotals(sourceFormat,
                 previous.inputSteps() + inputSteps, previous.trainerRecords() + trainerRecords,
+                previous.storedDecisionRecords() + storedRecords,
                 previous.decisionJsonBytes() + jsonBytes, previous.decisionBytes() + appendedBytes,
                 previous.deckExamples(), previous.deckJsonBytes(), previous.deckBytes());
         trainingData.put(sourceFormat, updated);
         appendMetrics("training_data_totals", updated);
+        TrainingDataIOProfile profile = new TrainingDataIOProfile(
+                sourceFormat, generation, "write", "decision-data", storedRecords,
+                jsonBytes, appendedBytes, writeMillis);
+        trainingDataIOProfiles.add(profile);
+        appendMetrics("training_data_io", profile);
     }
 
     public synchronized void deckBuilderDataAppended(
             String sourceFormat, long examples, long jsonBytes, long appendedBytes) {
+        deckBuilderDataAppended(sourceFormat, examples, jsonBytes, appendedBytes, 0);
+    }
+
+    public synchronized void deckBuilderDataAppended(
+            String sourceFormat, long examples, long jsonBytes, long appendedBytes, long writeMillis) {
         TrainingDataTotals previous = trainingData.getOrDefault(sourceFormat,
-                new TrainingDataTotals(sourceFormat, 0, 0, 0, 0, 0, 0, 0));
+                new TrainingDataTotals(sourceFormat, 0, 0, 0, 0, 0, 0, 0, 0));
         TrainingDataTotals updated = new TrainingDataTotals(sourceFormat,
-                previous.inputSteps(), previous.trainerRecords(), previous.decisionJsonBytes(),
+                previous.inputSteps(), previous.trainerRecords(), previous.storedDecisionRecords(),
+                previous.decisionJsonBytes(),
                 previous.decisionBytes(), previous.deckExamples() + examples,
                 previous.deckJsonBytes() + jsonBytes, previous.deckBytes() + appendedBytes);
         trainingData.put(sourceFormat, updated);
         appendMetrics("training_data_totals", updated);
+        TrainingDataIOProfile profile = new TrainingDataIOProfile(
+                sourceFormat, generation, "write", "deck-builder-data", examples,
+                jsonBytes, appendedBytes, writeMillis);
+        trainingDataIOProfiles.add(profile);
+        appendMetrics("training_data_io", profile);
+    }
+
+    public synchronized void trainingDataLoadCompleted(
+            String trainerName, long records, long elapsedMillis) {
+        TrainingDataIOProfile profile = new TrainingDataIOProfile(
+                format, generation, "read", trainerName, records, 0, 0, elapsedMillis);
+        trainingDataIOProfiles.add(profile);
+        appendMetrics("training_data_io", profile);
+    }
+
+    public synchronized void modelTrainingProfile(
+            String trainerName,
+            long recordsLoaded,
+            long dataLoadMillis,
+            long modelWallMillis,
+            long fitMillis) {
+        ModelTrainingProfile profile = new ModelTrainingProfile(
+                format, generation, trainerName, recordsLoaded, dataLoadMillis, modelWallMillis, fitMillis);
+        modelTrainingProfiles.add(profile);
+        appendMetrics("model_training_profile", profile);
+    }
+
+    public synchronized void modelWorkersStarted(
+            int requestedWorkers, int activeWorkers, int trainerCount) {
+        ModelWorkerProfile profile = new ModelWorkerProfile(
+                format, generation, requestedWorkers, activeWorkers, trainerCount,
+                Runtime.getRuntime().availableProcessors());
+        modelWorkerProfiles.add(profile);
+        appendMetrics("model_worker_count", profile);
     }
 
     public synchronized void gameCompleted() {
@@ -256,23 +343,26 @@ public final class TrainingProgress implements TrainingEventReporter {
             BatchTacticalMetrics tacticalMetrics) {
         long cycleEscapes = flushCycleRecoveries(format, generation);
         long games = (long) wins + losses + skippedGames;
+        long cycleTaintedDecisions = flushCycleTaintedDecisions(format, generation);
         BatchDecisionDiagnostics diagnostics = new BatchDecisionDiagnostics(
                 format,
                 generation,
                 label,
                 games,
+                skippedGames,
                 cycleEscapes,
+                cycleTaintedDecisions,
                 transferConstraintsThisStage,
                 passGateVetoesThisStage,
                 decisionModelFallbacksThisStage,
                 invalidAnswerFallbacksThisStage);
         transferConstraintsThisStage = 0;
         passGateVetoesThisStage = 0;
-        cycleRecoveriesThisStage = 0;
         decisionModelFallbacksThisStage = 0;
         invalidAnswerFallbacksThisStage = 0;
         batchDecisionDiagnostics.add(diagnostics);
         appendMetrics("batch_decision_diagnostics", diagnostics);
+        appendMetrics("batch_decision_totals", accumulateBatchDecisionTotals(diagnostics));
         String key = format + "/" + label;
         BatchResult result = new BatchResult(format, generation, label, wins, losses,
                 skippedGames, "", tacticalMetrics);
@@ -405,6 +495,10 @@ public final class TrainingProgress implements TrainingEventReporter {
                 result.algorithm(), finiteOrNull(result.validationAccuracy()),
                 finiteOrNull(result.incumbentAccuracy()), result.promoted()));
         appendMetrics("deck_builder", deckBuilders.get(format + "/" + generation));
+        appendMetrics("deck_builder_candidate_strata", Map.of(
+                "format", format,
+                "generation", generation,
+                "candidates", result.candidateStrata()));
         String deckBuilderSelection = "not-ready".equals(result.algorithm())
                 ? "no ranking was ready; the available ranking or random sampling was retained."
                 : result.promoted() ? "new ranking selected." : "previous ranking retained.";
@@ -418,6 +512,10 @@ public final class TrainingProgress implements TrainingEventReporter {
             currentStage.result = result.candidates() + " deck options; "
                     + result.wins() + " wins / " + result.losses() + " losses; " + modelOutcome;
         }
+    }
+
+    public synchronized void deckBuilderPairing(DeckBuilderTrainer.CandidatePairing pairing) {
+        appendMetrics("deck_builder_pairing", pairing);
     }
 
     public synchronized void skipStage(String stageName, int generation, String reason) {
@@ -459,7 +557,7 @@ public final class TrainingProgress implements TrainingEventReporter {
         flushAllCycleRecoveries();
         if ("completed".equals(finalStatus))
             recordEvent(Severity.SUCCESS, "training-completed", null,
-                    "Training completed and the final bot model release was published successfully.", null);
+                    "Training completed and all trained models were published to the configured output.", null);
         appendMetrics("run_finished", snapshot());
     }
 
@@ -470,10 +568,9 @@ public final class TrainingProgress implements TrainingEventReporter {
             String model,
             String message,
             Throwable failure) {
-        if ("repeated-decision-cycle".equals(type) && severity == Severity.WARNING) {
-            cycleRecoveries.merge(new CycleRecoveryKey(format, generation), 1L, Long::sum);
-            cycleRecoveriesThisStage++;
-            return;
+            if ("repeated-decision-cycle".equals(type) && severity == Severity.WARNING) {
+                pendingCycleRecoveries.merge(new CycleRecoveryKey(format, generation), 1L, Long::sum);
+                return;
         }
         if ("transfer-guard-constrained-decision".equals(type) && severity == Severity.SUCCESS) {
             transferConstraints.merge(new CycleRecoveryKey(format, generation), 1L, Long::sum);
@@ -504,6 +601,15 @@ public final class TrainingProgress implements TrainingEventReporter {
         events.add(event);
         eventCounts.put(severity, eventCounts.get(severity) + 1);
         appendMetrics("event", event);
+    }
+
+    @Override
+    public synchronized void recordCycleRecovery(int repeatedHistoryDecisions, String message) {
+        if (repeatedHistoryDecisions < 0)
+            throw new IllegalArgumentException("Repeated history decision count cannot be negative");
+        recordEvent(Severity.WARNING, "repeated-decision-cycle", null, message, null);
+        pendingCycleTaintedDecisions.merge(
+                new CycleRecoveryKey(format, generation), (long) repeatedHistoryDecisions, Long::sum);
     }
 
     @Override
@@ -567,7 +673,13 @@ public final class TrainingProgress implements TrainingEventReporter {
         result.put("deckBuilders", new ArrayList<>(deckBuilders.values()));
         result.put("batches", new ArrayList<>(batchResults.values()));
         result.put("batchDecisionDiagnostics", new ArrayList<>(batchDecisionDiagnostics));
+        result.put("batchDecisionTotals", new ArrayList<>(batchDecisionTotals.values()));
         result.put("trainingData", new ArrayList<>(trainingData.values()));
+        result.put("trainingDataIOProfiles", new ArrayList<>(trainingDataIOProfiles));
+        result.put("trainingDataCompactionProfiles", new ArrayList<>(trainingDataCompactionProfiles));
+        result.put("modelTrainingProfiles", new ArrayList<>(modelTrainingProfiles));
+        result.put("modelWorkerProfiles", new ArrayList<>(modelWorkerProfiles));
+        result.put("runtimeProfile", runtimeProfile());
         result.put("transferGuard", transferConstraints.entrySet().stream()
                 .map(entry -> new TransferGuardTotals(
                         entry.getKey().format(), entry.getKey().generation(), entry.getValue()))
@@ -594,6 +706,7 @@ public final class TrainingProgress implements TrainingEventReporter {
     private void closeCurrentStage(String finalStatus) {
         if (currentStage == null)
             return;
+        currentStage.durationMillis = currentStage.elapsedMillis();
         if (currentStage.state.equals("running")) {
             if (currentStage.completed >= currentStage.total)
                 currentStage.state = "completed";
@@ -619,7 +732,7 @@ public final class TrainingProgress implements TrainingEventReporter {
 
     private long flushCycleRecoveries(String formatCode, int generationNumber) {
         CycleRecoveryKey key = new CycleRecoveryKey(formatCode, generationNumber);
-        Long count = cycleRecoveries.remove(key);
+        Long count = pendingCycleRecoveries.remove(key);
         if (count != null)
             recordEvent(Severity.SUCCESS, "decision-cycle-recoveries", null,
                     count + " repeated-decision cycles were safely escaped during this simulation batch.",
@@ -627,12 +740,38 @@ public final class TrainingProgress implements TrainingEventReporter {
         return count == null ? 0 : count;
     }
 
+    private long flushCycleTaintedDecisions(String formatCode, int generationNumber) {
+        Long count = pendingCycleTaintedDecisions.remove(new CycleRecoveryKey(formatCode, generationNumber));
+        return count == null ? 0 : count;
+    }
+
+    private BatchDecisionTotals accumulateBatchDecisionTotals(BatchDecisionDiagnostics diagnostics) {
+        CycleRecoveryKey key = new CycleRecoveryKey(diagnostics.format(), diagnostics.generation());
+        BatchDecisionTotals previous = batchDecisionTotals.getOrDefault(key,
+                new BatchDecisionTotals(diagnostics.format(), diagnostics.generation(),
+                        0, 0, 0, 0, 0, 0, 0, 0));
+        BatchDecisionTotals totals = new BatchDecisionTotals(
+                diagnostics.format(),
+                diagnostics.generation(),
+                previous.games() + diagnostics.games(),
+                previous.skippedGames() + diagnostics.skippedGames(),
+                previous.cycleRecoveries() + diagnostics.cycleRecoveries(),
+                previous.cycleTaintedDecisions() + diagnostics.cycleTaintedDecisions(),
+                previous.transferConstraints() + diagnostics.transferConstraints(),
+                previous.genericPassVetoes() + diagnostics.genericPassVetoes(),
+                previous.decisionModelFallbacks() + diagnostics.decisionModelFallbacks(),
+                previous.invalidAnswerFallbacks() + diagnostics.invalidAnswerFallbacks());
+        batchDecisionTotals.put(key, totals);
+        return totals;
+    }
+
     private void flushAllCycleRecoveries() {
         String previousFormat = format;
         int previousGeneration = generation;
-        for (Map.Entry<CycleRecoveryKey, Long> entry : new ArrayList<>(cycleRecoveries.entrySet())) {
+        for (Map.Entry<CycleRecoveryKey, Long> entry : new ArrayList<>(pendingCycleRecoveries.entrySet())) {
             CycleRecoveryKey key = entry.getKey();
-            cycleRecoveries.remove(key);
+            pendingCycleRecoveries.remove(key);
+            pendingCycleTaintedDecisions.remove(key);
             format = key.format();
             generation = key.generation();
             recordEvent(Severity.SUCCESS, "decision-cycle-recoveries", null,
@@ -651,6 +790,21 @@ public final class TrainingProgress implements TrainingEventReporter {
         return value != null && Double.isFinite(value) ? value : null;
     }
 
+    private static RuntimeProfile runtimeProfile() {
+        Runtime runtime = Runtime.getRuntime();
+        MemoryUsage heap = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
+        Map<String, Long> poolPeaks = new LinkedHashMap<>();
+        for (MemoryPoolMXBean pool : ManagementFactory.getMemoryPoolMXBeans()) {
+            if (pool.getType() != MemoryType.HEAP)
+                continue;
+            MemoryUsage peak = pool.getPeakUsage();
+            if (peak != null)
+                poolPeaks.put(pool.getName(), peak.getUsed());
+        }
+        return new RuntimeProfile(runtime.availableProcessors(), runtime.maxMemory(),
+                heap.getUsed(), heap.getCommitted(), poolPeaks);
+    }
+
     public record PlannedStage(String format, String name, int generation, int total) {
     }
 
@@ -661,7 +815,8 @@ public final class TrainingProgress implements TrainingEventReporter {
             String state,
             int completed,
             int total,
-            String result) {
+            String result,
+            long durationMillis) {
     }
 
     public record ModelProgress(
@@ -747,7 +902,22 @@ public final class TrainingProgress implements TrainingEventReporter {
             int generation,
             String label,
             long games,
+            int skippedGames,
             long cycleRecoveries,
+            long cycleTaintedDecisions,
+            long transferConstraints,
+            long genericPassVetoes,
+            long decisionModelFallbacks,
+            long invalidAnswerFallbacks) {
+    }
+
+    public record BatchDecisionTotals(
+            String format,
+            int generation,
+            long games,
+            long skippedGames,
+            long cycleRecoveries,
+            long cycleTaintedDecisions,
             long transferConstraints,
             long genericPassVetoes,
             long decisionModelFallbacks,
@@ -758,11 +928,55 @@ public final class TrainingProgress implements TrainingEventReporter {
             String format,
             long inputSteps,
             long trainerRecords,
+            long storedDecisionRecords,
             long decisionJsonBytes,
             long decisionBytes,
             long deckExamples,
             long deckJsonBytes,
             long deckBytes) { }
+
+    public record TrainingDataIOProfile(
+            String format,
+            int generation,
+            String operation,
+            String subject,
+            long records,
+            long jsonBytes,
+            long diskBytes,
+            long elapsedMillis) { }
+
+    public record TrainingDataCompactionProfile(
+            String format,
+            int generation,
+            String trainer,
+            String fileName,
+            long recordsBefore,
+            int recordsAfter,
+            long elapsedMillis) { }
+
+    public record ModelTrainingProfile(
+            String format,
+            int generation,
+            String trainer,
+            long recordsLoaded,
+            long dataLoadMillis,
+            long modelWallMillis,
+            long fitMillis) { }
+
+    public record ModelWorkerProfile(
+            String format,
+            int generation,
+            int requestedWorkers,
+            int activeWorkers,
+            int trainerCount,
+            int availableProcessors) { }
+
+    public record RuntimeProfile(
+            int availableProcessors,
+            long maxHeapBytes,
+            long currentHeapUsedBytes,
+            long currentHeapCommittedBytes,
+            Map<String, Long> heapPoolPeakUsageBytes) { }
 
     public record TransferGuardTotals(String format, int generation, long constrainedDecisions) { }
 
@@ -813,6 +1027,8 @@ public final class TrainingProgress implements TrainingEventReporter {
         private int total;
         private String state = "pending";
         private String result = "";
+        private long startedNanos;
+        private long durationMillis;
 
         private MutableStage(String format, String name, int generation, int total) {
             this.format = format;
@@ -822,7 +1038,13 @@ public final class TrainingProgress implements TrainingEventReporter {
         }
 
         private StageStatus toStatus() {
-            return new StageStatus(format, name, generation, state, completed, total, result);
+            return new StageStatus(format, name, generation, state, completed, total, result,
+                    state.equals("running") ? elapsedMillis() : durationMillis);
+        }
+
+        private long elapsedMillis() {
+            return startedNanos == 0 ? 0
+                    : Math.max(0, (System.nanoTime() - startedNanos) / 1_000_000);
         }
     }
 }

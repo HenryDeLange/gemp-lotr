@@ -40,6 +40,18 @@ public class AssignmentLegality {
         return game != null;
     }
 
+    public int getRemainingFreePeopleAssignments(String freeCharacterId, int fallback) {
+        if (game == null)
+            return Math.max(0, fallback);
+
+        PhysicalCard freeCharacter = card(game.getGameState(), freeCharacterId);
+        if (freeCharacter == null)
+            return Math.max(0, fallback);
+
+        int capacity = 1 + game.getModifiersQuerying().getKeywordCount(game, freeCharacter, Keyword.DEFENDER);
+        return Math.max(0, capacity - alreadyAssignedTo(game.getGameState(), freeCharacter));
+    }
+
     /** The side doing the assigning: the current player assigns as Free Peoples, anyone else as Shadow. */
     public static Side assigningSide(GameState gameState, String playerName) {
         return playerName.equals(gameState.getCurrentPlayerId()) ? Side.FREE_PEOPLE : Side.SHADOW;

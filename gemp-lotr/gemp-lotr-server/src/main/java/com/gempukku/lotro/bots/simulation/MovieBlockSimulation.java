@@ -76,13 +76,13 @@ public class MovieBlockSimulation implements Simulation {
     @Override
     public GameResult simulateGame(BotPlayer bot1, BotPlayer bot2) {
         DeckPair deckPair = takeDeckPair();
-        return simulateGameInternal(bot1, bot2, deckPair.first(), deckPair.second(), false).result();
+        return simulateGameInternal(bot1, bot2, deckPair.first(), deckPair.second(), false, false).result();
     }
 
     @Override
     public SimulationOutcome simulateGameWithMetrics(BotPlayer bot1, BotPlayer bot2) {
         DeckPair deckPair = takeDeckPair();
-        return simulateGameInternal(bot1, bot2, deckPair.first(), deckPair.second(), true);
+        return simulateGameInternal(bot1, bot2, deckPair.first(), deckPair.second(), true, false);
     }
 
     @Override
@@ -99,7 +99,7 @@ public class MovieBlockSimulation implements Simulation {
     }
 
     public GameResult simulateGame(BotPlayer bot1, BotPlayer bot2, LotroDeck bot1Deck, LotroDeck bot2Deck) {
-        return simulateGameInternal(bot1, bot2, bot1Deck, bot2Deck, false).result();
+        return simulateGameInternal(bot1, bot2, bot1Deck, bot2Deck, false, false).result();
     }
 
     public SimulationOutcome simulateGameWithMetrics(
@@ -107,7 +107,15 @@ public class MovieBlockSimulation implements Simulation {
             BotPlayer bot2,
             LotroDeck bot1Deck,
             LotroDeck bot2Deck) {
-        return simulateGameInternal(bot1, bot2, bot1Deck, bot2Deck, true);
+        return simulateGameInternal(bot1, bot2, bot1Deck, bot2Deck, true, false);
+    }
+
+    public SimulationOutcome simulateGameWithSeating(
+            BotPlayer bot1,
+            BotPlayer bot2,
+            LotroDeck bot1Deck,
+            LotroDeck bot2Deck) {
+        return simulateGameInternal(bot1, bot2, bot1Deck, bot2Deck, false, true);
     }
 
     private SimulationOutcome simulateGameInternal(
@@ -115,7 +123,8 @@ public class MovieBlockSimulation implements Simulation {
             BotPlayer bot2,
             LotroDeck bot1Deck,
             LotroDeck bot2Deck,
-            boolean collectTacticalMetrics) {
+            boolean collectTacticalMetrics,
+            boolean collectSeating) {
         if (bot1.getName().equals(bot2.getName()))
             throw new IllegalArgumentException("Bot names cannot be equal.");
 
@@ -159,14 +168,35 @@ public class MovieBlockSimulation implements Simulation {
         }
 
         if (bot1.getName().equals(game.getWinnerPlayerId()))
-            return tacticalMetrics == null
-                    ? SimulationOutcome.withoutMetrics(GameResult.P1_WON)
-                    : SimulationOutcome.withMetrics(GameResult.P1_WON, tacticalMetrics.finish(game));
+            return completedOutcome(GameResult.P1_WON, game, bot1, bot2, tacticalMetrics, collectSeating);
         if (bot2.getName().equals(game.getWinnerPlayerId()))
-            return tacticalMetrics == null
-                    ? SimulationOutcome.withoutMetrics(GameResult.P2_WON)
-                    : SimulationOutcome.withMetrics(GameResult.P2_WON, tacticalMetrics.finish(game));
+            return completedOutcome(GameResult.P2_WON, game, bot1, bot2, tacticalMetrics, collectSeating);
         throw new IllegalStateException("Finished game has unknown winner in " + format.getCode());
+    }
+
+    private SimulationOutcome completedOutcome(
+            GameResult result,
+            DefaultLotroGame game,
+            BotPlayer bot1,
+            BotPlayer bot2,
+            GameTacticalMetricsAccumulator tacticalMetrics,
+            boolean collectSeating) {
+        if (tacticalMetrics != null)
+            return SimulationOutcome.withMetrics(result, tacticalMetrics.finish(game));
+        if (collectSeating)
+            return SimulationOutcome.withSeating(result, actualSeating(game, bot1, bot2));
+        return SimulationOutcome.withoutMetrics(result);
+    }
+
+    private static GameSeating actualSeating(DefaultLotroGame game, BotPlayer bot1, BotPlayer bot2) {
+        var gameState = game.getGameState();
+        var seatingOrder = gameState.getPlayerOrder().getAllPlayers();
+        int p1SeatIndex = seatingOrder.indexOf(bot1.getName());
+        String firstPlayer = gameState.getFirstPlayerId();
+        if (seatingOrder.size() != 2 || p1SeatIndex < 0
+                || !bot1.getName().equals(firstPlayer) && !bot2.getName().equals(firstPlayer))
+            throw new IllegalStateException("Completed game has invalid actual seating data");
+        return new GameSeating(p1SeatIndex, bot1.getName().equals(firstPlayer));
     }
 
     public static final class GameDecisionLimitException extends IllegalStateException {
@@ -243,7 +273,7 @@ public class MovieBlockSimulation implements Simulation {
                                 + " during " + phase + " for " + decision.getDecisionType());
             }
             decisionCycleGuard.clear();
-            recordWarning("repeated-decision-cycle",
+            recordCycleRecovery(escape.repeatedHistoryDecisions(),
                     "A repeated decision was escaped in " + format.getCode()
                             + " during " + phase + " for " + decision.getDecisionType() + ".");
         } else if (repeatedCycle.isPresent()) {
@@ -264,12 +294,12 @@ public class MovieBlockSimulation implements Simulation {
                 answer = cycle.repeatedAnswer();
                 decisionCycleGuard.clear();
                 decisionCycleGuard.deferEscape(deferred.orElseThrow());
-                recordWarning("repeated-decision-cycle",
+                recordWarning("deferred-decision-cycle-escape-scheduled",
                         "A repeated decision had no immediate escape in " + format.getCode()
                                 + " during " + phase + "; an alternate was scheduled.");
             } else {
                 decisionCycleGuard.clear();
-                recordWarning("repeated-decision-cycle",
+                recordCycleRecovery(cycle.repeatedHistoryDecisions(),
                         "A repeated decision was escaped in " + format.getCode()
                                 + " during " + phase + " for " + decision.getDecisionType() + ".");
             }
@@ -313,6 +343,11 @@ public class MovieBlockSimulation implements Simulation {
     private void recordWarning(String type, String message) {
         if (eventReporter != null)
             eventReporter.recordEvent(Severity.WARNING, type, null, message, null);
+    }
+
+    private void recordCycleRecovery(int repeatedHistoryDecisions, String message) {
+        if (eventReporter != null)
+            eventReporter.recordCycleRecovery(repeatedHistoryDecisions, message);
     }
 
     private void recordDiagnosticTrace(TrainingDiagnosticTrace trace) {

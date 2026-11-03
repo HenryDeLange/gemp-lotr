@@ -1,6 +1,7 @@
 package com.gempukku.lotro.bots.rl.fotrstarters;
 
 import com.gempukku.lotro.common.CardType;
+import com.gempukku.lotro.common.Culture;
 import com.gempukku.lotro.common.Keyword;
 import com.gempukku.lotro.common.PossessionClass;
 import com.gempukku.lotro.common.Side;
@@ -23,6 +24,16 @@ public class CardFeatures {
     public static final String PASS = "pass";
     private static final int FP_ASSIGNED_BASE_FEATURE_COUNT = 8;
     public static final int SKIRMISH_PLAY_CARD_BASE_FEATURE_COUNT = 5;
+    public static final int ASSIGNMENT_OUTCOME_FEATURE_COUNT = 9;
+    public static final int ASSIGNMENT_MATCHUP_COUNT = 0;
+    public static final int ASSIGNMENT_SHADOW_WIN_COUNT = 1;
+    public static final int ASSIGNMENT_OVERWHELM_COUNT = 2;
+    public static final int ASSIGNMENT_PROJECTED_DEATH_COUNT = 3;
+    public static final int ASSIGNMENT_DAMAGE_BONUS = 4;
+    public static final int ASSIGNMENT_RING_BEARER_ASSIGNED = 5;
+    public static final int ASSIGNMENT_RING_BEARER_LOSES = 6;
+    public static final int ASSIGNMENT_RING_BEARER_OVERWHELMED = 7;
+    public static final int ASSIGNMENT_RING_BEARER_FATAL = 8;
 
     private CardFeatures() {
 
@@ -77,6 +88,14 @@ public class CardFeatures {
         } else {
             throw new IllegalStateException("Blueprint library not initialized");
         }
+    }
+
+    public static Culture getCardCulture(String blueprintId) throws CardNotFoundException {
+        if (library == null)
+            throw new IllegalStateException("Blueprint library not initialized");
+        if (PASS.equals(blueprintId))
+            return null;
+        return library.getLotroCardBlueprint(blueprintId).getCulture();
     }
 
     public static double[] getFpAssignedCardFeatures(String blueprintId, int woundsPlaced, int numberOfMinions, int minionStrength) throws CardNotFoundException {
@@ -140,6 +159,13 @@ public class CardFeatures {
 
     public static double[] getAssignmentFeatures(Map<String, List<String>> assignmentMap, Map<String, Integer> woundsMap,
                                                  int numberOfUnassignedMinions, int strengthOfUnassignedMinions) throws CardNotFoundException {
+        return getAssignmentFeatures(assignmentMap, woundsMap, numberOfUnassignedMinions,
+                strengthOfUnassignedMinions, null);
+    }
+
+    public static double[] getAssignmentFeatures(Map<String, List<String>> assignmentMap, Map<String, Integer> woundsMap,
+                                                 int numberOfUnassignedMinions, int strengthOfUnassignedMinions,
+                                                 String ringBearerBlueprintId) throws CardNotFoundException {
         List<Double> tbr = new ArrayList<>();
 
         List<String> companions = assignmentMap.keySet().stream().filter(s -> {
@@ -244,7 +270,79 @@ public class CardFeatures {
         tbr.add((double) numberOfUnassignedMinions);
         tbr.add((double) strengthOfUnassignedMinions);
 
+        appendAssignmentOutcomeFeatures(tbr, assignmentMap, woundsMap, ringBearerBlueprintId);
         return tbr.stream().mapToDouble(Double::doubleValue).toArray();
+    }
+
+    private static void appendAssignmentOutcomeFeatures(List<Double> features,
+                                                        Map<String, List<String>> assignmentMap,
+                                                        Map<String, Integer> woundsMap,
+                                                        String ringBearerBlueprintId) throws CardNotFoundException {
+        int matchups = 0;
+        int shadowWins = 0;
+        int overwhelms = 0;
+        int projectedDeaths = 0;
+        int damageBonus = 0;
+        boolean ringBearerAssigned = false;
+        boolean ringBearerLoses = false;
+        boolean ringBearerOverwhelmed = false;
+        boolean ringBearerFatal = false;
+
+        for (Map.Entry<String, List<String>> entry : assignmentMap.entrySet()) {
+            List<String> minionIds = entry.getValue();
+            if (minionIds == null || minionIds.isEmpty())
+                continue;
+
+            LotroCardBlueprint fellowshipCharacter = library.getLotroCardBlueprint(entry.getKey());
+            int shadowStrength = 0;
+            int matchupDamageBonus = 0;
+            for (String minionId : minionIds) {
+                LotroCardBlueprint minion = library.getLotroCardBlueprint(minionId);
+                shadowStrength += minion.getStrength();
+                matchupDamageBonus += Math.max(0, minion.getKeywordCount(Keyword.DAMAGE));
+            }
+
+            int fellowshipStrength = fellowshipCharacter.getStrength();
+            int wounds = Math.max(0, woundsMap.getOrDefault(entry.getKey(), 0));
+            int vitality = fellowshipCharacter.getVitality();
+            boolean shadowWinsMatchup = shadowStrength >= fellowshipStrength;
+            boolean overwhelmed = shadowStrength > 0
+                    && (fellowshipStrength == 0 || shadowStrength >= 2 * fellowshipStrength);
+            boolean fatal = shadowWinsMatchup && (overwhelmed
+                    ? fellowshipCharacter.getKeywordCount(Keyword.ENDURING) == 0
+                    : wounds + 1 + matchupDamageBonus >= vitality);
+
+            matchups++;
+            if (shadowWinsMatchup)
+                shadowWins++;
+            if (overwhelmed)
+                overwhelms++;
+            if (fatal)
+                projectedDeaths++;
+            if (shadowWinsMatchup)
+                damageBonus += matchupDamageBonus;
+
+            if (entry.getKey().equals(ringBearerBlueprintId)) {
+                ringBearerAssigned = true;
+                ringBearerLoses = shadowWinsMatchup;
+                ringBearerOverwhelmed = overwhelmed;
+                ringBearerFatal = fatal;
+            }
+        }
+
+        features.add(normalizedCount(matchups, 13));
+        features.add(normalizedCount(shadowWins, 13));
+        features.add(normalizedCount(overwhelms, 13));
+        features.add(normalizedCount(projectedDeaths, 13));
+        features.add(normalizedCount(damageBonus, 24));
+        features.add(ringBearerAssigned ? 1.0 : 0.0);
+        features.add(ringBearerLoses ? 1.0 : 0.0);
+        features.add(ringBearerOverwhelmed ? 1.0 : 0.0);
+        features.add(ringBearerFatal ? 1.0 : 0.0);
+    }
+
+    private static double normalizedCount(int value, int maximum) {
+        return Math.min(1.0, Math.max(0.0, value / (double) maximum));
     }
 
     public static double[] getSkirmishPlayCardFeatures(String cardBlueprintId, String fpBlueprintId, boolean fpCanExert, List<String> minionBlueprintIds, List<Boolean> minionsCanExert, boolean sourceInSkirmish) throws CardNotFoundException {

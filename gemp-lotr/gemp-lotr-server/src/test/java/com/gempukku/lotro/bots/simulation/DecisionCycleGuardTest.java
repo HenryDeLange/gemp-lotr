@@ -146,6 +146,7 @@ public class DecisionCycleGuardTest {
                     "private prompt -> private-card-id", "private-card-id");
 
         DecisionCycleGuard.RepeatedCycle cycle = guard.findRepeatedCycle(signature).orElseThrow();
+        assertEquals(4, cycle.repeatedHistoryDecisions());
         assertNull(BotDecisionFallback.alternativeAnswer(null, "fp", decision, cycle.repeatedAnswer()));
         TrainingDiagnosticTrace trace = TrainingDiagnosticTrace.create(
                 "unresolvable-cycle", "king_block", "SKIRMISH", decision, signature,
@@ -192,9 +193,11 @@ public class DecisionCycleGuardTest {
         }
 
         DecisionCycleGuard.RepeatedCycle cycle = guard.findRepeatedCycle(passOnlyDecision).orElseThrow();
+        assertEquals(8, cycle.repeatedHistoryDecisions());
         DecisionCycleGuard.DeferredEscape escape = cycle.deferredEscape().orElseThrow();
         assertEquals(repeatingActionDecision, escape.signature());
         assertEquals("0", escape.repeatedAnswer());
+        assertEquals(8, escape.repeatedHistoryDecisions());
 
         guard.clear();
         guard.deferEscape(escape);

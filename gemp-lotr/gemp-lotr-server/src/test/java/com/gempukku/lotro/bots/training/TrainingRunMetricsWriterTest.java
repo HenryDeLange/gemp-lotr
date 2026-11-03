@@ -36,8 +36,8 @@ public class TrainingRunMetricsWriterTest {
                 metricsDirectory, Map.of("formats", List.of("movie"), "generations", 1))) {
             metricsFile = writer.file();
             progress.setMetricsWriter(writer);
-            progress.decisionDataAppended("movie", 10, 25, 4000, 3000);
-            progress.deckBuilderDataAppended("movie", 3, 500, 400);
+            progress.decisionDataAppended("movie", 10, 25, 12, 4000, 3000, 17);
+            progress.deckBuilderDataAppended("movie", 3, 500, 400, 13);
             progress.setPlan(List.of(
                     new TrainingProgress.PlannedStage("movie", "decision-model-fitting", 1, 1),
                     new TrainingProgress.PlannedStage(
@@ -45,18 +45,21 @@ public class TrainingRunMetricsWriterTest {
                     new TrainingProgress.PlannedStage(
                             "movie", "movie generation 1 evaluation candidate-second", 1, 2)));
             progress.beginFormat("movie", 1);
-            progress.recordEvent(TrainingEventReporter.Severity.SUCCESS, "generic-action-pass-veto",
-                    null, "A specialized action was replaced by Pass.", null);
             progress.beginStage("decision-model-fitting", 1, 1);
+            progress.modelWorkersStarted(2, 2, 4);
+            progress.trainingDataLoadCompleted("MoveAgainTrainer", 20, 12);
+            progress.modelTrainingProfile("MoveAgainTrainer", 20, 12, 35, 20);
+            progress.trainingDataCompacted("movie", "MoveAgainTrainer",
+                    "move-again.jsonl", 30, 10, 7);
             progress.modelQueued("MoveAgainTrainer");
             progress.modelStarted("MoveAgainTrainer");
             progress.modelCompleted("MoveAgainTrainer", "trained", 20, 12, 8,
                     16, 4, 92.5, 75.0, 4);
             progress.beginStage("movie generation 1 evaluation candidate-first", 1, 2);
-            progress.recordEvent(TrainingEventReporter.Severity.WARNING, "repeated-decision-cycle",
-                    null, "Cycle recovered.", null);
-            progress.recordEvent(TrainingEventReporter.Severity.WARNING, "repeated-decision-cycle",
-                    null, "Cycle recovered.", null);
+            progress.recordEvent(TrainingEventReporter.Severity.SUCCESS, "generic-action-pass-veto",
+                    null, "A specialized action was replaced by Pass.", null);
+            progress.recordCycleRecovery(8, "Cycle recovered.");
+            progress.recordCycleRecovery(4, "Cycle recovered.");
             progress.recordEvent(TrainingEventReporter.Severity.SUCCESS, "transfer-guard-constrained-decision",
                     null, "Transfer filtered.", null);
             progress.recordEvent(TrainingEventReporter.Severity.SUCCESS, "transfer-guard-constrained-decision",
@@ -93,6 +96,11 @@ public class TrainingRunMetricsWriterTest {
             progress.batchCompleted("movie generation 1 evaluation candidate-first",
                     new SimulationStats(2, 1, 3, BatchTacticalMetrics.empty(), 1));
             progress.beginStage("movie generation 1 evaluation candidate-second", 1, 2);
+            progress.recordCycleRecovery(8, "Second batch cycle recovered.");
+            progress.recordEvent(TrainingEventReporter.Severity.SUCCESS, "transfer-guard-constrained-decision",
+                    null, "Transfer filtered.", null);
+            progress.recordEvent(TrainingEventReporter.Severity.SUCCESS, "generic-action-pass-veto",
+                    null, "Action vetoed.", null);
             progress.batchCompleted("movie generation 1 evaluation candidate-second",
                     new SimulationStats(1, 2, 3, BatchTacticalMetrics.empty()));
             progress.modelComparisonCompleted(66.6667, true, 55.0, 51.0);
@@ -119,21 +127,47 @@ public class TrainingRunMetricsWriterTest {
         assertEquals("invalid-answer-fallback", diagnosticTraces.getFirst().getString("kind"));
         assertEquals(2, diagnosticTraces.getFirst().getJSONObject("parameterCounts").getIntValue("cardId"));
         assertTrue(records.stream().anyMatch(record -> record.getString("type").equals("generic_pass_gate_totals")
-                && record.getJSONObject("data").getLongValue("passOverrides") == 4));
+                && record.getJSONObject("data").getLongValue("passOverrides") == 5));
+        assertTrue(records.stream().anyMatch(record -> record.getString("type").equals("training_data_io")
+                && record.getJSONObject("data").getString("operation").equals("write")
+                && record.getJSONObject("data").getLongValue("elapsedMillis") == 17));
+        assertTrue(records.stream().anyMatch(record -> record.getString("type").equals("training_data_io")
+                && record.getJSONObject("data").getString("operation").equals("read")
+                && record.getJSONObject("data").getLongValue("elapsedMillis") == 12));
+        assertTrue(records.stream().anyMatch(record -> record.getString("type").equals("training_data_compaction")
+                && record.getJSONObject("data").getLongValue("elapsedMillis") == 7));
+        assertTrue(records.stream().anyMatch(record -> record.getString("type").equals("model_training_profile")
+                && record.getJSONObject("data").getLongValue("modelWallMillis") == 35));
+        assertTrue(records.stream().anyMatch(record -> record.getString("type").equals("model_worker_count")
+                && record.getJSONObject("data").getIntValue("activeWorkers") == 2));
         JSONObject diagnostics = records.stream()
                 .filter(record -> record.getString("type").equals("batch_decision_diagnostics"))
                 .map(record -> record.getJSONObject("data"))
                 .findFirst()
                 .orElseThrow();
         assertEquals(4, diagnostics.getLongValue("games"));
+        assertEquals(1, diagnostics.getIntValue("skippedGames"));
         assertEquals(2, diagnostics.getLongValue("cycleRecoveries"));
+        assertEquals(12, diagnostics.getLongValue("cycleTaintedDecisions"));
         assertEquals(2, diagnostics.getLongValue("transferConstraints"));
-        assertEquals(3, diagnostics.getLongValue("genericPassVetoes"));
+        assertEquals(4, diagnostics.getLongValue("genericPassVetoes"));
         assertEquals(2, diagnostics.getLongValue("decisionModelFallbacks"));
         assertEquals(2, diagnostics.getLongValue("invalidAnswerFallbacks"));
+        JSONObject totals = records.stream()
+                .filter(record -> record.getString("type").equals("batch_decision_totals"))
+                .map(record -> record.getJSONObject("data"))
+                .reduce((first, second) -> second)
+                .orElseThrow();
+        assertEquals(7, totals.getLongValue("games"));
+        assertEquals(1, totals.getLongValue("skippedGames"));
+        assertEquals(3, totals.getLongValue("cycleRecoveries"));
+        assertEquals(20, totals.getLongValue("cycleTaintedDecisions"));
+        assertEquals(3, totals.getLongValue("transferConstraints"));
+        assertEquals(5, totals.getLongValue("genericPassVetoes"));
         assertTrue(records.stream().anyMatch(record -> record.getString("type").equals("training_data_totals")
                 && record.getJSONObject("data").getLongValue("inputSteps") == 10
                 && record.getJSONObject("data").getLongValue("trainerRecords") == 25
+                && record.getJSONObject("data").getLongValue("storedDecisionRecords") == 12
                 && record.getJSONObject("data").getLongValue("decisionJsonBytes") == 4000
                 && record.getJSONObject("data").getLongValue("decisionBytes") == 3000
                 && record.getJSONObject("data").getLongValue("deckExamples") == 3
@@ -158,6 +192,11 @@ public class TrainingRunMetricsWriterTest {
                 .findFirst()
                 .orElseThrow();
         assertEquals("failed", finished.getString("status"));
+        assertTrue(finished.getJSONObject("runtimeProfile").getLongValue("maxHeapBytes") > 0);
+        assertEquals(3, finished.getJSONArray("batchDecisionTotals")
+                .getJSONObject(0).getLongValue("cycleRecoveries"));
+        assertEquals(20, finished.getJSONArray("batchDecisionTotals")
+                .getJSONObject(0).getLongValue("cycleTaintedDecisions"));
         assertEquals(66.6667, finished.getJSONArray("policyComparisons")
                 .getJSONObject(0).getDoubleValue("candidateWinRate"), 0.001);
         assertEquals(55.0, finished.getJSONArray("policyComparisons")

@@ -3,6 +3,7 @@ package com.gempukku.lotro.bots;
 import com.gempukku.lotro.bots.rl.fotrstarters.MovieTrilogyRLGameStateFeatures;
 import com.gempukku.lotro.common.CardType;
 import com.gempukku.lotro.common.Culture;
+import com.gempukku.lotro.common.Keyword;
 import com.gempukku.lotro.common.Phase;
 import com.gempukku.lotro.common.Side;
 import com.gempukku.lotro.game.LotroCardBlueprint;
@@ -13,6 +14,7 @@ import com.gempukku.lotro.game.state.Skirmish;
 import com.gempukku.lotro.logic.PlayerOrder;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.AwaitingDecisionType;
+import com.gempukku.lotro.logic.timing.GameStats;
 import org.junit.Test;
 
 import java.util.List;
@@ -80,6 +82,37 @@ public class BotInformationBoundaryTest {
                     .extractFeatures(second, cardSelectionDecision(), BOT);
             assertArrayEquals(formatCode, expected, actual, 0.0);
         }
+    }
+
+    @Test
+    public void startingFellowshipUsesOnlyTheBotsOwnDeckComposition() {
+        PhysicalCard ownCompanion = cardForOwner(BOT, CardType.COMPANION,
+                Culture.values()[0], Side.FREE_PEOPLE);
+        GameState companionInDeck = movieBlockState(List.of(), List.of(), List.of());
+        GameState possessionInDeck = movieBlockState(List.of(), List.of(), List.of());
+        doReturn(List.of(ownCompanion)).when(companionInDeck).getDeck(BOT);
+        doReturn(List.of(cardForOwner(BOT, CardType.POSSESSION,
+                Culture.values()[0], Side.FREE_PEOPLE))).when(possessionInDeck).getDeck(BOT);
+        AwaitingDecision decision = startingFellowshipDecision();
+
+        double[] companionFeatures = new MovieTrilogyRLGameStateFeatures("movie")
+                .extractFeatures(companionInDeck, decision, BOT);
+        double[] possessionFeatures = new MovieTrilogyRLGameStateFeatures("movie")
+                .extractFeatures(possessionInDeck, decision, BOT);
+        assertEquals(companionFeatures.length, possessionFeatures.length);
+        assertFalse(java.util.Arrays.equals(companionFeatures, possessionFeatures));
+
+        GameState opponentCompanionDeck = movieBlockState(
+                List.of(), List.of(hiddenCard(CardType.COMPANION, Culture.values()[0], Side.FREE_PEOPLE)), List.of());
+        GameState opponentMinionDeck = movieBlockState(
+                List.of(), List.of(hiddenCard(CardType.MINION, Culture.values()[0], Side.SHADOW)), List.of());
+        doReturn(List.of(ownCompanion)).when(opponentCompanionDeck).getDeck(BOT);
+        doReturn(List.of(ownCompanion)).when(opponentMinionDeck).getDeck(BOT);
+        double[] opponentCompanionFeatures = new MovieTrilogyRLGameStateFeatures("movie")
+                .extractFeatures(opponentCompanionDeck, decision, BOT);
+        double[] opponentMinionFeatures = new MovieTrilogyRLGameStateFeatures("movie")
+                .extractFeatures(opponentMinionDeck, decision, BOT);
+        assertArrayEquals(opponentCompanionFeatures, opponentMinionFeatures, 0.0);
     }
 
     @Test
@@ -188,6 +221,116 @@ public class BotInformationBoundaryTest {
     }
 
     @Test
+    public void activeRingBearerSkirmishRiskIncludesShadowWinsForEitherPlayer() {
+        GameState fellowshipGame = movieBlockState(List.of(), List.of(), List.of());
+        PhysicalCard ringBearer = characterCard(BOT, CardType.COMPANION, 3, 3);
+        PhysicalCard strongMinion = characterCard(OPPONENT, CardType.MINION, 8, 3);
+        when(fellowshipGame.getRingBearer(BOT)).thenReturn(ringBearer);
+        when(fellowshipGame.getSkirmish()).thenReturn(new Skirmish(ringBearer, Set.of(strongMinion)));
+
+        double[] fellowshipFeatures = new MovieTrilogyRLGameStateFeatures("movie")
+                .extractFeatures(fellowshipGame, cardSelectionDecision(), BOT);
+        int fellowshipOffset = fellowshipFeatures.length
+                - MovieTrilogyRLGameStateFeatures.TACTICAL_CONTEXT_FEATURE_COUNT;
+        assertEquals(1.0, fellowshipFeatures[fellowshipOffset
+                + MovieTrilogyRLGameStateFeatures.PENDING_RING_BEARER_DANGER], 0.0);
+
+        GameState shadowGame = movieBlockState(List.of(), List.of(), List.of());
+        PhysicalCard opposingRingBearer = characterCard(OPPONENT, CardType.COMPANION, 8, 3);
+        PhysicalCard ownMinion = characterCard(BOT, CardType.MINION, 8, 3);
+        when(shadowGame.getRingBearer(OPPONENT)).thenReturn(opposingRingBearer);
+        when(shadowGame.getSkirmish()).thenReturn(new Skirmish(opposingRingBearer, Set.of(ownMinion)));
+
+        double[] shadowFeatures = new MovieTrilogyRLGameStateFeatures("movie")
+                .extractFeatures(shadowGame, cardSelectionDecision(), BOT);
+        int shadowOffset = shadowFeatures.length
+                - MovieTrilogyRLGameStateFeatures.TACTICAL_CONTEXT_FEATURE_COUNT;
+        assertEquals(0.5, shadowFeatures[shadowOffset
+                + MovieTrilogyRLGameStateFeatures.PENDING_RING_BEARER_DANGER], 0.0);
+
+        GameState safeGame = movieBlockState(List.of(), List.of(), List.of());
+        PhysicalCard safeRingBearer = characterCard(BOT, CardType.COMPANION, 8, 3);
+        PhysicalCard weakMinion = characterCard(OPPONENT, CardType.MINION, 3, 3);
+        when(safeGame.getRingBearer(BOT)).thenReturn(safeRingBearer);
+        when(safeGame.getSkirmish()).thenReturn(new Skirmish(safeRingBearer, Set.of(weakMinion)));
+
+        double[] safeFeatures = new MovieTrilogyRLGameStateFeatures("movie")
+                .extractFeatures(safeGame, cardSelectionDecision(), BOT);
+        int safeOffset = safeFeatures.length
+                - MovieTrilogyRLGameStateFeatures.TACTICAL_CONTEXT_FEATURE_COUNT;
+        assertEquals(0.0, safeFeatures[safeOffset
+                + MovieTrilogyRLGameStateFeatures.PENDING_RING_BEARER_DANGER], 0.0);
+    }
+
+    @Test
+    public void ringBearerSkirmishRiskDistinguishesSurvivableAndLethalLosses() {
+        GameState survivableGame = movieBlockState(List.of(), List.of(), List.of());
+        PhysicalCard survivableRingBearer = characterCard(BOT, CardType.COMPANION, 8, 3);
+        PhysicalCard normalLossMinion = characterCard(OPPONENT, CardType.MINION, 10, 3);
+        when(survivableGame.getRingBearer(BOT)).thenReturn(survivableRingBearer);
+        when(survivableGame.getSkirmish()).thenReturn(new Skirmish(
+                survivableRingBearer, Set.of(normalLossMinion)));
+
+        double[] survivableFeatures = new MovieTrilogyRLGameStateFeatures("movie")
+                .extractFeatures(survivableGame, cardSelectionDecision(), BOT);
+        int survivableOffset = survivableFeatures.length
+                - MovieTrilogyRLGameStateFeatures.TACTICAL_CONTEXT_FEATURE_COUNT;
+        assertEquals(0.5, survivableFeatures[survivableOffset
+                + MovieTrilogyRLGameStateFeatures.PENDING_RING_BEARER_DANGER], 0.0);
+
+        GameState woundedGame = movieBlockState(List.of(), List.of(), List.of());
+        PhysicalCard woundedRingBearer = characterCard(BOT, CardType.COMPANION, 8, 3);
+        PhysicalCard woundMinion = characterCard(OPPONENT, CardType.MINION, 10, 3);
+        when(woundedGame.getRingBearer(BOT)).thenReturn(woundedRingBearer);
+        when(woundedGame.getWounds(woundedRingBearer)).thenReturn(2);
+        when(woundedGame.getSkirmish()).thenReturn(new Skirmish(woundedRingBearer, Set.of(woundMinion)));
+
+        double[] woundedFeatures = new MovieTrilogyRLGameStateFeatures("movie")
+                .extractFeatures(woundedGame, cardSelectionDecision(), BOT);
+        int woundedOffset = woundedFeatures.length
+                - MovieTrilogyRLGameStateFeatures.TACTICAL_CONTEXT_FEATURE_COUNT;
+        assertEquals(1.0, woundedFeatures[woundedOffset
+                + MovieTrilogyRLGameStateFeatures.PENDING_RING_BEARER_DANGER], 0.0);
+
+        GameState printedDamageGame = movieBlockState(List.of(), List.of(), List.of());
+        PhysicalCard printedDamageRingBearer = characterCard(BOT, CardType.COMPANION, 8, 3);
+        PhysicalCard printedDamageMinion = characterCard(OPPONENT, CardType.MINION, 10, 3);
+        when(printedDamageMinion.getBlueprint().getKeywordCount(Keyword.DAMAGE)).thenReturn(2);
+        when(printedDamageGame.getRingBearer(BOT)).thenReturn(printedDamageRingBearer);
+        when(printedDamageGame.getAssignments()).thenReturn(List.of(
+                new Assignment(printedDamageRingBearer, Set.of(printedDamageMinion))));
+
+        double[] printedDamageFeatures = new MovieTrilogyRLGameStateFeatures("movie")
+                .extractFeatures(printedDamageGame, cardSelectionDecision(), BOT);
+        int printedDamageOffset = printedDamageFeatures.length
+                - MovieTrilogyRLGameStateFeatures.TACTICAL_CONTEXT_FEATURE_COUNT;
+        assertEquals(1.0, printedDamageFeatures[printedDamageOffset
+                + MovieTrilogyRLGameStateFeatures.PENDING_RING_BEARER_DANGER], 0.0);
+
+        GameState damageGame = movieBlockState(List.of(), List.of(), List.of());
+        PhysicalCard damageRingBearer = characterCard(BOT, CardType.COMPANION, 8, 3);
+        PhysicalCard damageMinion = characterCard(OPPONENT, CardType.MINION, 10, 3);
+        GameStats damageStats = mock(GameStats.class);
+        int damageRingBearerId = damageRingBearer.getCardId();
+        when(damageStats.getCharStrengths()).thenReturn(Map.of());
+        when(damageStats.getCharVitalities()).thenReturn(Map.of(damageRingBearerId, 3));
+        when(damageStats.getFellowshipSkirmishStrength()).thenReturn(8);
+        when(damageStats.getShadowSkirmishStrength()).thenReturn(10);
+        when(damageStats.getShadowSkirmishDamageBonus()).thenReturn(2);
+        when(damageStats.isFpOverwhelmed()).thenReturn(false);
+        when(damageGame.getRingBearer(BOT)).thenReturn(damageRingBearer);
+        when(damageGame.getSkirmish()).thenReturn(new Skirmish(damageRingBearer, Set.of(damageMinion)));
+        when(damageGame.getMostRecentGameStats()).thenReturn(damageStats);
+
+        double[] damageFeatures = new MovieTrilogyRLGameStateFeatures("movie")
+                .extractFeatures(damageGame, cardSelectionDecision(), BOT);
+        int damageOffset = damageFeatures.length
+                - MovieTrilogyRLGameStateFeatures.TACTICAL_CONTEXT_FEATURE_COUNT;
+        assertEquals(1.0, damageFeatures[damageOffset
+                + MovieTrilogyRLGameStateFeatures.PENDING_RING_BEARER_DANGER], 0.0);
+    }
+
+    @Test
     public void stateCountsCombatBoostEventsInItsOwnHand() {
         GameState gameState = movieBlockState(List.of(), List.of(), List.of());
         PhysicalCard boostEvent = mock(PhysicalCard.class);
@@ -287,6 +430,14 @@ public class BotInformationBoundaryTest {
         AwaitingDecision decision = mock(AwaitingDecision.class);
         when(decision.getDecisionType()).thenReturn(AwaitingDecisionType.CARD_SELECTION);
         when(decision.getText()).thenReturn("Choose a card");
+        when(decision.getDecisionParameters()).thenReturn(Map.of());
+        return decision;
+    }
+
+    private static AwaitingDecision startingFellowshipDecision() {
+        AwaitingDecision decision = mock(AwaitingDecision.class);
+        when(decision.getDecisionType()).thenReturn(AwaitingDecisionType.ARBITRARY_CARDS);
+        when(decision.getText()).thenReturn("Starting fellowship - Choose next character or press DONE");
         when(decision.getDecisionParameters()).thenReturn(Map.of());
         return decision;
     }

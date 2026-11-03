@@ -20,6 +20,7 @@ public class AssignMinionsAction implements SemanticAction {
     private final HashMap<String, Integer> woundsOnFp = new HashMap<>();
     private final int numberOfUnassignedMinions;
     private final int strengthOfUnassignedMinions;
+    private final String ringBearerBlueprintId;
     // The exact card-id answer this action was built from (null when rebuilt from JSON for training). The
     // blueprint-level assignmentMap cannot tell apart two copies of a card, so turning it back into card ids can pick
     // a different copy than the one chosen (e.g. the Uruk Guard that forbade this companion instead of its twin).
@@ -28,6 +29,7 @@ public class AssignMinionsAction implements SemanticAction {
     public AssignMinionsAction(String answer, AwaitingDecision decision, GameState gameState, boolean isFreePeoplesAssignment) {
         this.isFreePeoplesAssignment = isFreePeoplesAssignment;
         this.physicalAnswer = answer;
+        this.ringBearerBlueprintId = findRingBearerBlueprintId(gameState);
         if (!isFreePeoplesAssignment) {
             numberOfUnassignedMinions = 0;
             strengthOfUnassignedMinions = 0;
@@ -85,8 +87,17 @@ public class AssignMinionsAction implements SemanticAction {
     public AssignMinionsAction(HashMap<String, List<String>> assignmentMap, boolean isFreePeoplesAssignment,
                                HashMap<String, List<String>> alreadyAssignedMap, HashMap<String, Integer> woundsOnFp,
                                int numberOfUnassignedMinions, int strengthOfUnassignedMinions) {
+        this(assignmentMap, isFreePeoplesAssignment, alreadyAssignedMap, woundsOnFp,
+                numberOfUnassignedMinions, strengthOfUnassignedMinions, null);
+    }
+
+    public AssignMinionsAction(HashMap<String, List<String>> assignmentMap, boolean isFreePeoplesAssignment,
+                               HashMap<String, List<String>> alreadyAssignedMap, HashMap<String, Integer> woundsOnFp,
+                               int numberOfUnassignedMinions, int strengthOfUnassignedMinions,
+                               String ringBearerBlueprintId) {
         this.isFreePeoplesAssignment = isFreePeoplesAssignment;
         this.physicalAnswer = null;
+        this.ringBearerBlueprintId = ringBearerBlueprintId;
         this.assignmentMap.putAll(assignmentMap);
         this.alreadyAssignedMap.putAll(alreadyAssignedMap);
         this.woundsOnFp.putAll(woundsOnFp);
@@ -116,6 +127,19 @@ public class AssignMinionsAction implements SemanticAction {
 
     public int getStrengthOfUnassignedMinions() {
         return strengthOfUnassignedMinions;
+    }
+
+    public String getRingBearerBlueprintId() {
+        return ringBearerBlueprintId;
+    }
+
+    private static String findRingBearerBlueprintId(GameState gameState) {
+        for (String playerId : gameState.getPlayerNames()) {
+            PhysicalCard ringBearer = gameState.getRingBearer(playerId);
+            if (ringBearer != null)
+                return ringBearer.getBlueprintId();
+        }
+        return null;
     }
 
     @Override
@@ -164,6 +188,7 @@ public class AssignMinionsAction implements SemanticAction {
         obj.put("isFreePeoplesAssignment", isFreePeoplesAssignment);
         obj.put("alreadyAssignedMap", alreadyAssignedMap);
         obj.put("woundsOnFp", woundsOnFp);
+        obj.put("ringBearerBlueprintId", ringBearerBlueprintId);
         return obj;
     }
 
@@ -174,8 +199,9 @@ public class AssignMinionsAction implements SemanticAction {
         int strengthOfUnassignedMinions = obj.getInteger("strengthOfUnassignedMinions");
         HashMap<String, List<String>> alreadyAssignedMap = obj.getObject("alreadyAssignedMap", HashMap.class);
         HashMap<String, Integer> wounds = obj.getObject("woundsOnFp", HashMap.class);
+        String ringBearerBlueprintId = obj.getString("ringBearerBlueprintId");
 
         return new AssignMinionsAction(assignmentMap, isFreePeoplesAssignment, alreadyAssignedMap, wounds,
-                numberOfUnassignedMinions, strengthOfUnassignedMinions);
+                numberOfUnassignedMinions, strengthOfUnassignedMinions, ringBearerBlueprintId);
     }
 }

@@ -33,7 +33,7 @@ public record BenchmarkDeckManifest(int version, long generationSeed, List<DeckP
                     DeckBuilderTrainer.fingerprint(format, deck));
         }
 
-        LotroDeck toDeck(String formatCode, LotroFormat format) {
+        public LotroDeck toDeck(String formatCode, LotroFormat format) {
             if (name == null || name.isBlank() || contents == null || fingerprint == null)
                 throw new IllegalArgumentException("Incomplete deck in " + formatCode + " manifest");
             LotroDeck deck = DeckSerialization.buildDeckFromContents(name, contents, formatCode, "");
@@ -53,26 +53,109 @@ public record BenchmarkDeckManifest(int version, long generationSeed, List<DeckP
     public static BenchmarkDeckManifest create(
             LotroFormatLibrary formats, LotroCardBlueprintLibrary cards, ProductLibrary products,
             int generatedPerFormat, long seed) {
-        if (generatedPerFormat < 2)
-            throw new IllegalArgumentException("At least two generated decks per format are required");
+        return create(formats, cards, products, generatedPerFormat, seed,
+                MovieBlockDeckFactory.CultureComposition.MIXED, null);
+    }
+
+    public static BenchmarkDeckManifest createIndependentReferenceManifest(
+            LotroFormatLibrary formats,
+            LotroCardBlueprintLibrary cards,
+            int decksPerGroupAndFormat,
+            long seed,
+            Set<String> excludedDeckFingerprints,
+            MovieBlockDeckFactory.CultureComposition composition) {
+        if (decksPerGroupAndFormat < 2)
+            throw new IllegalArgumentException("At least two independent decks per group and format are required");
+        if (composition == null)
+            throw new IllegalArgumentException("Generated deck culture composition is required");
+        Set<String> excluded = Set.copyOf(excludedDeckFingerprints);
         List<DeckPool> pools = new ArrayList<>();
         for (String code : FORMATS) {
             LotroFormat format = Objects.requireNonNull(formats.getFormat(code), "Missing format " + code);
-            List<DeckEntry> starters = MovieBlockDeckFactory.createStarterDecks(code, format, cards, products)
-                    .stream().map(deck -> DeckEntry.from(code, deck)).toList();
+            Set<String> seen = new HashSet<>(excluded);
+            List<DeckEntry> starters = new ArrayList<>(decksPerGroupAndFormat);
+            List<DeckEntry> generated = new ArrayList<>(decksPerGroupAndFormat);
+            int attempt = 0;
+            int maximumAttempts = decksPerGroupAndFormat * 200;
+            while (starters.size() + generated.size() < 2 * decksPerGroupAndFormat
+                    && attempt < maximumAttempts) {
+                int index = attempt++;
+                MovieBlockDeckFactory.CultureComposition candidateComposition =
+                        composition == MovieBlockDeckFactory.CultureComposition.MIXED
+                                ? index % 2 == 0
+                                ? MovieBlockDeckFactory.CultureComposition.FOCUSED
+                                : MovieBlockDeckFactory.CultureComposition.MULTICULTURE
+                                : composition;
+                LotroDeck deck = MovieBlockDeckFactory.createRandomLegalDeck(
+                        code, format, cards, seed + 31L * code.hashCode() + index, candidateComposition);
+                DeckEntry entry = DeckEntry.from(code, deck);
+                if (!seen.add(entry.fingerprint()))
+                    continue;
+                if (starters.size() < decksPerGroupAndFormat)
+                    starters.add(entry);
+                else
+                    generated.add(entry);
+            }
+            if (starters.size() != decksPerGroupAndFormat || generated.size() != decksPerGroupAndFormat)
+                throw new IllegalStateException("Could not generate independent reference decks for " + code);
+            pools.add(new DeckPool(code, List.copyOf(starters), List.copyOf(generated)));
+        }
+        BenchmarkDeckManifest manifest = new BenchmarkDeckManifest(VERSION, seed, List.copyOf(pools));
+        manifest.validate(formats);
+        if (!java.util.Collections.disjoint(manifest.allFingerprints(), excluded))
+            throw new IllegalStateException("Independent reference manifest overlaps excluded decks");
+        return manifest;
+    }
+
+    public static BenchmarkDeckManifest create(
+            LotroFormatLibrary formats,
+            LotroCardBlueprintLibrary cards,
+            ProductLibrary products,
+            int generatedPerFormat,
+            long seed,
+            MovieBlockDeckFactory.CultureComposition composition,
+            BenchmarkDeckManifest referenceManifest) {
+        if (generatedPerFormat < 2)
+            throw new IllegalArgumentException("At least two generated decks per format are required");
+        if (composition == null)
+            throw new IllegalArgumentException("Generated deck culture composition is required");
+        if (referenceManifest != null)
+            referenceManifest.validate(formats);
+        List<DeckPool> pools = new ArrayList<>();
+        for (String code : FORMATS) {
+            LotroFormat format = Objects.requireNonNull(formats.getFormat(code), "Missing format " + code);
+            List<DeckEntry> referenceDecks;
+            if (referenceManifest == null) {
+                referenceDecks = MovieBlockDeckFactory.createStarterDecks(code, format, cards, products)
+                        .stream().map(deck -> DeckEntry.from(code, deck)).toList();
+            } else {
+                DeckPool referencePool = referenceManifest.pools().stream()
+                        .filter(pool -> pool.format().equals(code))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Reference manifest is missing format " + code));
+                List<DeckEntry> allReferences = new ArrayList<>(referencePool.starters());
+                allReferences.addAll(referencePool.generated());
+                referenceDecks = List.copyOf(allReferences);
+            }
             Set<String> seen = new HashSet<>();
-            starters.forEach(entry -> seen.add(entry.fingerprint()));
+            referenceDecks.forEach(entry -> seen.add(entry.fingerprint()));
             List<DeckEntry> generated = new ArrayList<>();
             for (int attempt = 0; generated.size() < generatedPerFormat && attempt < generatedPerFormat * 100; attempt++) {
                 LotroDeck deck = MovieBlockDeckFactory.createRandomLegalDeck(
-                        code, format, cards, seed + 31L * code.hashCode() + attempt);
+                        code, format, cards, seed + 31L * code.hashCode() + attempt,
+                        composition == MovieBlockDeckFactory.CultureComposition.MIXED
+                                ? (generated.size() % 2 == 0
+                                ? MovieBlockDeckFactory.CultureComposition.FOCUSED
+                                : MovieBlockDeckFactory.CultureComposition.MULTICULTURE)
+                                : composition);
                 DeckEntry entry = DeckEntry.from(code, deck);
                 if (seen.add(entry.fingerprint()))
                     generated.add(entry);
             }
             if (generated.size() != generatedPerFormat)
                 throw new IllegalStateException("Could not generate distinct benchmark decks for " + code);
-            pools.add(new DeckPool(code, starters, List.copyOf(generated)));
+            pools.add(new DeckPool(code, referenceDecks, List.copyOf(generated)));
         }
         BenchmarkDeckManifest manifest = new BenchmarkDeckManifest(VERSION, seed, List.copyOf(pools));
         manifest.validate(formats);
@@ -91,6 +174,14 @@ public record BenchmarkDeckManifest(int version, long generationSeed, List<DeckP
     public Set<String> generatedFingerprints() {
         return pools.stream()
                 .flatMap(pool -> pool.generated().stream())
+                .map(DeckEntry::fingerprint)
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    public Set<String> allFingerprints() {
+        return pools.stream()
+                .flatMap(pool -> java.util.stream.Stream.concat(
+                        pool.starters().stream(), pool.generated().stream()))
                 .map(DeckEntry::fingerprint)
                 .collect(Collectors.toUnmodifiableSet());
     }

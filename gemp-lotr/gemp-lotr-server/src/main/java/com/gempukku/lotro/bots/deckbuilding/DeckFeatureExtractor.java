@@ -117,7 +117,7 @@ public final class DeckFeatureExtractor {
         appendStrategySynergies(features, strategies, types, keywords);
     }
 
-    private static void appendStrategySynergies(
+    static void appendStrategySynergies(
             List<Double> features,
             int[] strategies,
             int[] types,

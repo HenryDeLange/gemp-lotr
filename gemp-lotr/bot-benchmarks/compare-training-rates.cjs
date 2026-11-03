@@ -7,11 +7,28 @@ const REQUIRED_CONTROL_FIELDS = [
   "gamesPerGeneration",
   "evaluationGamesPerSeat",
   "evaluationSeed",
+  "maximumBurdensToBid",
   "modelObservationSchema",
-  "trainingDataSchema"
+  "trainingDataSchema",
+  "holdoutDeckManifestSha256",
+  "startingModelFileCount",
+  "startingModelFilesSha256",
+  "startingTrainingDataFileCount",
+  "startingTrainingDataFilesSha256"
 ];
-const TREATMENT_FIELDS = new Set(["transferGuardEnabled", "genericActionPassGateEnabled"]);
-const RUN_SPECIFIC_FIELDS = new Set(["configFile", "modelsDirectory", "metricsDirectory"]);
+const TREATMENT_FIELDS = new Set([
+  "transferGuardEnabled",
+  "genericActionPassGateEnabled",
+  "maximumBurdensToBid"
+]);
+const RUN_SPECIFIC_FIELDS = new Set([
+  "configFile",
+  "holdoutDeckManifest",
+  "deckBuilderReferenceManifest",
+  "modelsDirectory",
+  "metricsDirectory",
+  "trainingDataDirectory"
+]);
 const VICTORY_REASONS = [
   ["siteNineWinRate", "siteNineWins"],
   ["ringBearerCorruptionWinRate", "ringBearerCorruptionWins"],
@@ -41,8 +58,6 @@ const TACTICAL_TOTALS_PER_GAME = [
   "maximumTwilightTotal"
 ];
 const UNVERIFIABLE_CONTROLS = [
-  "input model file contents (run metadata does not include model hashes)",
-  "training corpus contents (run metadata does not include a corpus snapshot hash)",
   "complete game randomness (evaluationSeed controls deck selection, not every random choice)"
 ];
 
@@ -165,8 +180,8 @@ function compareMetadata(baseline, candidate) {
       configurationDifferences.push(key);
   }
 
-  const missingControlFields = REQUIRED_CONTROL_FIELDS.filter(
-    key => baseline[key] === undefined || candidate[key] === undefined);
+  const missingControlFields = REQUIRED_CONTROL_FIELDS.filter(key =>
+    !hasControlField(key, baseline[key]) || !hasControlField(key, candidate[key]));
   const metadataCompatible = configurationDifferences.length === 0
     && missingControlFields.length === 0
     && treatmentDifferences.length <= 1;
@@ -177,6 +192,18 @@ function compareMetadata(baseline, candidate) {
     treatmentDifferences,
     missingControlFields
   };
+}
+
+function hasControlField(key, value) {
+  if (key === "holdoutDeckManifestSha256" && value === null)
+    return true;
+  if (key.endsWith("Sha256"))
+    return typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
+  if (key === "startingModelFileCount")
+    return Number.isInteger(value) && value > 0;
+  if (key === "startingTrainingDataFileCount")
+    return Number.isInteger(value) && value >= 0;
+  return value !== undefined && value !== null;
 }
 
 function sameValue(left, right) {

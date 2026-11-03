@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171a20">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <title>GEMP LOTR Deck-builder Training</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { background: #171a20; color: #e6e8ec; font: 15px system-ui, sans-serif; margin: 2rem auto; max-width: 1080px; padding: 0 1rem; }
+    h1, h2 { color: #fff; }
+    h1 { margin-bottom: .35rem; }
+    h2 { margin: 0 0 .45rem; }
+    p { line-height: 1.5; }
+    .muted { color: #aab2c0; }
+    .intro { margin: 0 0 1.25rem; }
+    .panel { background: #222731; border: 1px solid #3a414e; border-radius: 8px; margin: 1rem 0; padding: 1rem; }
+    .panel > .muted { margin: .35rem 0 1rem; }
+    .settings-grid { display: grid; gap: .9rem 1rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); margin: 1rem 0; }
+    label { color: #e6e8ec; display: block; font-weight: 600; }
+    input[type="number"] { background: #171a20; border: 1px solid #586273; border-radius: 5px; box-sizing: border-box; color: #fff; display: block; font: inherit; margin-top: .35rem; padding: .5rem; width: 100%; }
+    input:disabled, button:disabled { cursor: not-allowed; opacity: .6; }
+    fieldset { border: 1px solid #586273; border-radius: 6px; margin: 1rem 0; padding: .65rem .8rem; }
+    legend { color: #aab2c0; padding: 0 .25rem; }
+    .format-list { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
+    .format-list label { align-items: center; display: inline-flex; gap: .4rem; font-weight: 500; }
+    input[type="checkbox"] { accent-color: #54a6ff; }
+    .button-row { align-items: center; display: flex; flex-wrap: wrap; gap: .65rem; }
+    button { background: #263447; border: 1px solid #586273; border-radius: 5px; color: #fff; cursor: pointer; font: inherit; font-weight: 650; padding: .55rem .9rem; }
+    button:hover:not(:disabled) { border-color: #9ecbff; }
+    button:focus-visible, input:focus-visible { outline: 2px solid #54a6ff; outline-offset: 2px; }
+    .primary { background: #1d5e91; border-color: #54a6ff; }
+    .notice { background: #302b20; border-left: 4px solid #e0a43a; border-radius: 4px; padding: .65rem .8rem; }
+    .status-line { align-items: baseline; display: flex; flex-wrap: wrap; gap: .4rem 1rem; justify-content: space-between; }
+    .status-badge { border-radius: 999px; display: inline-block; font-size: .85rem; font-weight: 700; padding: .2rem .65rem; }
+    .status-badge.idle, .status-badge.running { background: #263447; color: #9ecbff; }
+    .status-badge.completed { background: #173d30; color: #8ee0b2; }
+    .status-badge.failed { background: #4b2528; color: #ffaaaa; }
+    .progress { background: #101318; border-radius: 99px; height: 14px; margin: .75rem 0; overflow: hidden; }
+    .progress-bar { background: #54a6ff; height: 100%; transition: width .25s ease; width: 0; }
+    .summary-grid { display: grid; gap: .7rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); margin: 1rem 0; }
+    .summary-card { background: #171a20; border: 1px solid #3a414e; border-radius: 6px; padding: .7rem; }
+    .summary-card strong { color: #9ecbff; display: block; font-size: 1.1rem; margin-top: .2rem; }
+    .path { overflow-wrap: anywhere; }
+    .table-wrap { max-height: 420px; overflow: auto; }
+    table { border-collapse: collapse; min-width: 700px; width: 100%; }
+    th, td { border-bottom: 1px solid #3a414e; padding: .55rem; text-align: left; vertical-align: top; }
+    th { background: #222731; color: #aab2c0; position: sticky; top: 0; }
+    .empty { padding: .7rem 0; }
+    #message { color: #ff9999; }
+    @media (max-width: 600px) {
+      body { margin-top: 1rem; }
+      .panel { padding: .8rem; }
+      .status-line { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Deck-builder training</h1>
+    <p class="muted intro">Train per-format deck-ranking models with the configured frozen playing policy. Review progress and results here, then run again when ready.</p>
+    <p class="notice">Settings on this page override the properties file for this run only. A successful run updates <code>models.directory</code>; keep it pointed at an isolated candidate directory. This page does not promote models to the live server.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="settings-heading">
+    <h2 id="settings-heading">Run settings</h2>
+    <p class="muted">Defaults are loaded from <span id="config-file" class="path">the training properties file</span>.</p>
+    <form id="run-form">
+      <fieldset>
+        <legend>Formats</legend>
+        <div id="formats" class="format-list"></div>
+      </fieldset>
+      <div class="settings-grid">
+        <label for="generations">Generations
+          <input id="generations" name="generations" type="number" min="1" step="1" required>
+        </label>
+        <label for="candidates">Candidates per format and generation
+          <input id="candidates" name="candidates" type="number" min="2" step="1" required>
+        </label>
+        <label for="games">Games per candidate
+          <input id="games" name="games" type="number" min="2" step="2" required>
+        </label>
+        <label for="threads">Simulation worker threads
+          <input id="threads" name="threads" type="number" min="1" step="1" required>
+        </label>
+      </div>
+      <p class="muted" id="game-budget">Select formats and run settings to see the planned game count.</p>
+      <div class="button-row">
+        <button id="start-training" class="primary" type="submit" disabled>Start training</button>
+        <button id="refresh" type="button">Refresh status</button>
+      </div>
+    </form>
+    <p class="muted path" id="output-path"></p>
+    <p class="muted path" id="data-path"></p>
+  </section>
+
+  <section class="panel" aria-labelledby="progress-heading">
+    <div class="status-line">
+      <h2 id="progress-heading">Progress</h2>
+      <span id="run-status" class="status-badge idle" aria-live="polite">Ready</span>
+    </div>
+    <p id="run-summary" class="muted">Waiting for training status.</p>
+    <div class="progress" role="progressbar" aria-label="Deck-builder run progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div id="progress-bar" class="progress-bar"></div>
+    </div>
+    <p id="current-work" class="muted"></p>
+    <div class="summary-grid">
+      <div class="summary-card"><span class="muted">Generation</span><strong id="generation">-</strong></div>
+      <div class="summary-card"><span class="muted">Format</span><strong id="format">-</strong></div>
+      <div class="summary-card"><span class="muted">Elapsed</span><strong id="elapsed">-</strong></div>
+    </div>
+    <p id="message" role="alert"></p>
+  </section>
+
+  <section class="panel" aria-labelledby="results-heading">
+    <h2 id="results-heading">Completed deck-ranker results</h2>
+    <p class="muted">Candidate win rates are against the fixed reference pool. Check match rates compare a ranker's predictions with held-out deck outcomes; they are not game win rates.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Format</th><th>Generation</th><th>Candidates</th><th>Games</th><th>Candidate record</th><th>New ranker check match</th><th>Current ranker check match</th><th>Selection</th></tr>
+        </thead>
+        <tbody id="results"></tbody>
+      </table>
+      <p id="results-empty" class="muted empty">No deck-ranker results yet.</p>
+    </div>
+  </section>
+
+  <script>
+    const formatOrder = ["fotr_block", "ttt_block", "king_block", "movie"];
+    const text = (id, value) => { document.getElementById(id).textContent = value; };
+    const numberValue = id => Number(document.getElementById(id).value);
+    let config;
+    let pollingTimer;
+
+    function formatName(code) {
+      return config?.formatLabels?.[code] || code;
+    }
+
+    function updateGameBudget() {
+      const selectedFormats = [...document.querySelectorAll("#formats input:checked")].length;
+      const generations = numberValue("generations");
+      const candidates = numberValue("candidates");
+      const games = numberValue("games");
+      if (!selectedFormats || !generations || !candidates || !games) {
+        text("game-budget", "Select formats and run settings to see the planned game count.");
+        return;
+      }
+      const total = selectedFormats * generations * candidates * games;
+      text("game-budget", `Planned deck-builder simulations: ${total.toLocaleString()} games across ${selectedFormats} format${selectedFormats === 1 ? "" : "s"}.`);
+    }
+
+    function renderConfig(value) {
+      config = value;
+      text("config-file", value.configFile);
+      text("output-path", `Model output: ${value.modelDirectory}`);
+      text("data-path", `Training data: ${value.trainingDataDirectory} | Reference pool: ${value.referenceManifest} | Holdout: ${value.holdoutManifest}`);
+      document.getElementById("generations").value = value.generations;
+      document.getElementById("candidates").value = value.candidatesPerGeneration;
+      document.getElementById("games").value = value.gamesPerCandidate;
+      document.getElementById("threads").value = value.simulationThreads;
+
+      const formats = document.getElementById("formats");
+      formats.replaceChildren();
+      for (const code of formatOrder) {
+        if (!value.supportedFormats.includes(code)) continue;
+        const label = document.createElement("label");
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = code;
+        checkbox.checked = value.formats.includes(code);
+        checkbox.addEventListener("change", updateGameBudget);
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(formatName(code)));
+        formats.appendChild(label);
+      }
+      updateGameBudget();
+    }
+
+    function renderResults(results) {
+      const body = document.getElementById("results");
+      body.replaceChildren();
+      for (const result of results || []) {
+        const row = document.createElement("tr");
+        const games = Number(result.games) || 0;
+        const record = `${Number(result.wins) || 0}-${Number(result.losses) || 0}`;
+        const cells = [
+          formatName(result.format),
+          `Generation ${result.generation}`,
+          result.candidates,
+          `${games.toLocaleString()}${result.skippedGames ? ` (${result.skippedGames} skipped)` : ""}`,
+          `${record}${games ? ` (${((Number(result.wins) || 0) * 100 / games).toFixed(1)}%)` : ""}`,
+          result.validationAccuracy == null ? "Not available" : `${Number(result.validationAccuracy).toFixed(1)}%`,
+          result.incumbentAccuracy == null ? "Not available" : `${Number(result.incumbentAccuracy).toFixed(1)}%`,
+          result.promoted ? "New ranker selected" : "Current ranker retained"
+        ];
+        for (const value of cells) {
+          const cell = document.createElement("td");
+          cell.textContent = value ?? "-";
+          row.appendChild(cell);
+        }
+        body.appendChild(row);
+      }
+      document.getElementById("results-empty").hidden = body.children.length > 0;
+    }
+
+    function renderStatus(status) {
+      const runState = status.runState || "idle";
+      const badge = document.getElementById("run-status");
+      badge.className = `status-badge ${runState}`;
+      text("run-status", {
+        idle: "Ready",
+        running: "Training",
+        completed: "Completed",
+        failed: "Failed"
+      }[runState] || runState);
+
+      const runButton = document.getElementById("start-training");
+      runButton.disabled = runState === "running" || !config;
+      runButton.textContent = runState === "idle" ? "Start training" : "Run again";
+      for (const input of document.querySelectorAll("#run-form input"))
+        input.disabled = runState === "running";
+
+      const value = Number(status.overallPercent) || 0;
+      const percent = Math.max(0, Math.min(100, value));
+      document.getElementById("progress-bar").style.width = `${percent}%`;
+      document.querySelector('[role="progressbar"]').setAttribute("aria-valuenow", percent.toFixed(1));
+      const generationText = status.generationCount
+        ? `${status.generation || 0} of ${status.generationCount}`
+        : "-";
+      text("generation", generationText);
+      text("format", status.format ? formatName(status.format) : "-");
+      text("elapsed", formatDuration(status.elapsedMillis));
+
+      const currentStage = (status.stages || []).find(stage => stage.state === "running");
+      const current = currentStage
+        ? `${formatName(currentStage.format)} - generation ${currentStage.generation}: ${currentStage.completed.toLocaleString()} of ${currentStage.total.toLocaleString()} games`
+        : status.stage && status.stage !== "initializing" ? status.stage : "No stage is active.";
+      text("current-work", current);
+      const summaries = {
+        idle: "Ready to start. Settings are loaded from the properties file and can be changed for this run.",
+        running: `Completed ${Number(status.overallCompleted || 0).toLocaleString()} of ${Number(status.overallTotal || 0).toLocaleString()} planned work units (${percent.toFixed(1)}%).`,
+        completed: "Deck-builder training completed. The trained rankers were published to the configured model directory.",
+        failed: "Deck-builder training did not complete successfully. Review the error below and the run metrics."
+      };
+      text("run-summary", summaries[runState] || "Training status updated.");
+      text("message", status.error || "");
+      renderResults(status.deckBuilders);
+    }
+
+    function formatDuration(milliseconds) {
+      const seconds = Math.floor((Number(milliseconds) || 0) / 1000);
+      if (seconds < 60) return `${seconds}s`;
+      const minutes = Math.floor(seconds / 60);
+      return `${minutes}m ${seconds % 60}s`;
+    }
+
+    async function refresh() {
+      try {
+        const response = await fetch("/api/status", {cache: "no-store"});
+        const status = await response.json();
+        if (!response.ok) throw new Error(status.error || `Status request failed (${response.status}).`);
+        renderStatus(status);
+      } catch (error) {
+        text("message", `Unable to read training status: ${error.message}`);
+      }
+    }
+
+    async function startTraining(event) {
+      event.preventDefault();
+      text("message", "");
+      const games = numberValue("games");
+      if (!Number.isInteger(games) || games < 2 || games % 2 !== 0) {
+        text("message", "Games per candidate must be an even number of at least 2.");
+        return;
+      }
+      const settings = {
+        formats: [...document.querySelectorAll("#formats input:checked")].map(input => input.value),
+        generations: numberValue("generations"),
+        candidatesPerGeneration: numberValue("candidates"),
+        gamesPerCandidate: games,
+        simulationThreads: numberValue("threads")
+      };
+      try {
+        const response = await fetch("/api/start", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(settings)
+        });
+        const status = await response.json();
+        if (!response.ok) throw new Error(status.error || `Training could not start (${response.status}).`);
+        renderStatus(status);
+      } catch (error) {
+        text("message", error.message);
+      }
+    }
+
+    for (const input of document.querySelectorAll("#run-form input"))
+      input.addEventListener("input", updateGameBudget);
+    document.getElementById("run-form").addEventListener("submit", startTraining);
+    document.getElementById("refresh").addEventListener("click", refresh);
+    document.getElementById("run-form").addEventListener("change", updateGameBudget);
+    document.getElementById("refresh").click();
+    fetch("/api/config", {cache: "no-store"})
+      .then(async response => {
+        const value = await response.json();
+        if (!response.ok) throw new Error(value.error || `Configuration request failed (${response.status}).`);
+        renderConfig(value);
+        return refresh();
+      })
+      .catch(error => text("message", `Unable to load training settings: ${error.message}`));
+    pollingTimer = setInterval(refresh, 2000);
+  </script>
+</body>
+</html>

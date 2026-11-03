@@ -63,7 +63,10 @@ public class LearningStep implements JsonSerializable {
     }
 
     public static LearningStep fromJson(String json) {
-        JSONObject obj = JSON.parseObject(json);
+        return fromJson(JSON.parseObject(json));
+    }
+
+    public static LearningStep fromJson(JSONObject obj) {
         double[] state = obj.getObject("state", double[].class);
         boolean fpPlayer = obj.getBoolean("fpPlayer");
         double reward = obj.getDoubleValue("reward");

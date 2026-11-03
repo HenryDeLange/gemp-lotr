@@ -43,6 +43,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlayer {
     public static final String TRANSFER_GUARD_PROPERTY = "gemp.lotr.bot.fellowshipTransferGuard";
     public static final String GENERIC_PASS_GATE_PROPERTY = "gemp.lotr.bot.genericActionPassGate";
+    public static final String MAXIMUM_BURDENS_TO_BID_PROPERTY = "gemp.lotr.bot.maximumBurdensToBid";
     private static final Logger LOG = LogManager.getLogger(FotrStarterBot.class);
     private static final double TERMINAL_REWARD_DISCOUNT = 0.995;
     private final List<DecisionAnswerer> cardSelectionTrainers = List.of(
@@ -62,10 +63,7 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
             new FallBackCardSelectionTrainer() // card selection
     );
 
-    private final List<DecisionAnswerer> integerTrainers = List.of(
-            new BurdenTrainer(),
-            new GenericIntegerTrainer()
-    );
+    private final List<DecisionAnswerer> integerTrainers;
 
     private final List<DecisionAnswerer> multipleChoiceTrainers = List.of(
             new GoFirstTrainer(),
@@ -110,6 +108,7 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
     private final double explorationExampleWeight;
     private final double episodeExampleWeight;
     private final FellowshipTransferGuard transferGuard;
+    private final boolean transferGuardEnabled;
     private final boolean genericPassGateEnabled;
     private final Set<Class<?>> trainerFailuresLogged = ConcurrentHashMap.newKeySet();
 
@@ -122,6 +121,7 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
     private String gameId;
     private List<String> episodeDeckFingerprints = List.of();
     private boolean lastDecisionRecorded;
+    private BurdenBidDiagnostics burdenBidDiagnostics;
 
     private final List<LearningStep> episodeSteps = new ArrayList<>();
 
@@ -149,7 +149,7 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
             double episodeExampleWeight) {
         this(features, playerId, modelRegistry, replayBuffer, eventReporter, explorationRate,
                 explorationExampleWeight, episodeExampleWeight,
-                configuredTransferGuard(), configuredGenericPassGate());
+                configuredTransferGuard(), configuredGenericPassGate(), configuredMaximumBurdensToBid());
     }
 
     public FotrStarterBot(
@@ -164,7 +164,7 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
             boolean transferGuardEnabled) {
         this(features, playerId, modelRegistry, replayBuffer, eventReporter, explorationRate,
                 explorationExampleWeight, episodeExampleWeight,
-                transferGuardEnabled, configuredGenericPassGate());
+                transferGuardEnabled, configuredGenericPassGate(), configuredMaximumBurdensToBid());
     }
 
     public FotrStarterBot(
@@ -178,6 +178,23 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
             double episodeExampleWeight,
             boolean transferGuardEnabled,
             boolean genericPassGateEnabled) {
+        this(features, playerId, modelRegistry, replayBuffer, eventReporter, explorationRate,
+                explorationExampleWeight, episodeExampleWeight,
+                transferGuardEnabled, genericPassGateEnabled, configuredMaximumBurdensToBid());
+    }
+
+    public FotrStarterBot(
+            RLGameStateFeatures features,
+            String playerId,
+            ModelRegistry modelRegistry,
+            ReplayBuffer replayBuffer,
+            TrainingEventReporter eventReporter,
+            double explorationRate,
+            double explorationExampleWeight,
+            double episodeExampleWeight,
+            boolean transferGuardEnabled,
+            boolean genericPassGateEnabled,
+            int maximumBurdensToBid) {
         super(playerId);
         if (!Double.isFinite(explorationRate) || explorationRate < 0.0 || explorationRate > 1.0)
             throw new IllegalArgumentException("Exploration rate must be between 0 and 1");
@@ -195,8 +212,14 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
         this.explorationRate = explorationRate;
         this.explorationExampleWeight = explorationExampleWeight;
         this.episodeExampleWeight = episodeExampleWeight;
-        this.transferGuard = transferGuardEnabled ? new FellowshipTransferGuard(playerId) : null;
+        this.transferGuard = new FellowshipTransferGuard(playerId, eventReporter);
+        this.transferGuardEnabled = transferGuardEnabled;
         this.genericPassGateEnabled = genericPassGateEnabled;
+        this.integerTrainers = List.of(new BurdenTrainer(maximumBurdensToBid), new GenericIntegerTrainer());
+    }
+
+    public BurdenBidDiagnostics burdenBidDiagnostics() {
+        return burdenBidDiagnostics;
     }
 
     public static boolean configuredTransferGuard() {
@@ -205,6 +228,16 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
 
     public static boolean configuredGenericPassGate() {
         return configuredBoolean(GENERIC_PASS_GATE_PROPERTY, false);
+    }
+
+    public static int configuredMaximumBurdensToBid() {
+        String value = System.getProperty(MAXIMUM_BURDENS_TO_BID_PROPERTY,
+                Integer.toString(BurdenTrainer.DEFAULT_MAXIMUM_BURDENS_TO_BID));
+        try {
+            return BurdenTrainer.validateMaximumBurdensToBid(Integer.parseInt(value));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(MAXIMUM_BURDENS_TO_BID_PROPERTY + " must be an integer", e);
+        }
     }
 
     private static boolean configuredBoolean(String property, boolean defaultValue) {
@@ -221,8 +254,7 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
 
     @Override
     public String chooseAction(GameState gameState, AwaitingDecision decision, AssignmentLegality legality) {
-        if (transferGuard != null)
-            transferGuard.observe(gameState, decision);
+        transferGuard.observe(gameState, decision);
         lastDecisionRecorded = false;
         double[] stateVector = features.extractFeatures(gameState, decision, getName());
 
@@ -249,8 +281,8 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
             AwaitingDecision decision,
             AssignmentLegality legality,
             boolean exploratory) {
-        FellowshipTransferGuard.PreparedDecision prepared = transferGuard == null
-                ? null : transferGuard.prepare(gameState, decision);
+        FellowshipTransferGuard.PreparedDecision prepared = transferGuardEnabled
+                ? transferGuard.prepare(gameState, decision) : null;
         AwaitingDecision modelDecision = prepared == null ? decision : prepared.decision();
         String action = exploratory
                 ? super.chooseAction(gameState, modelDecision, legality)
@@ -271,7 +303,7 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
                 eventReporter.recordEvent(Severity.SUCCESS, "transfer-guard-constrained-decision", null,
                         "A previously transferred item was excluded from an optional Fellowship action choice.", null);
         }
-        if (transferGuard != null && decision.getDecisionType()
+        if (decision.getDecisionType()
                 == com.gempukku.lotro.logic.decisions.AwaitingDecisionType.CARD_ACTION_CHOICE)
             transferGuard.selected(gameState, decision, action);
 
@@ -293,6 +325,10 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
     }
 
     private record ActionSelection(SemanticAction action, boolean guardConstrained) { }
+    public record BurdenBidDiagnostics(
+            Integer bidAmount,
+            Boolean capConstrained,
+            boolean engineMinimumExceedsCap) { }
     private String chooseAssignmentAction(GameState gameState, AwaitingDecision decision, AssignmentLegality legality) {
         for (AbstractAssignmentTrainer trainer : assignmentTrainers) {
             if (trainer.appliesTo(gameState, decision, getName())) {
@@ -314,6 +350,39 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
                 return answerTrainer(trainer, gameState, decision);
         }
         return super.chooseAction(gameState, decision);
+    }
+
+    private String chooseBurdenBid(
+            GameState gameState, AwaitingDecision decision, BurdenTrainer trainer) {
+        if (!hasModel(trainer))
+            return chooseFallbackBurdenBid(gameState, decision, trainer);
+
+        try {
+            BurdenTrainer.BidDecision bid = trainer.getAnswerWithDiagnostics(
+                    gameState, decision, getName(), features, modelRegistry);
+            String answer = trainer.applyMaximumBid(Integer.toString(bid.selectedBid()), decision);
+            burdenBidDiagnostics = new BurdenBidDiagnostics(
+                    Integer.parseInt(answer), bid.capConstrained(), bid.engineMinimumExceedsCap());
+            return answer;
+        } catch (RuntimeException | LinkageError e) {
+            if (isInterruptedFailure(e)) {
+                Thread.currentThread().interrupt();
+                throw e;
+            }
+            logTrainerFailure(trainer, decision, e);
+            return chooseFallbackBurdenBid(gameState, decision, trainer);
+        }
+    }
+
+    private String chooseFallbackBurdenBid(
+            GameState gameState, AwaitingDecision decision, BurdenTrainer trainer) {
+        String fallback = super.chooseAction(gameState, decision);
+        String answer = trainer.applyMaximumBid(fallback, decision);
+        boolean minimumExceedsCap = trainer.engineMinimumExceedsMaximumBid(decision);
+        boolean capConstrained = !minimumExceedsCap && Integer.parseInt(fallback) > trainer.getMaxChoice();
+        burdenBidDiagnostics = new BurdenBidDiagnostics(
+                Integer.parseInt(answer), capConstrained, minimumExceedsCap);
+        return answer;
     }
 
     private String chooseCardActionChoice(GameState gameState, AwaitingDecision decision) {
@@ -495,7 +564,10 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
     private String chooseIntegerAction(GameState gameState, AwaitingDecision decision) {
         for (DecisionAnswerer trainer : integerTrainers) {
             if (trainer.appliesTo(gameState, decision, getName())) {
-                return answerTrainer(trainer, gameState, decision);
+                if (trainer instanceof BurdenTrainer burdenTrainer)
+                    return chooseBurdenBid(gameState, decision, burdenTrainer);
+                String answer = answerTrainer(trainer, gameState, decision);
+                return answer;
             }
         }
         if (decision.getText().contains("how many to spot")) {
@@ -639,9 +711,9 @@ public class FotrStarterBot extends RandomDecisionBot implements LearningBotPlay
     @Override
     public void beginEpisode(String gameId, List<String> deckFingerprints) {
         clearCardActionRepeatHistory();
-        if (transferGuard != null)
-            transferGuard.clear();
+        transferGuard.clear();
         lastDecisionRecorded = false;
+        burdenBidDiagnostics = null;
         this.gameId = gameId;
         episodeDeckFingerprints = List.copyOf(deckFingerprints);
     }

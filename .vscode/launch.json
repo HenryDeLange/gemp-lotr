@@ -21,6 +21,17 @@
       "cwd": "${workspaceFolder}",
       "args": "--config=${workspaceFolder}/gemp-lotr/bot-training.properties",
       "vmArgs": "-Xms16g -Xmx32g"
+    },
+    {
+      "type": "java",
+      "name": "Run Deck-builder Training",
+      "request": "launch",
+      "mainClass": "com.gempukku.lotro.bots.training.BotModelTrainingMain",
+      "projectName": "gemp-lotr-server",
+      "preLaunchTask": "Prepare Deck-builder Training",
+      "cwd": "${workspaceFolder}",
+      "args": "--config=${workspaceFolder}/gemp-lotr/bot-training-deckbuilder.properties --ui",
+      "vmArgs": "-Xms16g -Xmx32g"
     }
   ]
 }

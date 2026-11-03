@@ -27,6 +27,10 @@ public abstract class AbstractArbitraryCardsTrainer extends AbstractTrainer {
 
     protected boolean useNotChosen() { return false; }
 
+    protected double getMinimumOptionScore() {
+        return Double.NEGATIVE_INFINITY;
+    }
+
     @Override
     public boolean appliesTo(GameState gameState, AwaitingDecision decision, String playerName) {
         return matchesDecision(decision);
@@ -43,6 +47,12 @@ public abstract class AbstractArbitraryCardsTrainer extends AbstractTrainer {
     @Override
     public String getAnswer(GameState gameState, AwaitingDecision decision, String playerName, RLGameStateFeatures features, ModelRegistry modelRegistry) {
         int max = Integer.parseInt(decision.getDecisionParameters().get("max")[0]);
+        String[] minimumValues = decision.getDecisionParameters().get("min");
+        int min = minimumValues == null || minimumValues.length == 0
+                ? 0 : Integer.parseInt(minimumValues[0]);
+        if (min < 0 || max < min)
+            throw new IllegalArgumentException("Invalid selection range for arbitrary-card decision: " + min + ".." + max);
+
         List<String> selectableIds = new ArrayList<>();
         List<String> selectableBlueprints = new ArrayList<>();
         List<String> cardIds = Arrays.stream(decision.getDecisionParameters().get("cardId")).toList();
@@ -63,11 +73,10 @@ public abstract class AbstractArbitraryCardsTrainer extends AbstractTrainer {
         for (int i = 0; i < selectableBlueprints.size(); i++) {
             try {
                 String blueprintId = selectableBlueprints.get(i);
-                double[] cardVector = getCardVector(blueprintId);
-                double[] extended = CardCandidateFeatures.append(stateVector, cardVector);
+                double[] extended = getCandidateVector(stateVector, blueprintId);
 
                 double[] probs = new double[2];
-                model.predict(extended, probs);
+                model.predict(getModelInputVector(model, extended), probs);
                 scoredCards.add(new ScoredCard(selectableIds.get(i), probs[1]));
             } catch (CardNotFoundException ignored) {
 
@@ -75,10 +84,27 @@ public abstract class AbstractArbitraryCardsTrainer extends AbstractTrainer {
         }
 
         scoredCards.sort(Comparator.comparingDouble(c -> -c.score));
-        List<String> sortedIds = new ArrayList<>();
-        scoredCards.forEach(scoredCard -> sortedIds.add(scoredCard.cardId));
-        // Always chooses max cards, never passes
-        return String.join(",", sortedIds.subList(0, Math.min(max, sortedIds.size())));
+        int maximumSelectable = Math.min(max, scoredCards.size());
+        if (maximumSelectable < min)
+            throw new IllegalStateException("Too few valid cards for arbitrary-card decision: " + decision.getText());
+
+        List<String> chosenIds = new ArrayList<>(maximumSelectable);
+        for (ScoredCard scoredCard : scoredCards) {
+            if (chosenIds.size() >= maximumSelectable)
+                break;
+            if (chosenIds.size() < min || scoredCard.score >= getMinimumOptionScore())
+                chosenIds.add(scoredCard.cardId);
+        }
+        return String.join(",", chosenIds);
+    }
+
+    protected double[] getCandidateVector(double[] state, String blueprintId) throws CardNotFoundException {
+        return CardCandidateFeatures.append(state, getCardVector(blueprintId));
+    }
+
+    @Override
+    protected double[] getModelInputVector(Classifier<double[]> model, double[] candidateVector) {
+        return candidateVector;
     }
 
     @Override
@@ -122,8 +148,7 @@ public abstract class AbstractArbitraryCardsTrainer extends AbstractTrainer {
                                     double[] state, String gameId, double trainingWeight, int label) {
         for (String blueprintId : blueprintIds) {
             try {
-                double[] cardVector = getCardVector(blueprintId);
-                double[] extended = CardCandidateFeatures.append(state, cardVector);
+                double[] extended = getCandidateVector(state, blueprintId);
                 data.add(new LabeledPoint(label, extended, gameId, trainingWeight));
             } catch (CardNotFoundException ignore) {
                 System.out.println(ignore.getMessage());

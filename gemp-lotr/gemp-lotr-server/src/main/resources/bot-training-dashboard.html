@@ -97,6 +97,8 @@
     .generation-choice { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem .75rem; }
     .generation-choice strong { color: #9ecbff; font-size: 1.05rem; }
     select { background: #171a20; border: 1px solid #586273; border-radius: 4px; color: #e6e8ec; padding: .4rem; }
+    details.panel > summary { color: #fff; cursor: pointer; font-weight: 700; }
+    details.panel[open] > summary { margin-bottom: 1rem; }
     @media (max-width: 720px) {
       body { margin-top: 1rem; }
       .status-layout { grid-template-columns: 1fr; }
@@ -105,17 +107,8 @@
   </style>
 </head>
 <body>
-  <h1>GEMP bot training</h1>
-  <p class="page-intro">See what is running now, what each generation has completed, and whether a new model was kept.</p>
-  <div class="generation-controls sticky-generation-controls" role="group" aria-label="Choose the generation shown in generation-specific sections">
-    <button id="previous-generation" type="button" aria-label="View previous generation">Previous</button>
-    <div class="generation-choice" aria-live="polite">
-      <span class="eyebrow">Viewing</span>
-      <strong id="generation-view-label">Waiting for training plan</strong>
-      <span id="generation-view-state" class="status-text pending"></span>
-    </div>
-    <button id="next-generation" type="button" aria-label="View next generation">Next</button>
-  </div>
+  <h1>Bot model training</h1>
+  <p class="page-intro">Live progress and evaluation for the current run. The trainer starts from its launch/config; this page is read-only. Overall progress counts completed work, not time.</p>
   <section class="panel">
     <div class="status-layout">
       <div>
@@ -154,10 +147,19 @@
     <p id="error"></p>
   </section>
   <section class="panel">
-    <h2>Training roadmap
-      <span class="help-control"><button class="help" type="button" data-help="In each generation, each format evaluates decks and collects training games in turn. The shared policy is then fitted and individual policy changes are evaluated across formats. Progress units are games or model-training tasks, so the whole-run percentage is a task count, not a time estimate." aria-label="About training order and progress" aria-expanded="false">?</button></span>
+    <h2>Generation progress
+      <span class="help-control"><button class="help" type="button" data-help="Most steps count completed games; model-fitting steps count completed training tasks. The whole-run percentage is completed work, not a time estimate." aria-label="About progress units" aria-expanded="false">?</button></span>
     </h2>
-    <p class="muted">Choose a generation to inspect its progress and results across formats. Live run status above always shows the active work; deck evaluation is repeated in each generation.</p>
+    <p class="muted">Choose a generation to inspect its progress and results. The live status above always follows the active work.</p>
+    <div class="generation-controls sticky-generation-controls" role="group" aria-label="Choose the generation shown in generation-specific sections">
+      <button id="previous-generation" type="button" aria-label="View previous generation">Previous</button>
+      <div class="generation-choice" aria-live="polite">
+        <span class="eyebrow">Viewing</span>
+        <strong id="generation-view-label">Waiting for training plan</strong>
+        <span id="generation-view-state" class="status-text pending"></span>
+      </div>
+      <button id="next-generation" type="button" aria-label="View next generation">Next</button>
+    </div>
     <p class="muted" id="generation-view-summary" aria-live="polite"></p>
     <div class="table-wrap">
       <table>
@@ -168,10 +170,21 @@
     </div>
   </section>
   <section class="panel">
-    <h2>Deck builder: options and ranking model
-      <span class="help-control"><button class="help" type="button" data-help="In each generation and format, the deck builder tests legal deck options against reference decks. Some complete deck comparisons are kept out of learning and used to check whether the ranking model learned a useful ordering. A new ranking is selected only when it is ready and improves on the existing one; otherwise the existing ranking or random deck sampling remains in use." aria-label="About deck choices and ranking results" aria-expanded="false">?</button></span>
+    <h2>Completed game results</h2>
+    <p class="muted">Completed batches only. Win rates compare the bots named in each matchup; extra game details are diagnostics, not training rewards.</p>
+    <div class="table-wrap">
+      <table id="batches-table">
+        <thead><tr><th>Format</th><th>Generation</th><th>Matchup</th><th>Games</th><th>Result</th><th>Win rate</th><th>Game details</th></tr></thead>
+        <tbody id="batches"></tbody>
+      </table>
+      <p id="batch-empty" class="muted empty-state">No game comparisons have finished yet. The active batch is shown above.</p>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Deck-builder results
+      <span class="help-control"><button class="help" type="button" data-help="Candidate win rates are against the reference decks. Check-match rates compare ranker predictions with held-out deck outcomes; they are not game win rates. A new ranker is selected only when it is ready and improves on the current one." aria-label="About deck-builder results" aria-expanded="false">?</button></span>
     </h2>
-    <p class="muted">The deck builder evaluates legal deck options in each generation. Each ranker fit uses a deterministic cap on historical outcomes plus every outcome from that generation; the append-only history is not compacted. "New ranking selected" means the new deck-ranking model replaces the previous one for choosing training decks.</p>
+    <p class="muted">Each generation tests legal deck options against reference decks, then checks whether the ranker orders held-out outcomes better than the current ranker.</p>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Format</th><th>Generation</th><th>Ranking method</th><th>Deck options</th><th>Games played</th><th>Skipped</th><th>Deck results</th><th title="Historical sample plus this generation's new outcomes / learning / check.">Examples used (total / learning / check)</th><th>New outcomes this generation</th><th>New ranking: check match</th><th title="How often the existing ranking matched the outcomes of deck comparisons kept aside for a separate check.">Current ranking: check match</th><th>Choice</th></tr></thead>
@@ -181,10 +194,10 @@
     </div>
   </section>
   <section class="panel">
-    <h2>Individual policy changes: game evaluation and promotion
-      <span class="help-control"><button class="help" type="button" data-help="Each row tests one decision model change by itself against the current working policy, using the same deck pairs with the simulator bot arguments reversed in every format. Bidding determines actual starting order, which is not controlled by this swap. A model is promoted only if the paired cross-format confidence and skip safeguards pass. Accepted models become the opponent for later tests and are used by the next generation; changes accepted in the last generation are included in the final release." aria-label="About individual policy evaluation and promotion" aria-expanded="false">?</button></span>
+    <h2>Individual policy checks
+      <span class="help-control"><button class="help" type="button" data-help="Each decision model is tested on its own against the current working policy. The same deck pairs are used with simulator arguments reversed; bidding still determines actual seats and starting order. 'Selected' means the candidate is used in this run's configured model output, not deployed to the live server." aria-label="About individual policy checks" aria-expanded="false">?</button></span>
     </h2>
-    <p class="muted">Models are evaluated one at a time, not bundled together. "Promoted" means that specific model was selected; "Current policy kept" means the trained candidate did not replace it.</p>
+    <p class="muted">A candidate is selected only when it passes the configured data and game checks; otherwise the current model is kept.</p>
     <div class="comparison-controls">
       <label for="comparison-format">Format</label>
       <select id="comparison-format"></select>
@@ -197,25 +210,28 @@
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Format</th><th>Generation</th><th>Decision model</th><th>Game result</th><th>Format win rate</th><th>Aggregate 95% lower bound</th><th>Validation match (candidate / current)</th><th>Skipped</th><th>Promotion</th></tr></thead>
+        <thead><tr><th>Format</th><th>Generation</th><th>Decision model</th><th>Game result</th><th>Format win rate</th><th>Aggregate 95% lower bound</th><th>Validation match (candidate / current)</th><th>Skipped</th><th>Selection</th></tr></thead>
         <tbody id="policy-comparisons"></tbody>
       </table>
       <p id="policy-comparison-empty" class="muted empty-state">No individual policy evaluations have finished yet.</p>
     </div>
   </section>
-  <section class="panel">
+  <details class="panel">
+    <summary>Advanced: training data and runtime diagnostics</summary>
     <h2>Training data written this run</h2>
-    <p class="muted">Input steps are completed-episode decisions submitted for persistence, not all game decisions. One step may be written to multiple trainer files. JSON bytes show the uncompressed records; disk bytes show the actual append, including gzip compression. These are this run's appends, not retained corpus size; compaction, if enabled, is separate. The game denominator includes completed training batches only, so in-progress writes can make the ratios temporarily high.</p>
+    <p class="muted">These are this run's appends, not the retained corpus. Input steps are completed-episode decisions submitted for persistence; one step may be written to several trainer files. JSON bytes are uncompressed; disk bytes include gzip compression.</p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Format</th><th>Completed training-batch games</th><th>Decision input steps</th><th>Trainer records</th><th>Decision JSON bytes</th><th>Decision disk bytes</th><th>Steps / game</th><th>Disk bytes / game</th><th>Deck outcomes</th><th>Deck JSON bytes</th><th>Deck disk bytes</th></tr></thead>
+        <thead><tr><th>Format</th><th>Completed training-batch games</th><th>Decision input steps</th><th>Trainer memberships</th><th>Stored decision records</th><th>Decision JSON bytes</th><th>Decision disk bytes</th><th>Steps / game</th><th>Disk bytes / game</th><th>Deck outcomes</th><th>Deck JSON bytes</th><th>Deck disk bytes</th></tr></thead>
         <tbody id="training-data"></tbody>
       </table>
       <p id="training-data-empty" class="muted empty-state">No training data has been written yet.</p>
     </div>
+    <p class="muted" id="training-profile-summary">Performance profiles will appear as training stages run.</p>
     <p class="muted" id="bot-action-gates-summary">No bot action-gate overrides recorded yet.</p>
-  </section>
-  <section class="panel">
+  </details>
+  <details class="panel">
+    <summary>Advanced: decision-model fit details</summary>
     <h2>Decision models
       <span class="help-control"><button class="help" type="button" data-help="A decision model handles one kind of game choice. The learning match rate tells how often it predicts the recorded choices in examples used for learning. The check match rate uses examples from whole games kept out of learning. These scores measure how well it repeats recorded choices, not whether the bot wins; the game comparison above measures that. Example counts are decisions, not games; positive and negative are the two labels being learned." aria-label="About decision model progress and results" aria-expanded="false">?</button></span>
     </h2>
@@ -227,20 +243,7 @@
       </table>
       <p id="models-empty" class="muted empty-state" hidden></p>
     </div>
-  </section>
-  <section class="panel">
-    <h2>Game results
-      <span class="help-control"><button class="help" type="button" data-help="These rows summarize completed batches. 'Learning bot vs random bot' checks the learner against random choices. 'Self-play' uses the same policy for both bots. Individual policy checks reverse the simulator's bot arguments on the same deck pairs; bidding still determines actual starting order. The extra game details are diagnostics, not additional training rewards." aria-label="About completed game comparisons" aria-expanded="false">?</button></span>
-    </h2>
-    <p class="muted">Results below are for the selected generation. Each individual model is checked in both simulator argument positions; actual starting order is determined by bidding and is not controlled. The selection label says whether the candidate replaced the current working model.</p>
-    <div class="table-wrap">
-      <table id="batches-table">
-        <thead><tr><th>Format</th><th>Generation</th><th>What was compared</th><th>Games</th><th>Result</th><th>Win rate</th><th>Game details</th></tr></thead>
-        <tbody id="batches"></tbody>
-      </table>
-      <p id="batch-empty" class="muted empty-state">No game comparisons have finished yet. The active batch is shown above.</p>
-    </div>
-  </section>
+  </details>
   <dialog id="event-dialog" aria-labelledby="event-dialog-title">
     <div class="event-dialog-header">
       <div>
@@ -261,7 +264,7 @@
     const statusLabels = {
       starting: "Preparing training",
       running: "Training in progress",
-      completed: "SUCCESS — training complete; final bot model release published",
+      completed: "COMPLETED — trained models published to the configured output",
       failed: "FAILED — training did not complete successfully"
     };
     const formatLabels = {
@@ -603,8 +606,11 @@
       }
       if (diagnostics && Number(diagnostics.games) > 0) {
         const games = Number(diagnostics.games);
+        const skippedGames = Number(batch.skippedGames || diagnostics.skippedGames || 0);
         details.push(`Batch safeguards: ${Number(diagnostics.cycleRecoveries || 0)} cycle recoveries `
-          + `(${(Number(diagnostics.cycleRecoveries || 0) * 1000 / games).toFixed(1)} per 1,000 games); `
+          + `affecting ${Number(diagnostics.cycleTaintedDecisions || 0)} decisions in repeated histories `
+          + `(${(Number(diagnostics.cycleRecoveries || 0) * 1000 / games).toFixed(1)} per 1,000 attempted games; `
+          + `${skippedGames} skipped included); `
           + `${Number(diagnostics.transferConstraints || 0)} repeat-transfer constraints; `
           + `${Number(diagnostics.genericPassVetoes || 0)} shared-model Pass vetoes; `
           + `${Number(diagnostics.decisionModelFallbacks || 0)} model fallbacks; `
@@ -1053,6 +1059,7 @@
         addRow(trainingData, [
           formatName(totals.format), games.toLocaleString(), steps.toLocaleString(),
           Number(totals.trainerRecords || 0).toLocaleString(),
+          Number(totals.storedDecisionRecords ?? totals.trainerRecords ?? 0).toLocaleString(),
           Number(totals.decisionJsonBytes || 0).toLocaleString(), bytes.toLocaleString(),
           games ? (steps / games).toFixed(1) : "—",
           games ? (bytes / games).toFixed(1) : "—",
@@ -1062,12 +1069,66 @@
         ]);
       }
       document.getElementById("training-data-empty").hidden = trainingDataRows.length > 0;
+      const ioProfiles = data.trainingDataIOProfiles || [];
+      const modelProfiles = data.modelTrainingProfiles || [];
+      const compactionProfiles = data.trainingDataCompactionProfiles || [];
+      const workerProfiles = data.modelWorkerProfiles || [];
+      const profileParts = [];
+      const stageMillis = (data.stages || []).reduce((sum, item) =>
+        sum + Number(item.durationMillis || 0), 0);
+      if (stageMillis > 0)
+        profileParts.push(`stage wall time ${formatTrainingDuration(stageMillis)}`);
+      if (ioProfiles.length > 0) {
+        const readMillis = ioProfiles.filter(item => item.operation === "read")
+          .reduce((sum, item) => sum + Number(item.elapsedMillis || 0), 0);
+        const writeMillis = ioProfiles.filter(item => item.operation === "write")
+          .reduce((sum, item) => sum + Number(item.elapsedMillis || 0), 0);
+        profileParts.push(`data reads ${formatTrainingDuration(readMillis)}, writes ${formatTrainingDuration(writeMillis)}`);
+      }
+      if (compactionProfiles.length > 0) {
+        const compactionMillis = compactionProfiles.reduce((sum, item) =>
+          sum + Number(item.elapsedMillis || 0), 0);
+        profileParts.push(`compaction ${formatTrainingDuration(compactionMillis)}`);
+      }
+      if (modelProfiles.length > 0) {
+        const loadMillis = modelProfiles.reduce((sum, item) => sum + Number(item.dataLoadMillis || 0), 0);
+        const wallMillis = modelProfiles.reduce((sum, item) => sum + Number(item.modelWallMillis || 0), 0);
+        const fitMillis = modelProfiles.reduce((sum, item) => sum + Number(item.fitMillis || 0), 0);
+        profileParts.push(`model tasks ${formatTrainingDuration(wallMillis)} wall / `
+          + `${formatTrainingDuration(fitMillis)} fitting / ${formatTrainingDuration(loadMillis)} loading`);
+      }
+      const runtimeProfile = data.runtimeProfile;
+      if (runtimeProfile) {
+        const heapPools = Object.keys(runtimeProfile.heapPoolPeakUsageBytes || {}).length;
+        profileParts.push(`heap ${Number(runtimeProfile.currentHeapUsedBytes || 0).toLocaleString()} / `
+          + `${Number(runtimeProfile.maxHeapBytes || 0).toLocaleString()} bytes, `
+          + `${heapPools} per-pool peak readings`);
+      }
+      if (workerProfiles.length > 0) {
+        const workers = workerProfiles[workerProfiles.length - 1];
+        profileParts.push(`${workers.activeWorkers}/${workers.requestedWorkers} model workers `
+          + `for ${workers.trainerCount} trainers on ${workers.availableProcessors} available processors`);
+      }
+      text("training-profile-summary", profileParts.length > 0
+        ? `Observed performance: ${profileParts.join("; ")}.`
+        : "Performance profiles will appear as training stages run.");
       const guard = (data.transferGuard || []).reduce((sum, item) =>
         sum + Number(item.constrainedDecisions || 0), 0);
       const passOverrides = (data.genericPassGate || []).reduce((sum, item) =>
         sum + Number(item.passOverrides || 0), 0);
+      const decisionTotals = data.batchDecisionTotals || data.batchDecisionDiagnostics || [];
+      const cycleRecoveries = decisionTotals.reduce((sum, item) =>
+        sum + Number(item.cycleRecoveries || 0), 0);
+      const cycleTaintedDecisions = decisionTotals.reduce((sum, item) =>
+        sum + Number(item.cycleTaintedDecisions || 0), 0);
+      const cycleGames = decisionTotals.reduce((sum, item) => sum + Number(item.games || 0), 0);
+      const cycleSkippedGames = decisionTotals.reduce((sum, item) =>
+        sum + Number(item.skippedGames || 0), 0);
       text("bot-action-gates-summary", `${guard.toLocaleString()} optional Fellowship choices constrained by the repeat-transfer safeguard; `
-        + `${passOverrides.toLocaleString()} phase-specific actions vetoed by the shared Pass model across all stages this run.`);
+        + `${passOverrides.toLocaleString()} phase-specific actions vetoed by the shared Pass model; `
+        + `${cycleRecoveries.toLocaleString()} repeated decision cycles recovered, affecting `
+        + `${cycleTaintedDecisions.toLocaleString()} decisions across ${cycleGames.toLocaleString()} attempted games `
+        + `(${cycleSkippedGames.toLocaleString()} skipped included).`);
 
       const batches = document.getElementById("batches");
       batches.replaceChildren();

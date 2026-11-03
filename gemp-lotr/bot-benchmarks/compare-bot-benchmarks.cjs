@@ -14,12 +14,14 @@ const FIXED_FIELDS = [
   "opponentModelDirectory",
   "opponentTransferGuardEnabled",
   "opponentGenericActionPassGateEnabled",
+  "opponentMaximumBurdensToBid",
   "resourcesPath",
   "code"
 ];
 const TREATMENT_FIELDS = [
   "candidateTransferGuardEnabled",
-  "candidateGenericActionPassGateEnabled"
+  "candidateGenericActionPassGateEnabled",
+  "candidateMaximumBurdensToBid"
 ];
 
 function stableJson(value) {
@@ -31,8 +33,9 @@ function stableJson(value) {
 }
 
 function requireReport(report, label) {
-  if (!report || report.version !== 3 || !["completed", "completed-with-skips"].includes(report.status))
-    throw new Error(`${label} must be a completed version-3 benchmark report`);
+  if (!report || ![4, 5].includes(report.version)
+      || !["completed", "completed-with-skips"].includes(report.status))
+    throw new Error(`${label} must be a completed version-4 or version-5 benchmark report`);
   if (!Array.isArray(report.formats) || report.formats.length === 0)
     throw new Error(`${label} has no format results`);
   if (!report.modelSha256 || !report.opponentModelSha256)
@@ -42,6 +45,8 @@ function requireReport(report, label) {
 function validateCompatibility(baseline, treatment) {
   requireReport(baseline, "Baseline");
   requireReport(treatment, "Treatment");
+  if (baseline.version !== treatment.version)
+    throw new Error("Benchmark report schema versions differ");
 
   const mismatches = FIXED_FIELDS.filter(field => stableJson(baseline[field]) !== stableJson(treatment[field]));
   if (mismatches.length)
@@ -51,7 +56,7 @@ function validateCompatibility(baseline, treatment) {
     field => baseline[field] !== treatment[field]
   );
   if (changedTreatments.length !== 1)
-    throw new Error("Exactly one candidate safeguard must differ between reports");
+    throw new Error("Exactly one candidate policy treatment must differ between reports");
 
   const baselineFormats = new Map(baseline.formats.map(format => [format.format, format]));
   const treatmentFormats = new Map(treatment.formats.map(format => [format.format, format]));
@@ -77,6 +82,92 @@ function sumPhaseCounts(matchups, field) {
     }
   }
   return total;
+}
+
+function sumPairedGameMetric(matchups, prefix) {
+  let found = false;
+  let total = 0;
+  for (const matchup of matchups) {
+    for (const field of [`${prefix}AsBot1`, `${prefix}AsBot2`]) {
+      if (!Object.hasOwn(matchup, field))
+        continue;
+      found = true;
+      const count = matchup[field];
+      if (!Number.isInteger(count) || count < 0)
+        throw new Error(`Invalid ${field} count`);
+      total += count;
+    }
+  }
+  return found ? total : null;
+}
+
+function sumBidMetrics(matchups, prefix) {
+  const amounts = {};
+  let observedGames = 0;
+  let capAssessedGames = 0;
+  let capConstrainedGames = 0;
+  let engineMinimumExceedsCapGames = 0;
+  let available = false;
+  for (const matchup of matchups) {
+    for (const key of [`${prefix}AsBot1`, `${prefix}AsBot2`]) {
+      if (!Object.hasOwn(matchup, key))
+        continue;
+      available = true;
+      const bid = matchup[key];
+      if (bid === null)
+        continue;
+      if (typeof bid !== "object" || Array.isArray(bid))
+        throw new Error(`Invalid ${key} diagnostics`);
+      observedGames++;
+      if (bid.bidAmount !== null && bid.bidAmount !== undefined) {
+        if (!Number.isInteger(bid.bidAmount) || bid.bidAmount < 0 || bid.bidAmount > 9)
+          throw new Error(`Invalid ${key}.bidAmount`);
+        amounts[bid.bidAmount] = (amounts[bid.bidAmount] ?? 0) + 1;
+      }
+      if (typeof bid.capConstrained === "boolean") {
+        capAssessedGames++;
+        if (bid.capConstrained)
+          capConstrainedGames++;
+      } else if (bid.capConstrained !== null && bid.capConstrained !== undefined) {
+        throw new Error(`Invalid ${key}.capConstrained`);
+      }
+      if (typeof bid.engineMinimumExceedsCap !== "boolean")
+        throw new Error(`Invalid ${key}.engineMinimumExceedsCap`);
+      if (bid.engineMinimumExceedsCap)
+        engineMinimumExceedsCapGames++;
+    }
+  }
+  if (!available)
+    return null;
+  return {
+    observedGames,
+    capAssessedGames,
+    capConstrainedGames,
+    engineMinimumExceedsCapGames,
+    bidAmounts: amounts
+  };
+}
+
+function interventionComparison(baselineCount, treatmentCount, gamesAttempted) {
+  const rate = count => count === null || gamesAttempted === 0
+    ? null : 100 * count / gamesAttempted;
+  return {
+    baseline: baselineCount,
+    treatment: treatmentCount,
+    baselinePer100AttemptedGames: rate(baselineCount),
+    treatmentPer100AttemptedGames: rate(treatmentCount)
+  };
+}
+
+function assessedRate(summary) {
+  return summary === null || summary.capAssessedGames === 0
+    ? null : 100 * summary.capConstrainedGames / summary.capAssessedGames;
+}
+
+function countUnresolvableCycleGames(matchups) {
+  return matchups.reduce((count, matchup) =>
+    count + Number(matchup.candidateAsBot1 === "skipped-unresolvable-cycle")
+      + Number(matchup.candidateAsBot2 === "skipped-unresolvable-cycle"), 0);
 }
 
 function compareFormat(baseline, treatment) {
@@ -129,11 +220,20 @@ function compareFormat(baseline, treatment) {
 
   const baselinePassGateVetoes = sumPhaseCounts(baseline.matchups, "candidatePassGateVetoes");
   const treatmentPassGateVetoes = sumPhaseCounts(treatment.matchups, "candidatePassGateVetoes");
+  const baselineTransferReversals = sumPairedGameMetric(
+    baseline.matchups, "candidateTransferReversals");
+  const treatmentTransferReversals = sumPairedGameMetric(
+    treatment.matchups, "candidateTransferReversals");
+  const baselineCycleRecoveries = sumPairedGameMetric(baseline.matchups, "cycleRecoveries");
+  const treatmentCycleRecoveries = sumPairedGameMetric(treatment.matchups, "cycleRecoveries");
+  const baselineBids = sumBidMetrics(baseline.matchups, "candidateBid");
+  const treatmentBids = sumBidMetrics(treatment.matchups, "candidateBid");
   for (const [label, result] of [["baseline", baseline], ["treatment", treatment]]) {
     if (!Number.isInteger(result.candidateTransferGuardConstraints)
         || result.candidateTransferGuardConstraints < 0)
       throw new Error(`Invalid candidate transfer-guard count in ${label} ${baseline.format}`);
   }
+  const gamesAttempted = 2 * baseline.matchups.length;
   return {
     format: baseline.format,
     matchedCompletedGames,
@@ -153,6 +253,37 @@ function compareFormat(baseline, treatment) {
     candidateTransferGuardConstraints: {
       baseline: baseline.candidateTransferGuardConstraints,
       treatment: treatment.candidateTransferGuardConstraints
+    },
+    safeguardDiagnostics: {
+      gamesAttempted,
+      candidatePassGateVetoes: interventionComparison(
+        Object.values(baselinePassGateVetoes).reduce((sum, count) => sum + count, 0),
+        Object.values(treatmentPassGateVetoes).reduce((sum, count) => sum + count, 0),
+        gamesAttempted),
+      candidateTransferGuardConstraints: interventionComparison(
+        baseline.candidateTransferGuardConstraints,
+        treatment.candidateTransferGuardConstraints,
+        gamesAttempted),
+      candidateTransferReversals: interventionComparison(
+        baselineTransferReversals, treatmentTransferReversals, gamesAttempted),
+      cycleRecoveries: interventionComparison(
+        baselineCycleRecoveries, treatmentCycleRecoveries, gamesAttempted),
+      unresolvableCycleGames: interventionComparison(
+        countUnresolvableCycleGames(baseline.matchups),
+        countUnresolvableCycleGames(treatment.matchups),
+        gamesAttempted),
+      candidateBids: {
+        baseline: baselineBids,
+        treatment: treatmentBids,
+        capConstrainedPer100AttemptedGames: interventionComparison(
+          baselineBids?.capConstrainedGames ?? null,
+          treatmentBids?.capConstrainedGames ?? null,
+          gamesAttempted),
+        capConstrainedPer100AssessedBids: {
+          baseline: assessedRate(baselineBids),
+          treatment: assessedRate(treatmentBids)
+        }
+      }
     }
   };
 }

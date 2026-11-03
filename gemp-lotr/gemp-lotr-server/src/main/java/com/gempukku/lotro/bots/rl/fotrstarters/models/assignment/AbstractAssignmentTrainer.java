@@ -6,11 +6,15 @@ import com.gempukku.lotro.bots.rl.RLGameStateFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.CardFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.AbstractTrainer;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.LabeledPoint;
+import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelIO;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelRegistry;
 import com.gempukku.lotro.bots.rl.semanticaction.AssignMinionsAction;
 import com.gempukku.lotro.common.CardType;
+import com.gempukku.lotro.common.Keyword;
 import com.gempukku.lotro.common.Side;
 import com.gempukku.lotro.game.CardNotFoundException;
+import com.gempukku.lotro.game.PhysicalCard;
+import com.gempukku.lotro.game.state.Assignment;
 import com.gempukku.lotro.game.state.GameState;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.AwaitingDecisionType;
@@ -29,6 +33,7 @@ public abstract class AbstractAssignmentTrainer extends AbstractTrainer {
                                                          Map<String, String> freeChars,
                                                          AssignmentInfo current,
                                                          List<AssignmentInfo> results,
+                                                         Map<String, Integer> remainingAssignmentLimits,
                                                          GameState gameState);
 
 
@@ -96,11 +101,15 @@ public abstract class AbstractAssignmentTrainer extends AbstractTrainer {
             }
         });
 
-        List<AssignmentInfo> allAssignments = generateAllAssignments(alreadyAssignedMap, freeChars, minions, gameState);
+        Map<String, Integer> remainingAssignmentLimits =
+                getRemainingAssignmentLimits(gameState, freeChars, legality);
+        List<AssignmentInfo> allAssignments = generateAllAssignments(
+                alreadyAssignedMap, freeChars, minions, remainingAssignmentLimits, gameState);
         double[] stateVector = features.extractFeatures(gameState, decision, playerName);
         Classifier<double[]> model = modelRegistry.getModel(getClass());
 
         Side side = isForFp() ? Side.FREE_PEOPLE : Side.SHADOW;
+        String ringBearerBlueprintId = findRingBearerBlueprintId(gameState);
         double bestScore = Double.NEGATIVE_INFINITY;
         Map<String, List<String>> bestAssignment = null;
         double bestIllegalScore = Double.NEGATIVE_INFINITY;
@@ -109,12 +118,13 @@ public abstract class AbstractAssignmentTrainer extends AbstractTrainer {
         for (AssignmentInfo assignment : allAssignments) {
             try {
                 double[] assignmentVector = CardFeatures.getAssignmentFeatures(assignment.blueprintAssignment(), woundsOnFp,
-                        assignment.numberOfUnassignedMinions(), assignment.strengthOfUnassignedMinions());
+                        assignment.numberOfUnassignedMinions(), assignment.strengthOfUnassignedMinions(),
+                        ringBearerBlueprintId);
                 double[] extended = Arrays.copyOf(stateVector, stateVector.length + assignmentVector.length);
                 System.arraycopy(assignmentVector, 0, extended, stateVector.length, assignmentVector.length);
 
                 double[] probs = new double[2];
-                model.predict(extended, probs);
+                model.predict(getModelInputVector(model, extended), probs);
                 if (!legality.isLegal(side, freeCharIds, minionIds, assignment.physicalAssignment())) {
                     if (probs[1] > bestIllegalScore) {
                         bestIllegalScore = probs[1];
@@ -134,15 +144,20 @@ public abstract class AbstractAssignmentTrainer extends AbstractTrainer {
         if (bestAssignment == null || bestAssignment.isEmpty())
             return "";
 
-        return bestAssignment.entrySet().stream()
-                .map(entry -> entry.getKey() + " " + String.join(" ", entry.getValue()))
-                .collect(Collectors.joining(","));
+        return AssignmentLegality.format(bestAssignment);
+    }
+
+    @Override
+    protected double[] getModelInputVector(Classifier<double[]> model, double[] assignmentVector) {
+        return ModelIO.adaptModelInputVector(model, assignmentVector,
+                assignmentVector.length - CardFeatures.ASSIGNMENT_OUTCOME_FEATURE_COUNT);
     }
 
 
     private List<AssignmentInfo> generateAllAssignments(HashMap<String, List<String>> alreadyAssignedMap,
                                                         Map<String, String> freeChars,
                                                         Map<String, String> minions,
+                                                        Map<String, Integer> remainingAssignmentLimits,
                                                         GameState gameState) {
         List<AssignmentInfo> results = new ArrayList<>();
 
@@ -160,8 +175,44 @@ public abstract class AbstractAssignmentTrainer extends AbstractTrainer {
             current.blueprintAssignment().put(fp, new ArrayList<>(alreadyAssignedMap.get(fp)));
         }
 
-        generateAssignmentsRecursive(minions, new ArrayList<>(minions.keySet()), 0, freeChars, current, results, gameState);
+        List<String> minionKeys = minions.keySet().stream()
+                .sorted(Comparator.comparingInt(Integer::parseInt))
+                .toList();
+        generateAssignmentsRecursive(minions, minionKeys, 0, freeChars, current, results,
+                remainingAssignmentLimits, gameState);
         return results;
+    }
+
+    private Map<String, Integer> getRemainingAssignmentLimits(
+            GameState gameState, Map<String, String> freeChars, AssignmentLegality legality) {
+        if (!isForFp())
+            return Map.of();
+
+        Map<String, Integer> limits = new HashMap<>();
+        for (String freeCharacterId : freeChars.keySet()) {
+            PhysicalCard freeCharacter = gameState.findCardById(Integer.parseInt(freeCharacterId));
+            int defender = freeCharacter == null ? 0
+                    : Math.max(0, freeCharacter.getBlueprint().getKeywordCount(Keyword.DEFENDER));
+            int alreadyAssigned = 0;
+            for (Assignment assignment : gameState.getAssignments()) {
+                if (assignment.getFellowshipCharacter() != null
+                        && assignment.getFellowshipCharacter().getCardId() == Integer.parseInt(freeCharacterId))
+                    alreadyAssigned += assignment.getShadowCharacters().size();
+            }
+            int fallback = Math.max(0, 1 + defender - alreadyAssigned);
+            limits.put(freeCharacterId,
+                    legality.getRemainingFreePeopleAssignments(freeCharacterId, fallback));
+        }
+        return limits;
+    }
+
+    private static String findRingBearerBlueprintId(GameState gameState) {
+        for (String playerId : gameState.getPlayerNames()) {
+            PhysicalCard ringBearer = gameState.getRingBearer(playerId);
+            if (ringBearer != null)
+                return ringBearer.getBlueprintId();
+        }
+        return null;
     }
 
     @Override
@@ -172,6 +223,8 @@ public abstract class AbstractAssignmentTrainer extends AbstractTrainer {
             if (!isStepRelevant(step)) continue;
 
             AssignMinionsAction action = (AssignMinionsAction) step.action;
+            if (action.getRingBearerBlueprintId() == null)
+                continue;
             Map<String, List<String>> assignmentMap = action.getAssignmentMap();
             Map<String, List<String>> alreadyAssignedMap = action.getAlreadyAssignedMap();
             int numberOfUnassignedMinions = action.getNumberOfUnassignedMinions();
@@ -189,11 +242,13 @@ public abstract class AbstractAssignmentTrainer extends AbstractTrainer {
             if (step.reward > 0) {
                 // Chosen: good
                 addLabeledPoints(data, assignmentMap, numberOfUnassignedMinions, strengthOfUnassignedMinions,
-                        action.getWoundsOnFp(), step.state, step.gameId, step.trainingWeight, 1);
+                        action.getWoundsOnFp(), step.state, step.gameId, step.trainingWeight, 1,
+                        action.getRingBearerBlueprintId());
             } else {
                 // Chosen: bad
                 addLabeledPoints(data, assignmentMap, numberOfUnassignedMinions, strengthOfUnassignedMinions,
-                        action.getWoundsOnFp(), step.state, step.gameId, step.trainingWeight, 0);
+                        action.getWoundsOnFp(), step.state, step.gameId, step.trainingWeight, 0,
+                        action.getRingBearerBlueprintId());
             }
         }
 
@@ -203,10 +258,10 @@ public abstract class AbstractAssignmentTrainer extends AbstractTrainer {
     private void addLabeledPoints(List<LabeledPoint> data, Map<String, List<String>> assignmentMap,
                                   int numberOfUnassignedMinions, int strengthOfUnassignedMinions,
                                   Map<String, Integer> woundsMap, double[] state, String gameId,
-                                  double trainingWeight, int label) {
+                                  double trainingWeight, int label, String ringBearerBlueprintId) {
         try {
             double[] assignmentVector = CardFeatures.getAssignmentFeatures(assignmentMap, woundsMap,
-                    numberOfUnassignedMinions, strengthOfUnassignedMinions);
+                    numberOfUnassignedMinions, strengthOfUnassignedMinions, ringBearerBlueprintId);
             double[] extended = Arrays.copyOf(state, state.length + assignmentVector.length);
             System.arraycopy(assignmentVector, 0, extended, state.length, assignmentVector.length);
             data.add(new LabeledPoint(label, extended, gameId, trainingWeight));

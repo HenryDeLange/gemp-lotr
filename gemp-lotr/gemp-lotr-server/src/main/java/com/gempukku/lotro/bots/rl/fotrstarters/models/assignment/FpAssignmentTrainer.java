@@ -17,8 +17,10 @@ public class FpAssignmentTrainer extends AbstractAssignmentTrainer {
                                                 Map<String, String> freeChars,
                                                 AssignmentInfo current,
                                                 List<AssignmentInfo> results,
+                                                Map<String, Integer> remainingAssignmentLimits,
                                                 GameState gameState) {
-        generateAssignmentsRecursive(minionsToAssign, minionKeys, index, freeChars, current, results, new ArrayList<>(), gameState);
+        generateAssignmentsRecursive(minionsToAssign, minionKeys, index, freeChars, current, results,
+                new ArrayList<>(), remainingAssignmentLimits, gameState, MAX_ASSIGNMENTS);
     }
 
     private static final int MAX_ASSIGNMENTS = 10_000;
@@ -29,8 +31,10 @@ public class FpAssignmentTrainer extends AbstractAssignmentTrainer {
                                               AssignmentInfo current,
                                               List<AssignmentInfo> results,
                                               List<String> unassignedMinions,
-                                              GameState gameState) {
-        if (results.size() >= MAX_ASSIGNMENTS)
+                                              Map<String, Integer> remainingAssignmentLimits,
+                                              GameState gameState,
+                                              int resultLimit) {
+        if (results.size() >= resultLimit)
             return;
 
         if (index >= minionKeys.size()) {
@@ -60,29 +64,39 @@ public class FpAssignmentTrainer extends AbstractAssignmentTrainer {
         String minionBlueprint = minionsToAssign.get(minionPhysId);
         Map.Entry<String, String> currentMinion = new AbstractMap.SimpleEntry<>(minionPhysId, minionBlueprint);
 
-        for (Map.Entry<String, String> fp : freeChars.entrySet()) {
-            String fpPhysId = fp.getKey();
-            String fpBlueprintId = fp.getValue();
+        List<String> eligibleFreeCharacters = freeChars.keySet().stream()
+                .filter(fpPhysId -> current.physicalAssignment().getOrDefault(fpPhysId, List.of()).size()
+                        < remainingAssignmentLimits.getOrDefault(fpPhysId, 1))
+                .sorted(Comparator.comparingInt(Integer::parseInt))
+                .toList();
+        int branchesRemaining = eligibleFreeCharacters.size() + 1;
+        for (String fpPhysId : eligibleFreeCharacters) {
+            int branchResultLimit = getBranchResultLimit(results.size(), resultLimit, branchesRemaining--);
+            String fpBlueprintId = freeChars.get(fpPhysId);
+            current.physicalAssignment().computeIfAbsent(fpPhysId, ignored -> new ArrayList<>()).add(currentMinion.getKey());
+            current.blueprintAssignment().computeIfAbsent(fpBlueprintId, ignored -> new ArrayList<>())
+                    .add(currentMinion.getValue());
 
-            current.physicalAssignment().putIfAbsent(fpPhysId, new ArrayList<>());
-            if (current.physicalAssignment().get(fpPhysId).isEmpty()) {
-                current.physicalAssignment().get(fpPhysId).add(currentMinion.getKey());
-                current.blueprintAssignment().putIfAbsent(fpBlueprintId, new ArrayList<>());
-                current.blueprintAssignment().get(fpBlueprintId).add(currentMinion.getValue());
+            generateAssignmentsRecursive(minionsToAssign, minionKeys, index + 1, freeChars, current, results,
+                    unassignedMinions, remainingAssignmentLimits, gameState, branchResultLimit);
 
-                generateAssignmentsRecursive(minionsToAssign, minionKeys, index + 1, freeChars, current, results, unassignedMinions, gameState);
-
-                // backtrack
-                current.physicalAssignment().get(fpPhysId).remove(current.physicalAssignment().get(fpPhysId).size() - 1);
-                current.blueprintAssignment().get(fpBlueprintId).remove(current.blueprintAssignment().get(fpBlueprintId).size() - 1);
-            }
-            if (results.size() >= MAX_ASSIGNMENTS)
+            current.physicalAssignment().get(fpPhysId).remove(current.physicalAssignment().get(fpPhysId).size() - 1);
+            current.blueprintAssignment().get(fpBlueprintId)
+                    .remove(current.blueprintAssignment().get(fpBlueprintId).size() - 1);
+            if (results.size() >= resultLimit)
                 return;
         }
 
         // Let the current minion remain unassigned
+        int branchResultLimit = getBranchResultLimit(results.size(), resultLimit, branchesRemaining);
         unassignedMinions.add(minionPhysId);
-        generateAssignmentsRecursive(minionsToAssign, minionKeys, index + 1, freeChars, current, results, unassignedMinions, gameState);
+        generateAssignmentsRecursive(minionsToAssign, minionKeys, index + 1, freeChars, current, results,
+                unassignedMinions, remainingAssignmentLimits, gameState, branchResultLimit);
         unassignedMinions.remove(unassignedMinions.size() - 1); // backtrack
+    }
+
+    private static int getBranchResultLimit(int currentSize, int resultLimit, int branchesRemaining) {
+        int remainingResults = resultLimit - currentSize;
+        return currentSize + (remainingResults + branchesRemaining - 1) / branchesRemaining;
     }
 }

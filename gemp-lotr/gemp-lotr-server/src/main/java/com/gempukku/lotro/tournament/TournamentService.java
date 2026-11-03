@@ -1,6 +1,7 @@
 package com.gempukku.lotro.tournament;
 
 import com.gempukku.lotro.chat.ChatServer;
+import com.gempukku.lotro.common.AppConfig;
 import com.gempukku.lotro.common.DateUtils;
 import com.gempukku.lotro.collection.CollectionsManager;
 import com.gempukku.lotro.common.DBDefs;
@@ -51,9 +52,11 @@ public class TournamentService {
 
     private static final Duration _tournamentRepeatPeriod = Duration.ofDays(2);
     private static final int _scheduledTournamentLoadTime = 7; // In days; one week
+    private static final String SCHEDULED_TOURNAMENT_POLLING_ENABLED_PROPERTY = "scheduled.tournaments.polling.enabled";
 
     private final Map<String, Tournament> _activeTournaments = new ConcurrentHashMap<>();
     private final Map<String, TournamentQueue> _tournamentQueues = new ConcurrentHashMap<>();
+    private final boolean _scheduledTournamentPollingEnabled;
 
     public TournamentService(CollectionsManager collectionsManager, ProductLibrary productLibrary, DraftPackStorage draftPackStorage,
                              TournamentDAO tournamentDao, TournamentPlayerDAO tournamentPlayerDao, TournamentMatchDAO tournamentMatchDao,
@@ -68,6 +71,16 @@ public class TournamentService {
                              GameHistoryDAO gameHistoryDao, LotroCardBlueprintLibrary bpLibrary, LotroFormatLibrary formatLibrary,
                              SoloDraftDefinitions soloDraftLibrary, TableDraftDefinitions tableDraftDefinitions, ChatServer chatServer,
                              PrizeService prizeService) {
+        this(collectionsManager, productLibrary, draftPackStorage, tournamentDao, tournamentPlayerDao, tournamentMatchDao,
+                gameHistoryDao, bpLibrary, formatLibrary, soloDraftLibrary, tableDraftDefinitions, chatServer, prizeService,
+                AppConfig.getBooleanProperty(SCHEDULED_TOURNAMENT_POLLING_ENABLED_PROPERTY));
+    }
+
+    TournamentService(CollectionsManager collectionsManager, ProductLibrary productLibrary, DraftPackStorage draftPackStorage,
+                      TournamentDAO tournamentDao, TournamentPlayerDAO tournamentPlayerDao, TournamentMatchDAO tournamentMatchDao,
+                      GameHistoryDAO gameHistoryDao, LotroCardBlueprintLibrary bpLibrary, LotroFormatLibrary formatLibrary,
+                      SoloDraftDefinitions soloDraftLibrary, TableDraftDefinitions tableDraftDefinitions, ChatServer chatServer,
+                      PrizeService prizeService, boolean scheduledTournamentPollingEnabled) {
         _collectionsManager = collectionsManager;
         _prizeService = prizeService;
         _productLibrary = productLibrary;
@@ -81,6 +94,7 @@ public class TournamentService {
         _soloDraftLibrary = soloDraftLibrary;
         _tableDraftLibrary = tableDraftDefinitions;
         _chatServer = chatServer;
+        _scheduledTournamentPollingEnabled = scheduledTournamentPollingEnabled;
     }
 
     /**
@@ -245,6 +259,9 @@ public class TournamentService {
     }
 
     public boolean refreshQueues() {
+        if (!_scheduledTournamentPollingEnabled)
+            return false;
+
         boolean queuesChanged = false;
         var unstartedTournamentQueues = retrieveUnstartedScheduledTournamentQueues(ZonedDateTime.now().plusDays(_scheduledTournamentLoadTime));
         for (var unstartedTourney : unstartedTournamentQueues) {

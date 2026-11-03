@@ -1,6 +1,7 @@
 package com.gempukku.lotro.bots.rl.fotrstarters;
 
 import com.gempukku.lotro.bots.rl.ReplayBuffer;
+import com.gempukku.lotro.bots.TrainingEventReporter;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelRegistry;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.cardaction.GenericCardActionChoiceTrainer;
 import com.gempukku.lotro.common.CardType;
@@ -15,6 +16,7 @@ import org.junit.Test;
 import smile.classification.Classifier;
 
 import java.util.List;
+import java.util.ArrayList;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -60,6 +62,33 @@ public class FellowshipTransferGuardTest {
         when(f.state.getCurrentPhase()).thenReturn(Phase.FELLOWSHIP);
         f.guard.observe(f.state, f.actions);
         assertFalse(f.guard.prepare(f.state, f.actions).filtered());
+    }
+
+    @Test
+    public void cardEffectMovementIsNotAttributedToTheVoluntaryTransferGuard() {
+        Fixture f = new Fixture();
+        CardActionSelectionDecision cardEffect = menu(
+                List.of("10"), List.of("1_1"), List.of("Move item using a card effect"));
+
+        f.guard.observe(f.state, cardEffect);
+        f.guard.selected(f.state, cardEffect, "0");
+        when(f.item.getAttachedTo()).thenReturn(f.secondBearer);
+        f.guard.observe(f.state, f.actions);
+
+        assertFalse(f.guard.prepare(f.state, f.actions).filtered());
+    }
+
+    @Test
+    public void artifactVoluntaryTransfersAreAttributedLikePossessions() {
+        Fixture f = new Fixture();
+        when(f.blueprint.getCardType()).thenReturn(CardType.ARTIFACT);
+
+        f.guard.observe(f.state, f.actions);
+        f.guard.selected(f.state, f.actions, "0");
+        when(f.item.getAttachedTo()).thenReturn(f.secondBearer);
+        f.guard.observe(f.state, f.actions);
+
+        assertTrue(f.guard.prepare(f.state, f.actions).filtered());
     }
 
     @Test
@@ -113,7 +142,7 @@ public class FellowshipTransferGuardTest {
         private final PhysicalCard secondBearer = mock(PhysicalCard.class);
         private final LotroCardBlueprint blueprint = mock(LotroCardBlueprint.class);
         private final AwaitingDecision targetChoice = mock(AwaitingDecision.class);
-        private final FellowshipTransferGuard guard = new FellowshipTransferGuard("~test");
+        private final FellowshipTransferGuard guard = new FellowshipTransferGuard("~test", null);
         private final CardActionSelectionDecision actions = menu(
                 List.of("10", "10", "10"), List.of("1_1", "1_1", "1_1"),
                 List.of("Transfer Test item", "Use item", "Transfer some other card"));
@@ -136,6 +165,31 @@ public class FellowshipTransferGuardTest {
             when(blueprint.getCardType()).thenReturn(CardType.POSSESSION);
             when(blueprint.getFullName()).thenReturn("Test item");
             when(targetChoice.getDecisionType()).thenReturn(AwaitingDecisionType.CARD_SELECTION);
+        }
+
+        @Test
+        public void recordsAnAttachmentReturningToAPreviouslyUsedBearerWithoutCardIdentity() {
+            Fixture f = new Fixture();
+            List<String> eventMessages = new ArrayList<>();
+            TrainingEventReporter reporter = new TrainingEventReporter() {
+                @Override
+                public void recordEvent(Severity severity, String type, String model, String message, Throwable failure) {
+                    if (type.equals("fellowship-transfer-reversal"))
+                        eventMessages.add(message);
+                }
+            };
+            FellowshipTransferGuard guard = new FellowshipTransferGuard("~test", reporter);
+
+            guard.observe(f.state, f.actions);
+            guard.selected(f.state, f.actions, "0");
+            when(f.item.getAttachedTo()).thenReturn(f.secondBearer);
+            guard.observe(f.state, f.actions);
+            guard.selected(f.state, f.actions, "0");
+            when(f.item.getAttachedTo()).thenReturn(f.firstBearer);
+            guard.observe(f.state, f.actions);
+
+            assertEquals(1, eventMessages.size());
+            assertFalse(eventMessages.getFirst().contains("10"));
         }
     }
 

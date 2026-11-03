@@ -7,9 +7,12 @@ import com.gempukku.lotro.bots.deckbuilding.DeckBuilderTrainer;
 import com.gempukku.lotro.bots.random.RandomDecisionBot;
 import com.gempukku.lotro.bots.rl.LearningBotPlayer;
 import com.gempukku.lotro.bots.rl.RLGameStateFeatures;
+import com.gempukku.lotro.bots.rl.ReplayBuffer;
 import com.gempukku.lotro.bots.rl.fotrstarters.CardFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.FotrStarterBot;
+import com.gempukku.lotro.bots.rl.fotrstarters.FotrStartersLearningStepsPersistence;
 import com.gempukku.lotro.bots.rl.fotrstarters.MovieTrilogyRLGameStateFeatures;
+import com.gempukku.lotro.bots.rl.fotrstarters.models.FotrStarterTrainerCatalog;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelRegistry;
 import com.gempukku.lotro.bots.simulation.BatchTacticalMetrics;
 import com.gempukku.lotro.bots.simulation.GameResult;
@@ -19,9 +22,13 @@ import com.gempukku.lotro.bots.simulation.SimulationOutcome;
 import com.gempukku.lotro.game.state.GameState;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import org.junit.Test;
+import org.junit.Rule;
+import org.junit.rules.TemporaryFolder;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -29,6 +36,46 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class MovieBlockSimulationTest extends AbstractAtTest {
+    @Rule
+    public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+    @Test
+    public void completedGameProducesEquivalentSharedAndPerTrainerExamples() throws Exception {
+        CardFeatures.init(_cardLibrary);
+        var format = _formatLibrary.getFormat("fotr_block");
+        var decks = MovieBlockDeckFactory.createBotDecks("fotr_block", format, _cardLibrary, 2, 5678L);
+        var simulation = new MovieBlockSimulation(format, decks, _cardLibrary);
+        var buffer = new ReplayBuffer(100_000);
+        var bot = new FotrStarterBot(new MovieTrilogyRLGameStateFeatures("fotr_block"),
+                "~corpus-test", new ModelRegistry(), buffer);
+        var random = new RandomDecisionBot("~corpus-opponent");
+        simulation.beginGame("corpus-game", bot, random);
+        GameResult result = simulation.simulateGame(bot, random);
+        bot.endEpisode(result == GameResult.P1_WON ? 1 : -1);
+        var steps = buffer.drain();
+        assertFalse(steps.isEmpty());
+        assertTrue(steps.stream().allMatch(step -> step.deckFingerprints.size() == 2));
+        AtomicReference<FotrStartersLearningStepsPersistence.AppendStats> legacyStats = new AtomicReference<>();
+        AtomicReference<FotrStartersLearningStepsPersistence.AppendStats> sharedStats = new AtomicReference<>();
+        var legacy = new FotrStartersLearningStepsPersistence(
+                temporaryFolder.newFolder("legacy").toPath(), ignored -> { }, legacyStats::set, false);
+        var shared = new FotrStartersLearningStepsPersistence(
+                temporaryFolder.newFolder("shared").toPath(), ignored -> { }, sharedStats::set, false,
+                Set.of(), FotrStartersLearningStepsPersistence.DataLayout.SHARED_V1);
+        legacy.save(steps);
+        shared.save(steps);
+        assertEquals(legacyStats.get().trainerRecords(), sharedStats.get().trainerRecords());
+        System.out.printf("Shared corpus single-game comparison: %d decisions, %d memberships, "
+                        + "%d shared records; %d per-trainer bytes vs %d shared bytes%n",
+                steps.size(), sharedStats.get().trainerRecords(), sharedStats.get().storedRecords(),
+                legacyStats.get().appendedBytes(), sharedStats.get().appendedBytes());
+        for (var trainer : FotrStarterTrainerCatalog.createAll()) {
+            assertEquals(trainer.getClass().getName(),
+                    legacy.load(trainer).stream().map(step -> step.toJson().toJSONString()).toList(),
+                    shared.load(trainer).stream().map(step -> step.toJson().toJSONString()).toList());
+        }
+    }
+
     @Test
     public void completesBackToBackGamesWithBasePolicyInAllMovieBlocks() {
         CardFeatures.init(_cardLibrary);

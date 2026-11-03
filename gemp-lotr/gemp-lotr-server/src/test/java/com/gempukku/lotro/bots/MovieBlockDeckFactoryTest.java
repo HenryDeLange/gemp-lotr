@@ -3,13 +3,19 @@ package com.gempukku.lotro.bots;
 import com.gempukku.lotro.at.AbstractAtTest;
 import com.gempukku.lotro.bots.deckbuilding.DeckFeatureExtractor;
 import com.gempukku.lotro.common.CardType;
+import com.gempukku.lotro.common.Culture;
+import com.gempukku.lotro.common.Side;
+import com.gempukku.lotro.logic.vo.LotroDeck;
 import org.junit.Test;
 
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class MovieBlockDeckFactoryTest extends AbstractAtTest {
@@ -72,6 +78,15 @@ public class MovieBlockDeckFactoryTest extends AbstractAtTest {
                 }
             });
             assertEquals(formatCode, legalCardIds, coveredCardIds);
+            if ("movie".equals(formatCode)) {
+                Set<String> legalReflectionsCards = new HashSet<>();
+                legalCardIds.stream().filter(blueprintId -> blueprintId.startsWith("9_"))
+                        .forEach(legalReflectionsCards::add);
+                assertFalse("Movie Block must include legal Reflections set 9 cards",
+                        legalReflectionsCards.isEmpty());
+                assertTrue("Coverage decks must include every legal Reflections card",
+                        coveredCardIds.containsAll(legalReflectionsCards));
+            }
         }
     }
 
@@ -83,6 +98,29 @@ public class MovieBlockDeckFactoryTest extends AbstractAtTest {
 
             assertEquals(formatCode, deck.getTargetFormat());
             assertTrue(formatCode + ": " + format.validateDeck(deck), format.validateDeck(deck).isEmpty());
+        }
+    }
+
+    @Test
+    public void explicitCultureCompositionsRemainLegalAndProduceDistinctFocusLevels() {
+        for (String formatCode : List.of("fotr_block", "ttt_block", "king_block", "movie")) {
+            var format = _formatLibrary.getFormat(formatCode);
+            var focused = MovieBlockDeckFactory.createRandomLegalDeck(formatCode, format, _cardLibrary, 2468L,
+                    MovieBlockDeckFactory.CultureComposition.FOCUSED);
+            var multiculture = MovieBlockDeckFactory.createRandomLegalDeck(formatCode, format, _cardLibrary, 2468L,
+                    MovieBlockDeckFactory.CultureComposition.MULTICULTURE);
+
+            assertTrue(formatCode + " focused: " + format.validateDeck(focused), format.validateDeck(focused).isEmpty());
+            assertTrue(formatCode + " multiculture: " + format.validateDeck(multiculture),
+                    format.validateDeck(multiculture).isEmpty());
+            assertTrue(focused.getDeckName().contains("focused"));
+            assertTrue(multiculture.getDeckName().contains("multiculture"));
+            assertTrue(formatCode + " free peoples focus",
+                    dominantCultureCount(focused, Side.FREE_PEOPLE)
+                            > dominantCultureCount(multiculture, Side.FREE_PEOPLE));
+            assertTrue(formatCode + " shadow focus",
+                    dominantCultureCount(focused, Side.SHADOW)
+                            > dominantCultureCount(multiculture, Side.SHADOW));
         }
     }
 
@@ -102,5 +140,20 @@ public class MovieBlockDeckFactoryTest extends AbstractAtTest {
             else
                 assertEquals(formatCode, expectedFeatureCount, features.length);
         }
+    }
+
+    private int dominantCultureCount(LotroDeck deck, Side side) {
+        Map<Culture, Integer> counts = new EnumMap<>(Culture.class);
+        if (side == Side.FREE_PEOPLE && deck.getRingBearer() != null) {
+            Culture culture = _cardLibrary.getBaseCards().get(deck.getRingBearer()).getCulture();
+            if (culture != null)
+                counts.merge(culture, 1, Integer::sum);
+        }
+        for (String blueprintId : deck.getDrawDeckCards()) {
+            var card = _cardLibrary.getBaseCards().get(blueprintId);
+            if (card.getSide() == side && card.getCulture() != null)
+                counts.merge(card.getCulture(), 1, Integer::sum);
+        }
+        return counts.values().stream().mapToInt(Integer::intValue).max().orElse(0);
     }
 }

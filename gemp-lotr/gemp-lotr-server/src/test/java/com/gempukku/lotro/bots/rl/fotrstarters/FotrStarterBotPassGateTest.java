@@ -2,6 +2,7 @@ package com.gempukku.lotro.bots.rl.fotrstarters;
 
 import com.gempukku.lotro.at.AbstractAtTest;
 import com.gempukku.lotro.bots.TrainingEventReporter;
+import com.gempukku.lotro.bots.rl.ReplayBuffer;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelRegistry;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.arbitrarycards.GenericArbitraryCardsTrainer;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.cardaction.FellowshipCardActionAnswerer;
@@ -18,8 +19,10 @@ import smile.classification.Classifier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -100,6 +103,68 @@ public class FotrStarterBotPassGateTest extends AbstractAtTest {
         assertEquals("", bot.chooseAction(state, decision));
     }
 
+    @Test
+    public void mandatoryArbitraryCardSelectionCannotBeSkippedByPassGate() {
+        GameState state = mock(GameState.class);
+        when(state.getCurrentPlayerId()).thenReturn("~pass-gate-mandatory-card");
+        when(state.getCurrentPhase()).thenReturn(Phase.FELLOWSHIP);
+        when(state.getTurnNumber()).thenReturn(1);
+        doReturn(List.of()).when(state).getInPlay();
+        AwaitingDecision decision = mock(AwaitingDecision.class);
+        when(decision.getDecisionType()).thenReturn(AwaitingDecisionType.ARBITRARY_CARDS);
+        when(decision.getText()).thenReturn("Choose one card");
+        when(decision.getDecisionParameters()).thenReturn(Map.of(
+                "cardId", new String[]{"10"},
+                "blueprintId", new String[]{"1_299"},
+                "selectable", new String[]{"true"},
+                "min", new String[]{"1"},
+                "max", new String[]{"1"}));
+
+        ModelRegistry models = new ModelRegistry();
+        models.registerModel(GenericArbitraryCardsTrainer.class, new FixedProbabilityModel(0.1));
+        models.registerModel(GenericCardActionChoiceTrainer.class,
+                new PassChoiceModel(true, MovieTrilogyRLGameStateFeatures.TACTICAL_CONTEXT_FEATURE_COUNT));
+        FotrStarterBot bot = new FotrStarterBot(
+                (game, awaiting, player) ->
+                        new double[MovieTrilogyRLGameStateFeatures.TACTICAL_CONTEXT_FEATURE_COUNT],
+                "~pass-gate-mandatory-card", models, null, null, 0, 0.25, 1, false, true);
+
+        assertEquals("10", bot.chooseAction(state, decision));
+    }
+
+    @Test
+    public void explorationDoesNotConsultThePassGateModel() {
+        GameState state = mock(GameState.class);
+        when(state.getCurrentPlayerId()).thenReturn("~pass-gate-exploration");
+        when(state.getCurrentPhase()).thenReturn(Phase.FELLOWSHIP);
+        when(state.getTurnNumber()).thenReturn(1);
+        doReturn(List.of()).when(state).getInPlay();
+        CardActionSelectionDecision decision = new CardActionSelectionDecision(
+                1, "Play Fellowship action or Pass",
+                List.of("10"), List.of("1_299"), List.of("Use item")) {
+            @Override
+            public void decisionMade(String result) {
+            }
+        };
+        AtomicInteger predictions = new AtomicInteger();
+        ModelRegistry models = new ModelRegistry();
+        models.registerModel(GenericCardActionChoiceTrainer.class, new CountingModel(predictions));
+        ReplayBuffer buffer = new ReplayBuffer(10);
+        FotrStarterBot bot = new FotrStarterBot(
+                (game, awaiting, player) ->
+                        new double[MovieTrilogyRLGameStateFeatures.TACTICAL_CONTEXT_FEATURE_COUNT],
+                "~pass-gate-exploration", models, buffer, null, 1.0, 0.25, 1.0, false, true);
+
+        bot.beginEpisode("exploration-game");
+        String answer = bot.chooseAction(state, decision);
+        bot.endEpisode(1.0);
+
+        assertTrue(answer.isEmpty() || "0".equals(answer));
+        assertEquals(0, predictions.get());
+        assertEquals(1, buffer.size());
+        assertEquals(0.25, buffer.drain().getFirst().trainingWeight, 0.0);
+    }
+
     private static String choose(
             boolean gateEnabled,
             Boolean sharedModelPrefersPass,
@@ -169,6 +234,27 @@ public class FotrStarterBotPassGateTest extends AbstractAtTest {
         }
         @Override public int predict(double[] features) {
             return (features[stateLength] > 0.5) == passPreferred ? 1 : 0;
+        }
+    }
+
+    private static final class CountingModel implements Classifier<double[]> {
+        private final AtomicInteger predictions;
+
+        private CountingModel(AtomicInteger predictions) {
+            this.predictions = predictions;
+        }
+
+        @Override public int numClasses() { return 2; }
+        @Override public int[] classes() { return new int[]{0, 1}; }
+        @Override public int predict(double[] features, double[] probabilities) {
+            predictions.incrementAndGet();
+            probabilities[0] = 0.5;
+            probabilities[1] = 0.5;
+            return 1;
+        }
+        @Override public int predict(double[] features) {
+            predictions.incrementAndGet();
+            return 1;
         }
     }
 }

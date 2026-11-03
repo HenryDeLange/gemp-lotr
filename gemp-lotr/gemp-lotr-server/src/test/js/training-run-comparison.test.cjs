@@ -10,8 +10,14 @@ function run(label, passGate, wins, counters, tactical = {}) {
     gamesPerGeneration: 400,
     evaluationGamesPerSeat: 100,
     evaluationSeed: 17,
+    maximumBurdensToBid: 9,
     modelObservationSchema: "public-observation-v6",
     trainingDataSchema: "public-observation-v8",
+    holdoutDeckManifestSha256: "b".repeat(64),
+    startingModelFileCount: 47,
+    startingModelFilesSha256: "a".repeat(64),
+    startingTrainingDataFileCount: 120,
+    startingTrainingDataFilesSha256: "c".repeat(64),
     genericActionPassGateEnabled: passGate,
     transferGuardEnabled: true,
     modelsDirectory: `${label}-models`
@@ -79,7 +85,8 @@ test("compares all batch rates using their documented game denominators", () => 
   assert.equal(result.rows[0].delta.decisionsByPhasePerCompletedGame.FELLOWSHIP, 0);
   assert.equal(result.rows[0].candidate.actionPassesPerChoice, 0.3);
   assert.equal(result.rows[0].delta.observedAttachmentReversalsPerCompletedGame, -0.2);
-  assert.equal(result.limitations.length, 3);
+  assert.equal(result.rows[0].deltaStatus, "metadata-compatible");
+  assert.equal(result.limitations.length, 1);
 });
 
 test("flags metadata mismatches and missing legacy control fields", () => {
@@ -90,16 +97,71 @@ test("flags metadata mismatches and missing legacy control fields", () => {
     cycles: 0, transfers: 0, vetoes: 0, modelFallbacks: 0, invalidFallbacks: 0
   });
   candidate.metadata.evaluationSeed = 18;
-  candidate.metadata.holdoutDeckManifestSha256 = "different-holdout";
+  candidate.metadata.holdoutDeckManifestSha256 = "d".repeat(64);
+  candidate.metadata.startingModelFilesSha256 = "e".repeat(64);
+  delete candidate.metadata.maximumBurdensToBid;
   delete candidate.metadata.trainingDataSchema;
+  delete candidate.metadata.startingTrainingDataFilesSha256;
 
   const result = compareRuns(baseline, candidate);
   assert.equal(result.metadata.status, "configuration-mismatch");
   assert.deepEqual(result.metadata.configurationDifferences,
-    ["evaluationSeed", "holdoutDeckManifestSha256", "trainingDataSchema"]);
-  assert.deepEqual(result.metadata.missingControlFields, ["trainingDataSchema"]);
+    ["evaluationSeed", "holdoutDeckManifestSha256", "startingModelFilesSha256",
+      "startingTrainingDataFilesSha256", "trainingDataSchema"]);
+  assert.deepEqual(result.metadata.missingControlFields,
+    ["maximumBurdensToBid", "trainingDataSchema", "startingTrainingDataFilesSha256"]);
   assert.equal(result.rows[0].delta, null);
   assert.equal(result.rows[0].deltaStatus, "suppressed-configuration-mismatch");
+});
+
+test("treats a bid-cap change as one training treatment", () => {
+  const baseline = run("baseline", false, 5, {
+    cycles: 0, transfers: 0, vetoes: 0, modelFallbacks: 0, invalidFallbacks: 0
+  });
+  const candidate = run("candidate", false, 6, {
+    cycles: 0, transfers: 0, vetoes: 0, modelFallbacks: 0, invalidFallbacks: 0
+  });
+  candidate.metadata.maximumBurdensToBid = 1;
+
+  const result = compareRuns(baseline, candidate);
+
+  assert.equal(result.metadata.status, "metadata-compatible");
+  assert.deepEqual(result.metadata.treatmentDifferences, ["maximumBurdensToBid"]);
+});
+
+test("suppresses comparisons when the deck-builder schedule or reference manifest differs", () => {
+  const baseline = run("baseline", false, 5, {
+    cycles: 0, transfers: 0, vetoes: 0, modelFallbacks: 0, invalidFallbacks: 0
+  });
+  const candidate = run("candidate", false, 5, {
+    cycles: 0, transfers: 0, vetoes: 0, modelFallbacks: 0, invalidFallbacks: 0
+  });
+  baseline.metadata.trainingMode = candidate.metadata.trainingMode = "deck-builder-only";
+  baseline.metadata.deckBuilderReferenceSchedule = "legacy";
+  candidate.metadata.deckBuilderReferenceSchedule = "paired-arguments-v1";
+  baseline.metadata.deckBuilderReferenceManifestSha256 = "d".repeat(64);
+  candidate.metadata.deckBuilderReferenceManifestSha256 = "e".repeat(64);
+
+  const result = compareRuns(baseline, candidate);
+  assert.equal(result.metadata.status, "configuration-mismatch");
+  assert.deepEqual(result.metadata.configurationDifferences,
+    ["deckBuilderReferenceManifestSha256", "deckBuilderReferenceSchedule"]);
+  assert.equal(result.rows[0].delta, null);
+});
+
+test("suppresses comparisons when decision storage layouts differ", () => {
+  const baseline = run("baseline", false, 5, {
+    cycles: 0, transfers: 0, vetoes: 0, modelFallbacks: 0, invalidFallbacks: 0
+  });
+  const candidate = run("candidate", false, 5, {
+    cycles: 0, transfers: 0, vetoes: 0, modelFallbacks: 0, invalidFallbacks: 0
+  });
+  baseline.metadata.decisionDataLayout = "per-trainer";
+  candidate.metadata.decisionDataLayout = "shared-v1";
+  const result = compareRuns(baseline, candidate);
+  assert.equal(result.metadata.status, "configuration-mismatch");
+  assert.deepEqual(result.metadata.configurationDifferences, ["decisionDataLayout"]);
+  assert.equal(result.rows[0].delta, null);
 });
 
 test("does not turn absent legacy tactical metrics into zero rates", () => {
@@ -114,7 +176,8 @@ test("does not turn absent legacy tactical metrics into zero rates", () => {
       evaluationGamesPerSeat: 1,
       evaluationSeed: 1,
       modelObservationSchema: "v1",
-      trainingDataSchema: "v1"
+      trainingDataSchema: "v1",
+      holdoutDeckManifestSha256: null
     }
   }));
   const candidate = run("candidate", false, 5, {

@@ -14,11 +14,26 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DeckBuilderTrainerDataSplitTest {
     @TempDir
     Path temporaryDirectory;
+
+    @Test
+    void referenceSchedulePairsTheSameDeckInBothArgumentOrders() {
+        for (int candidate = 0; candidate < 8; candidate++) {
+            Set<Integer> references = new HashSet<>();
+            for (int pair = 0; pair < 5; pair++) {
+                int first = DeckBuilderTrainer.referenceIndex(candidate, pair * 2, 5);
+                int second = DeckBuilderTrainer.referenceIndex(candidate, pair * 2 + 1, 5);
+                assertEquals(first, second);
+                references.add(first);
+            }
+            assertEquals(Set.of(0, 1, 2, 3, 4), references);
+        }
+    }
 
     @Test
     void readsLegacyJsonlAndMultipleCompressedAppendsWithoutChangingLegacyRecords() throws Exception {
@@ -44,6 +59,54 @@ class DeckBuilderTrainerDataSplitTest {
                 Files.size(compressedFile));
         assertTrue(firstAppend.jsonBytes() > firstAppend.appendedBytes());
         assertTrue(Arrays.equals(legacyBefore, Files.readAllBytes(legacyFile)));
+    }
+
+    @Test
+    void filtersMixedHistoryByPolicyAndReferenceProvenanceWithoutRewritingLegacyFiles() throws Exception {
+        Path legacyFile = temporaryDirectory.resolve("deck-builder-outcomes-v4.jsonl");
+        Path legacyCompressedFile = legacyFile.resolveSibling(legacyFile.getFileName() + ".gz");
+        Path currentFile = temporaryDirectory.resolve("deck-builder-outcomes-v5.jsonl");
+        Path currentCompressedFile = currentFile.resolveSibling(currentFile.getFileName() + ".gz");
+        double[] features = new double[]{1, 2, 3};
+        Files.writeString(legacyFile, JSON.toJSONString(outcome("legacy", features, true))
+                + System.lineSeparator());
+        byte[] legacyBefore = Files.readAllBytes(legacyFile);
+
+        DeckBuilderProvenance expected = new DeckBuilderProvenance("policy-a", "pool-a", "manifest-a");
+        DeckBuilderProvenance incompatiblePolicy = new DeckBuilderProvenance(
+                "policy-b", "pool-a", "manifest-a");
+        DeckBuilderProvenance incompatibleReferences = new DeckBuilderProvenance(
+                "policy-a", "pool-b", "manifest-a");
+        DeckBuilderProvenance noMatchingProvenance = new DeckBuilderProvenance(
+                "policy-c", "pool-a", "manifest-a");
+        DeckBuilderTrainer.appendProvenancedExamples(currentCompressedFile, List.of(
+                example("matching", features, true, expected),
+                example("wrong-policy", features, false, incompatiblePolicy),
+                example("wrong-reference", features, false, incompatibleReferences)));
+
+        List<DeckBuilderTrainer.DeckTrainingExample> compatible =
+                DeckBuilderTrainer.loadCompatibleExamples(
+                        currentFile, currentCompressedFile, features.length, 20, Set.of(), expected);
+        assertEquals(List.of("matching"),
+                compatible.stream().map(DeckBuilderTrainer.DeckTrainingExample::deckKey).toList());
+        List<DeckBuilderTrainer.DeckTrainingExample> mixed = new ArrayList<>(
+                DeckBuilderTrainer.loadExamples(legacyFile, legacyCompressedFile, features.length));
+        mixed.addAll(DeckBuilderTrainer.loadExamples(currentFile, currentCompressedFile, features.length));
+        assertEquals(4, mixed.size());
+        assertTrue(Arrays.equals(legacyBefore, Files.readAllBytes(legacyFile)));
+        assertTrue(DeckBuilderTrainer.loadCompatibleExamples(
+                currentFile, currentCompressedFile, features.length, 20, Set.of(),
+                noMatchingProvenance).isEmpty());
+    }
+
+    @Test
+    void balancedRatesRequireBothStrataToContainCompletedGames() {
+        assertEquals(0.75, DeckBuilderTrainer.balancedWinRate(
+                new DeckBuilderTrainer.StratumStats(2, 2),
+                new DeckBuilderTrainer.StratumStats(2, 1)), 0.0001);
+        assertNull(DeckBuilderTrainer.balancedWinRate(
+                new DeckBuilderTrainer.StratumStats(2, 2),
+                new DeckBuilderTrainer.StratumStats(0, 0)));
     }
 
     @Test
@@ -151,5 +214,15 @@ class DeckBuilderTrainerDataSplitTest {
         object.put("features", features);
         object.put("won", won);
         return object;
+    }
+
+    private static DeckBuilderTrainer.DeckTrainingExample example(
+            String deckKey,
+            double[] features,
+            boolean won,
+            DeckBuilderProvenance provenance) {
+        return new DeckBuilderTrainer.DeckTrainingExample(
+                deckKey, features, won, provenance, "reference-" + deckKey,
+                "P1", 0, true);
     }
 }

@@ -29,7 +29,9 @@ The primary focus for the bot is to be able to play the core game card sets asso
     at com.gempukku.lotro.bots.deckbuilding.DeckBuilderTrainer.lambda$train$1(DeckBuilderTrainer.java:109)
   ```
 
-- Maybe this code doesn't need to run in dev mode (toggle on/off via config, default to off config for development):
+- [x] Make these DAO checks configurable: scheduled-tournament and
+  league-notification polling default to off in the H2 development override
+  and on in production; enabled/disabled paths are tested.
 
   ```text
   TournamentDAO::getUnstartedScheduledTournamentQueues(...) 0ms

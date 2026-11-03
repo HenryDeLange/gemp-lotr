@@ -2,6 +2,7 @@ package com.gempukku.lotro.bots;
 
 import com.gempukku.lotro.bots.random.RandomDecisionBot;
 import com.gempukku.lotro.bots.rl.fotrstarters.CardFeatures;
+import com.gempukku.lotro.bots.rl.fotrstarters.CardStrategyFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.FotrStarterBot;
 import com.gempukku.lotro.bots.rl.fotrstarters.MovieTrilogyRLGameStateFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelIO;
@@ -15,6 +16,7 @@ import com.gempukku.lotro.game.CardNotFoundException;
 import com.gempukku.lotro.game.PhysicalCardImpl;
 import com.gempukku.lotro.logic.decisions.AwaitingDecision;
 import com.gempukku.lotro.logic.decisions.AwaitingDecisionType;
+import com.gempukku.lotro.common.Keyword;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -90,6 +92,29 @@ public class BotAssignmentRestrictionTest {
         return scn;
     }
 
+    private static Scenario atDefenderAssignment() throws Exception {
+        var scn = new Scenario(new HashMap<>() {{
+            put("aragorn", "1_89");
+            put("sam", "1_311");
+            put("guard", "1_147");
+            put("guard2", "1_147");
+        }});
+        var aragorn = scn.GetFreepsCard("aragorn");
+        scn.MoveCompanionsToTable(aragorn, scn.GetFreepsCard("sam"));
+        scn.MoveMinionsToTable(scn.GetShadowCard("guard"), scn.GetShadowCard("guard2"));
+
+        scn.StartGame();
+        scn.SkipToPhase(Phase.MANEUVER);
+        assertTrue(scn.FreepsActionAvailable(aragorn));
+        scn.FreepsUseCardAction(aragorn);
+        assertTrue(scn.HasKeyword(aragorn, Keyword.DEFENDER));
+        scn.SkipToAssignments();
+
+        assertEquals(Phase.ASSIGNMENT, scn.GetCurrentPhase());
+        assertEquals(AwaitingDecisionType.ASSIGN_MINIONS, scn.FreepsGetAwaitingDecision().getDecisionType());
+        return scn;
+    }
+
     private static String pair(PhysicalCardImpl fp, PhysicalCardImpl... minions) {
         StringBuilder sb = new StringBuilder().append(fp.getCardId());
         for (PhysicalCardImpl minion : minions)
@@ -132,13 +157,50 @@ public class BotAssignmentRestrictionTest {
 
             @Override
             public int predict(double[] x, double[] posteriori) {
-                int slots = 9 + 4, perSlot = 8;
-                int start = x.length - 2 - slots * perSlot;
+                int slots = 9 + 4, perSlot = 8 + CardStrategyFeatures.FEATURE_COUNT;
+                int start = x.length - CardFeatures.ASSIGNMENT_OUTCOME_FEATURE_COUNT - 2 - slots * perSlot;
                 double score = 0;
                 for (int slot = 0; slot < slots; slot++)
                     score += x[start + slot * perSlot + 3] * x[start + slot * perSlot + 7];
                 posteriori[1] = score / 1000.0;
                 posteriori[0] = 1 - posteriori[1];
+                return posteriori[1] > posteriori[0] ? 1 : 0;
+            }
+
+            @Override
+            public int predict(double[] x) {
+                return predict(x, new double[2]);
+            }
+        };
+        ModelRegistry registry = new ModelRegistry();
+        registry.registerModel(FpAssignmentTrainer.class, model);
+        return registry;
+    }
+
+    private static ModelRegistry preferStackedAssignmentsModel() {
+        Classifier<double[]> model = new Classifier<>() {
+            @Override
+            public int numClasses() {
+                return 2;
+            }
+
+            @Override
+            public int[] classes() {
+                return new int[] {0, 1};
+            }
+
+            @Override
+            public int predict(double[] x, double[] posteriori) {
+                int slots = 9 + 4;
+                int perSlot = 8 + CardStrategyFeatures.FEATURE_COUNT;
+                int start = x.length - CardFeatures.ASSIGNMENT_OUTCOME_FEATURE_COUNT - 2 - slots * perSlot;
+                double score = 0;
+                for (int slot = 0; slot < 9; slot++) {
+                    double minionsAssigned = x[start + slot * perSlot + 6];
+                    score += minionsAssigned * minionsAssigned;
+                }
+                posteriori[1] = score / 10.0;
+                posteriori[0] = 1.0 - posteriori[1];
                 return posteriori[1] > posteriori[0] ? 1 : 0;
             }
 
@@ -230,6 +292,29 @@ public class BotAssignmentRestrictionTest {
             assertTrue(answer, engineAccepts(scn, answer));
             assertTrue(scn.IsCharAssignedAgainst(aragorn, guard2));
         }
+    }
+
+    @Test
+    public void defenderCapacityIsIncludedInFreePeoplesAssignmentCandidates() throws Exception {
+        var scn = atDefenderAssignment();
+        var aragorn = scn.GetFreepsCard("aragorn");
+        var guard = scn.GetShadowCard("guard");
+        var guard2 = scn.GetShadowCard("guard2");
+        AwaitingDecision decision = scn.FreepsGetAwaitingDecision();
+
+        String answer = modelBot(preferStackedAssignmentsModel())
+                .chooseAction(scn.gameState(), decision, new AssignmentLegality(scn.game()));
+        List<String> aragornAssignments = AssignmentLegality.parse(answer)
+                .get(String.valueOf(aragorn.getCardId()));
+
+        assertEquals(answer, AssignmentLegality.format(AssignmentLegality.parse(answer)));
+        assertNotNull(answer, aragornAssignments);
+        assertEquals(2, aragornAssignments.size());
+        assertTrue(aragornAssignments.contains(String.valueOf(guard.getCardId())));
+        assertTrue(aragornAssignments.contains(String.valueOf(guard2.getCardId())));
+        assertTrue(answer, engineAccepts(scn, answer));
+        assertTrue(scn.IsCharAssignedAgainst(aragorn, guard));
+        assertTrue(scn.IsCharAssignedAgainst(aragorn, guard2));
     }
 
     @Test

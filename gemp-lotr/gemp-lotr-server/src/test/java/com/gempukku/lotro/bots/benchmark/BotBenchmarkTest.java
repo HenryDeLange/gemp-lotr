@@ -2,6 +2,8 @@ package com.gempukku.lotro.bots.benchmark;
 
 import com.alibaba.fastjson2.JSON;
 import com.gempukku.lotro.at.AbstractAtTest;
+import com.gempukku.lotro.bots.MovieBlockDeckFactory;
+import com.gempukku.lotro.bots.deckbuilding.DeckBuilderTrainer;
 import com.gempukku.lotro.bots.rl.fotrstarters.CardFeatures;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.FotrStarterTrainerCatalog;
 import com.gempukku.lotro.bots.rl.fotrstarters.models.ModelIO;
@@ -48,6 +50,19 @@ public class BotBenchmarkTest extends AbstractAtTest {
         assertEquals(manifest.pools().stream().flatMap(pool -> pool.generated().stream())
                         .map(BenchmarkDeckManifest.DeckEntry::fingerprint).collect(java.util.stream.Collectors.toSet()),
                 manifest.generatedFingerprints());
+    }
+
+    @Test
+    public void createsIndependentReferencePoolsOutsideTheHeldOutManifest() {
+        BenchmarkDeckManifest independent = BenchmarkDeckManifest.createIndependentReferenceManifest(
+                _formatLibrary, _cardLibrary, 2, 987654L, manifest.allFingerprints(),
+                MovieBlockDeckFactory.CultureComposition.MIXED);
+
+        assertTrue(java.util.Collections.disjoint(independent.allFingerprints(), manifest.allFingerprints()));
+        for (BenchmarkDeckManifest.DeckPool pool : independent.pools()) {
+            assertEquals(2, pool.starters().size());
+            assertEquals(2, pool.generated().size());
+        }
     }
 
     @Test
@@ -98,6 +113,10 @@ public class BotBenchmarkTest extends AbstractAtTest {
             assertEquals(result.combined().completedGames(),
                     result.actualSeating().candidateStartingGames()
                             + result.actualSeating().opponentStartingGames());
+            assertEquals(2 * result.matchups().size(), result.candidateBids().observedGames());
+            assertEquals(2 * result.matchups().size(), result.candidateBids().capAssessedGames());
+            assertTrue(result.candidateTransferReversals() >= 0);
+            assertTrue(result.cycleRecoveries() >= 0);
             var pool = manifest.pools().stream().filter(item -> item.format().equals(result.format())).findFirst().orElseThrow();
             var plan = BotBenchmarkMain.plan(pool, 2, 4321L);
             assertEquals(plan, BotBenchmarkMain.plan(pool, 2, 4321L));
@@ -131,6 +150,29 @@ public class BotBenchmarkTest extends AbstractAtTest {
     }
 
     @Test
+    public void generatedVersusReferencePlanCoversEveryPairAndUsesHeldOutDecks() {
+        var sourcePool = manifest.pools().getFirst();
+        var evaluated = BenchmarkDeckManifest.create(_formatLibrary, _cardLibrary, _productLibrary,
+                2, 9876L, MovieBlockDeckFactory.CultureComposition.FOCUSED, manifest);
+        var pool = evaluated.pools().getFirst();
+        int pairs = pool.generated().size() * pool.starters().size();
+
+        assertEquals(sourcePool.starters().size() + sourcePool.generated().size(), pool.starters().size());
+        assertTrue(pool.generated().stream().allMatch(deck -> deck.name().contains("focused")));
+        assertTrue(pool.generated().stream().noneMatch(deck -> pool.starters().stream()
+                .anyMatch(reference -> reference.fingerprint().equals(deck.fingerprint()))));
+
+        var plan = BotBenchmarkMain.plan(pool, pairs, 987L,
+                BotBenchmarkMain.DeckPoolSelection.GENERATED_VS_REFERENCE);
+        assertEquals(pairs, plan.size());
+        assertTrue(plan.stream().allMatch(matchup -> matchup.pool().equals("generated-vs-reference")));
+        assertTrue(plan.stream().allMatch(matchup -> pool.generated().contains(matchup.candidateDeck())
+                && pool.starters().contains(matchup.opponentDeck())));
+        assertEquals(pairs, plan.stream().map(matchup -> matchup.candidateDeck().fingerprint()
+                + ":" + matchup.opponentDeck().fingerprint()).distinct().count());
+    }
+
+    @Test
     public void computesNominalWilsonIntervalAndLeavesEmptyRatesUnset() {
         var summary = BotBenchmarkMain.winSummary(50, 100, 4);
         assertEquals(0.5, summary.winRate(), 0.000001);
@@ -159,29 +201,39 @@ public class BotBenchmarkTest extends AbstractAtTest {
                 "--resources=" + resources, "--manifest=" + manifestFile,
                 "--models=" + modelDirectory, "--output=" + output, "--pairs=1", "--seed=55",
                 "--opponent-models=" + opponentModelDirectory, "--opponent-label=frozen-test",
-                "--deck-pool=generated",
+                "--deck-pool=generated-vs-reference",
                 "--candidate-transfer-guard=false", "--candidate-generic-pass-gate=true",
-                "--opponent-transfer-guard=true", "--opponent-generic-pass-gate=false"
+                "--candidate-burden-bid-cap=1",
+                "--opponent-transfer-guard=true", "--opponent-generic-pass-gate=false",
+                "--opponent-burden-bid-cap=2"
         });
 
         var report = JSON.parseObject(Files.readString(output));
-        assertEquals(3, report.getIntValue("version"));
+        assertEquals(5, report.getIntValue("version"));
         assertEquals(43, report.getJSONObject("modelSha256").size());
         assertEquals(43, report.getJSONObject("opponentModelSha256").size());
         assertEquals("frozen-test", report.getString("opponent"));
         assertEquals(opponentModelDirectory.toRealPath().toString(), report.getString("opponentModelDirectory"));
-        assertEquals("generated", report.getString("deckPoolSelection"));
+        assertEquals("generated-vs-reference", report.getString("deckPoolSelection"));
         assertFalse(report.getBooleanValue("candidateTransferGuardEnabled"));
         assertTrue(report.getBooleanValue("candidateGenericActionPassGateEnabled"));
         assertTrue(report.getBooleanValue("opponentTransferGuardEnabled"));
         assertFalse(report.getBooleanValue("opponentGenericActionPassGateEnabled"));
+        assertEquals(1, report.getIntValue("candidateMaximumBurdensToBid"));
+        assertEquals(2, report.getIntValue("opponentMaximumBurdensToBid"));
         assertEquals(4, report.getJSONArray("formats").size());
         var firstFormat = report.getJSONArray("formats").getJSONObject(0);
         assertTrue(firstFormat.containsKey("candidatePassGateVetoesByPhase"));
         assertTrue(firstFormat.containsKey("candidateTransferGuardConstraints"));
+        assertTrue(firstFormat.containsKey("candidateTransferReversals"));
+        assertTrue(firstFormat.containsKey("cycleRecoveries"));
+        assertTrue(firstFormat.containsKey("candidateBids"));
+        assertTrue(firstFormat.containsKey("opponentBids"));
         var firstMatchup = firstFormat.getJSONArray("matchups").getJSONObject(0);
         assertTrue(firstMatchup.containsKey("candidatePassGateVetoesAsBot1"));
         assertTrue(firstMatchup.containsKey("candidateTransferGuardConstraintsAsBot2"));
+        assertTrue(firstMatchup.containsKey("candidateBidAsBot1"));
+        assertTrue(firstMatchup.containsKey("cycleRecoveriesAsBot1"));
         assertEquals(BotBenchmarkMain.sha256(manifestBefore), report.getString("manifestSha256"));
         assertEquals(8, report.getJSONObject("combined").getIntValue("completedGames")
                 + report.getJSONObject("combined").getIntValue("skippedGames"));
@@ -201,6 +253,73 @@ public class BotBenchmarkTest extends AbstractAtTest {
             fail("An existing benchmark report must never be replaced");
         } catch (java.nio.file.FileAlreadyExistsException expected) {
             assertEquals(4, JSON.parseObject(Files.readString(output)).getJSONArray("formats").size());
+        }
+    }
+
+    @Test
+    public void deckBuilderStyleEvaluationReportsBothStylesAgainstEveryHeldOutReference() throws Exception {
+        Path modelRoot = temporaryFolder.newFolder("style-policy-models").toPath();
+        Path policyDirectory = ModelIO.resolveModelDirectory(modelRoot, "movie");
+        for (var trainer : FotrStarterTrainerCatalog.createAll())
+            ModelIO.saveModel(trainer.getClass(), new ConstantClassifier(), policyDirectory);
+        Path rankerRoot = temporaryFolder.newFolder("style-ranker-models").toPath();
+        for (String format : BenchmarkDeckManifest.FORMATS)
+            ModelIO.saveModel(DeckBuilderTrainer.class, new ConstantClassifier(),
+                    ModelIO.resolveDeckBuilderDirectory(rankerRoot, format));
+        BenchmarkDeckManifest heldOut = BenchmarkDeckManifest.createIndependentReferenceManifest(
+                _formatLibrary, _cardLibrary, 2, 34567L, manifest.allFingerprints(),
+                MovieBlockDeckFactory.CultureComposition.MIXED);
+        Path manifestFile = temporaryFolder.getRoot().toPath().resolve("held-out.json");
+        Path output = temporaryFolder.getRoot().toPath().resolve("style-evaluation.json");
+        heldOut.writeNew(manifestFile);
+        byte[] manifestBefore = Files.readAllBytes(manifestFile);
+        Path resources = Path.of("..", "gemp-lotr-cards", "src", "main", "resources")
+                .toAbsolutePath().normalize();
+
+        DeckBuilderEvaluationMain.main(new String[]{
+                "--resources=" + resources,
+                "--reference-manifest=" + manifestFile,
+                "--policy-models=" + policyDirectory,
+                "--ranker-models=" + rankerRoot,
+                "--output=" + output,
+                "--candidates-per-style=1",
+                "--seed=771"
+        });
+
+        var report = JSON.parseObject(Files.readString(output));
+        assertEquals(1, report.getIntValue("version"));
+        assertEquals(BotBenchmarkMain.sha256(manifestBefore), report.getString("referenceManifestSha256"));
+        assertEquals(43, report.getJSONObject("frozenPolicySha256").size());
+        assertEquals(4, report.getJSONObject("rankerSha256").size());
+        assertEquals(8, report.getJSONArray("summaries").size());
+        assertEquals(8, report.getJSONArray("candidates").size());
+        for (int index = 0; index < report.getJSONArray("candidates").size(); index++) {
+            var candidate = report.getJSONArray("candidates").getJSONObject(index);
+            assertEquals(8, candidate.getJSONArray("pairings").size());
+            assertEquals(4, candidate.getJSONArray("pairings").stream()
+                    .map(value -> ((com.alibaba.fastjson2.JSONObject) value)
+                            .getString("referenceDeckFingerprint"))
+                    .distinct().count());
+            assertTrue(candidate.getJSONArray("pairings").stream().allMatch(value -> {
+                var pairing = (com.alibaba.fastjson2.JSONObject) value;
+                return "skipped".equals(pairing.getString("outcome"))
+                        || pairing.getInteger("candidateSeatIndex") != null
+                        && pairing.getBoolean("candidateStartsFirst") != null;
+            }));
+        }
+        assertArrayEquals(manifestBefore, Files.readAllBytes(manifestFile));
+        try {
+            DeckBuilderEvaluationMain.main(new String[]{
+                    "--resources=" + resources,
+                    "--reference-manifest=" + manifestFile,
+                    "--policy-models=" + policyDirectory,
+                    "--ranker-models=" + rankerRoot,
+                    "--output=" + output,
+                    "--candidates-per-style=1"
+            });
+            fail("An existing style-evaluation report must never be replaced");
+        } catch (java.nio.file.FileAlreadyExistsException expected) {
+            assertEquals(8, JSON.parseObject(Files.readString(output)).getJSONArray("candidates").size());
         }
     }
 

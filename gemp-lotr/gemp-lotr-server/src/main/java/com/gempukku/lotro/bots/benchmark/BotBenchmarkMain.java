@@ -3,6 +3,7 @@ package com.gempukku.lotro.bots.benchmark;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONWriter;
 import com.gempukku.lotro.bots.BotPlayer;
+import com.gempukku.lotro.bots.MovieBlockDeckFactory;
 import com.gempukku.lotro.bots.TrainingEventReporter;
 import com.gempukku.lotro.bots.random.RandomDecisionBot;
 import com.gempukku.lotro.bots.rl.fotrstarters.CardFeatures;
@@ -17,6 +18,7 @@ import com.gempukku.lotro.bots.simulation.GameResult;
 import com.gempukku.lotro.bots.simulation.GameTacticalMetrics;
 import com.gempukku.lotro.bots.simulation.MovieBlockSimulation;
 import com.gempukku.lotro.bots.simulation.SimulationOutcome;
+import com.gempukku.lotro.bots.rl.fotrstarters.models.integerchoice.BurdenTrainer;
 import com.gempukku.lotro.common.Phase;
 import com.gempukku.lotro.game.DefaultAdventureLibrary;
 import com.gempukku.lotro.game.LotroCardBlueprintLibrary;
@@ -51,6 +53,11 @@ public final class BotBenchmarkMain {
         Path resources = requiredPath(options, "resources");
         long seed = Long.parseLong(options.getOrDefault("seed", "1"));
         boolean creatingManifest = options.containsKey("create-manifest");
+        boolean independentReferencePool = booleanOption(options, "independent-reference-pool", false);
+        MovieBlockDeckFactory.CultureComposition composition = parseComposition(
+                options.getOrDefault("composition", "mixed"));
+        Path referenceManifestFile = options.containsKey("reference-manifest")
+                ? requiredPath(options, "reference-manifest") : null;
         if (options.containsKey("generic-pass-gate")
                 && (options.containsKey("candidate-generic-pass-gate")
                 || options.containsKey("opponent-generic-pass-gate")))
@@ -60,10 +67,14 @@ public final class BotBenchmarkMain {
                 ? booleanOption(options, "generic-pass-gate") : configuredPolicy.genericPassGateEnabled();
         BotPolicy candidatePolicy = new BotPolicy(
                 booleanOption(options, "candidate-transfer-guard", configuredPolicy.transferGuardEnabled()),
-                booleanOption(options, "candidate-generic-pass-gate", sharedPassGate));
+                booleanOption(options, "candidate-generic-pass-gate", sharedPassGate),
+                bidCapOption(options, "candidate-burden-bid-cap",
+                        configuredPolicy.maximumBurdensToBid()));
         BotPolicy opponentPolicy = new BotPolicy(
                 booleanOption(options, "opponent-transfer-guard", configuredPolicy.transferGuardEnabled()),
-                booleanOption(options, "opponent-generic-pass-gate", sharedPassGate));
+                booleanOption(options, "opponent-generic-pass-gate", sharedPassGate),
+                bidCapOption(options, "opponent-burden-bid-cap",
+                        configuredPolicy.maximumBurdensToBid()));
         Path output;
         Path manifestFile = null;
         Path modelDirectory = null;
@@ -75,13 +86,15 @@ public final class BotBenchmarkMain {
         if (creatingManifest) {
             rejectOptions(options, "manifest", "models", "opponent-models", "opponent-label", "output",
                     "pairs", "generic-pass-gate", "candidate-generic-pass-gate", "opponent-generic-pass-gate",
-                    "candidate-transfer-guard", "opponent-transfer-guard", "deck-pool");
+                    "candidate-transfer-guard", "opponent-transfer-guard", "candidate-burden-bid-cap",
+                    "opponent-burden-bid-cap", "deck-pool");
             output = requiredPath(options, "create-manifest");
             generated = Integer.parseInt(options.getOrDefault("generated", "4"));
             if (generated < 2)
                 throw new IllegalArgumentException("At least two generated decks per format are required");
         } else {
-            rejectOptions(options, "generated", "create-manifest");
+            rejectOptions(options, "generated", "create-manifest", "reference-manifest", "composition",
+                    "independent-reference-pool");
             manifestFile = requiredPath(options, "manifest");
             modelDirectory = requiredPath(options, "models").toRealPath();
             if (options.containsKey("opponent-models")) {
@@ -89,6 +102,8 @@ public final class BotBenchmarkMain {
                 if (opponentModelDirectory.equals(modelDirectory))
                     throw new IllegalArgumentException("Candidate and frozen-opponent models must use separate directories");
             }
+            if (opponentModelDirectory == null && options.containsKey("opponent-burden-bid-cap"))
+                throw new IllegalArgumentException("--opponent-burden-bid-cap requires --opponent-models");
             deckPoolSelection = DeckPoolSelection.parse(options.getOrDefault("deck-pool", "mixed"));
             output = requiredPath(options, "output");
             if (output.getParent().toRealPath().startsWith(modelDirectory))
@@ -114,7 +129,16 @@ public final class BotBenchmarkMain {
 
         if (creatingManifest) {
             ProductLibrary products = new ProductLibrary(cards, resources.resolve("product").toFile());
-            BenchmarkDeckManifest manifest = BenchmarkDeckManifest.create(formats, cards, products, generated, seed);
+            BenchmarkDeckManifest referenceManifest = referenceManifestFile == null ? null
+                    : BenchmarkDeckManifest.read(referenceManifestFile, formats);
+            if (independentReferencePool && referenceManifest == null)
+                throw new IllegalArgumentException(
+                        "--independent-reference-pool=true requires --reference-manifest");
+            BenchmarkDeckManifest manifest = independentReferencePool
+                    ? BenchmarkDeckManifest.createIndependentReferenceManifest(
+                    formats, cards, generated, seed, referenceManifest.allFingerprints(), composition)
+                    : BenchmarkDeckManifest.create(formats, cards, products, generated, seed,
+                    composition, referenceManifest);
             manifest.writeNew(output);
             System.out.println("Created benchmark deck manifest: " + output);
             return;
@@ -137,15 +161,17 @@ public final class BotBenchmarkMain {
         WinSummary total = combined(results);
         boolean failed = results.stream().anyMatch(result -> result.combined().completedGames() == 0);
         String status = failed ? "failed" : total.skippedGames() > 0 ? "completed-with-skips" : "completed";
-        Report report = new Report(3, status, started.toString(), (System.nanoTime() - startNanos) / 1_000_000,
+        Report report = new Report(5, status, started.toString(), (System.nanoTime() - startNanos) / 1_000_000,
                 code, System.getProperty("java.version"), resources.toString(), manifestFile.toString(), sha256(manifestBytes),
                 modelDirectory.toString(), models.fingerprints(), seed, pairs,
                 candidatePolicy.transferGuardEnabled(), candidatePolicy.genericPassGateEnabled(),
+                candidatePolicy.maximumBurdensToBid(),
                 opponentPolicy.transferGuardEnabled(), opponentPolicy.genericPassGateEnabled(),
+                opponentModels == null ? null : opponentPolicy.maximumBurdensToBid(),
                 opponentLabel,
                 opponentModelDirectory == null ? null : opponentModelDirectory.toString(),
                 opponentModels == null ? Map.of() : opponentModels.fingerprints(),
-                deckPoolSelection.name().toLowerCase(Locale.ROOT), total, results,
+                deckPoolSelection.commandValue(), total, results,
                 List.of("Only deck-pair selection is seeded; shuffles and bot randomness are not.",
                         "Candidate-as-bot1/bot2 refers to simulator argument order; actual seats and starting-player strata are recorded after bidding.",
                         "A generated-only benchmark uses the manifest's generated pool; historical overlap is controlled only when training uses that manifest as its holdout.",
@@ -155,6 +181,12 @@ public final class BotBenchmarkMain {
                         "Wilson intervals are nominal per-game estimates; paired decks and repeated matchups can reduce independence.",
                         "Skipped games do not contribute game-end or decision metrics.",
                         "Per-matchup safeguard counts describe interventions, not counterfactual action utility.",
+                        "Bid-cap constraints use a shared-quantile uncapped choice for model bids and the observed pre-cap fallback answer for fallback bids.",
+                        "Cycle recoveries are game-level counts across both players; rates should use attempted games, including skipped games.",
+                        "Transfer reversals identify a voluntary Fellowship transfer back to a previously used bearer; card identities are not reported.",
+                        deckPoolSelection == DeckPoolSelection.GENERATED_VS_REFERENCE
+                                ? "Generated-vs-reference mode compares generated candidates against the manifest reference pool, stored in the starter slot."
+                                : "Generated-vs-reference mode was not used.",
                         "The Git revision and dirty flag do not identify the exact contents of uncommitted changes."));
         Files.writeString(output, JSON.toJSONString(report, JSONWriter.Feature.PrettyFormat, JSONWriter.Feature.WriteNulls),
                 StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
@@ -242,10 +274,16 @@ public final class BotBenchmarkMain {
                 matchups.add(new Matchup(pair.pool(), pair.candidateDeck().fingerprint(),
                         pair.opponentDeck().fingerprint(), firstGame.outcome(), secondGame.outcome(),
                         firstGame.passGateVetoesByPhase(), secondGame.passGateVetoesByPhase(),
-                        firstGame.transferGuardConstraints(), secondGame.transferGuardConstraints()));
+                        firstGame.transferGuardConstraints(), secondGame.transferGuardConstraints(),
+                        firstGame.transferReversals(), secondGame.transferReversals(),
+                        firstGame.cycleRecoveries(), secondGame.cycleRecoveries(),
+                        firstGame.candidateBid(), secondGame.candidateBid(),
+                        firstGame.opponentBid(), secondGame.opponentBid()));
             }
             Map<String, Long> candidateVetoesByPhase = new TreeMap<>();
             long candidateTransferGuardConstraints = 0;
+            long candidateTransferReversals = 0;
+            long cycleRecoveries = 0;
             for (Matchup matchup : matchups) {
                 matchup.candidatePassGateVetoesAsBot1().forEach(
                         (phase, count) -> candidateVetoesByPhase.merge(phase, count.longValue(), Long::sum));
@@ -253,18 +291,53 @@ public final class BotBenchmarkMain {
                         (phase, count) -> candidateVetoesByPhase.merge(phase, count.longValue(), Long::sum));
                 candidateTransferGuardConstraints += matchup.candidateTransferGuardConstraintsAsBot1()
                         + matchup.candidateTransferGuardConstraintsAsBot2();
+                candidateTransferReversals += matchup.candidateTransferReversalsAsBot1()
+                        + matchup.candidateTransferReversalsAsBot2();
+                cycleRecoveries += matchup.cycleRecoveriesAsBot1() + matchup.cycleRecoveriesAsBot2();
             }
             results.add(new FormatResult(pool.format(), first.summary(), second.summary(),
                     winSummary(first.wins + second.wins, first.completed + second.completed,
                             first.skipped + second.skipped),
                     first.seatingSummary().plus(second.seatingSummary()),
                     Map.copyOf(events.counts), Map.copyOf(candidateVetoesByPhase),
-                    candidateTransferGuardConstraints, List.copyOf(matchups)));
+                    candidateTransferGuardConstraints, candidateTransferReversals, cycleRecoveries,
+                    bidSummary(matchups, true), bidSummary(matchups, false), List.copyOf(matchups)));
             System.out.println("Finished benchmark format " + pool.format() + ": "
                     + (first.completed + second.completed) + " completed, "
                     + (first.skipped + second.skipped) + " skipped");
         }
         return List.copyOf(results);
+    }
+
+    private static BidSummary bidSummary(List<Matchup> matchups, boolean candidate) {
+        Map<String, Long> bidAmounts = new TreeMap<>();
+        long observedGames = 0;
+        long capAssessedGames = 0;
+        long capConstrainedGames = 0;
+        long engineMinimumExceedsCapGames = 0;
+        for (Matchup matchup : matchups) {
+            FotrStarterBot.BurdenBidDiagnostics[] bids = candidate
+                    ? new FotrStarterBot.BurdenBidDiagnostics[]{
+                    matchup.candidateBidAsBot1(), matchup.candidateBidAsBot2()}
+                    : new FotrStarterBot.BurdenBidDiagnostics[]{
+                    matchup.opponentBidAsBot1(), matchup.opponentBidAsBot2()};
+            for (FotrStarterBot.BurdenBidDiagnostics bid : bids) {
+                if (bid == null)
+                    continue;
+                observedGames++;
+                if (bid.bidAmount() != null)
+                    bidAmounts.merge(bid.bidAmount().toString(), 1L, Long::sum);
+                if (bid.capConstrained() != null) {
+                    capAssessedGames++;
+                    if (bid.capConstrained())
+                        capConstrainedGames++;
+                }
+                if (bid.engineMinimumExceedsCap())
+                    engineMinimumExceedsCapGames++;
+            }
+        }
+        return new BidSummary(observedGames, capAssessedGames, capConstrainedGames,
+                engineMinimumExceedsCapGames, Map.copyOf(bidAmounts));
     }
 
     static List<PlannedMatchup> plan(BenchmarkDeckManifest.DeckPool pool, int pairs, long seed) {
@@ -277,11 +350,23 @@ public final class BotBenchmarkMain {
             throw new IllegalArgumentException("At least one deck pair per format is required");
         Random random = new Random(seed + 31L * pool.format().hashCode());
         List<PlannedMatchup> result = new ArrayList<>();
+        int referenceOffset = deckPoolSelection == DeckPoolSelection.GENERATED_VS_REFERENCE
+                ? random.nextInt(pool.starters().size()) : 0;
         for (int pair = 0; pair < pairs; pair++) {
+            if (deckPoolSelection == DeckPoolSelection.GENERATED_VS_REFERENCE) {
+                int candidateIndex = pair % pool.generated().size();
+                int referenceIndex = (pair / pool.generated().size() + candidateIndex + referenceOffset)
+                        % pool.starters().size();
+                result.add(new PlannedMatchup("generated-vs-reference",
+                        pool.generated().get(candidateIndex), pool.starters().get(referenceIndex)));
+                continue;
+            }
             boolean starter = switch (deckPoolSelection) {
                 case MIXED -> pair % 2 == 0;
                 case STARTER -> true;
                 case GENERATED -> false;
+                case GENERATED_VS_REFERENCE -> throw new IllegalStateException(
+                        "Generated-vs-reference matchups are planned separately");
             };
             List<BenchmarkDeckManifest.DeckEntry> entries = starter ? pool.starters() : pool.generated();
             result.add(new PlannedMatchup(starter ? "starter" : "generated",
@@ -305,13 +390,17 @@ public final class BotBenchmarkMain {
         EventCounts opponentEvents = new EventCounts();
         FotrStarterBot candidate = new FotrStarterBot(features, candidateName, candidateModels, null,
                 candidateEvents, 0.0, 0.25, 1.0,
-                candidatePolicy.transferGuardEnabled(), candidatePolicy.genericPassGateEnabled());
-        BotPlayer opponent = opponentModels == null
-                ? new RandomDecisionBot(opponentName)
+                candidatePolicy.transferGuardEnabled(), candidatePolicy.genericPassGateEnabled(),
+                candidatePolicy.maximumBurdensToBid());
+        FotrStarterBot opponentPolicyBot = opponentModels == null ? null
                 : new FotrStarterBot(features, opponentName, opponentModels, null,
                 opponentEvents, 0.0, 0.25, 1.0,
-                opponentPolicy.transferGuardEnabled(), opponentPolicy.genericPassGateEnabled());
+                opponentPolicy.transferGuardEnabled(), opponentPolicy.genericPassGateEnabled(),
+                opponentPolicy.maximumBurdensToBid());
+        BotPlayer opponent = opponentPolicyBot == null
+                ? new RandomDecisionBot(opponentName) : opponentPolicyBot;
         String outcome;
+        long cycleRecoveriesBefore = events.eventCount("warning:repeated-decision-cycle");
         try {
             SimulationOutcome gameOutcome = candidateFirst
                     ? simulation.simulateGameWithMetrics(candidate, opponent, candidateDeck, opponentDeck)
@@ -337,7 +426,10 @@ public final class BotBenchmarkMain {
             events.add(opponentEvents);
         }
         return new PlayResult(outcome, candidateEvents.passGateVetoesByPhase(),
-                candidateEvents.transferGuardConstraints());
+                candidateEvents.transferGuardConstraints(), candidateEvents.transferReversals(),
+                events.eventCount("warning:repeated-decision-cycle") - cycleRecoveriesBefore,
+                candidate.burdenBidDiagnostics(),
+                opponentPolicyBot == null ? null : opponentPolicyBot.burdenBidDiagnostics());
     }
 
     static WinSummary winSummary(int wins, int completed, int skipped) {
@@ -418,9 +510,12 @@ public final class BotBenchmarkMain {
                 throw new IllegalArgumentException("Expected --name=value: " + arg);
             String key = arg.substring(2, equals);
             if (!List.of("resources", "create-manifest", "manifest", "models", "opponent-models",
-                    "opponent-label", "output", "generated", "pairs", "seed", "generic-pass-gate",
+                    "reference-manifest", "composition", "opponent-label", "output", "generated", "pairs",
+                    "seed", "generic-pass-gate",
                     "candidate-generic-pass-gate", "opponent-generic-pass-gate",
-                    "candidate-transfer-guard", "opponent-transfer-guard", "deck-pool")
+                    "candidate-transfer-guard", "opponent-transfer-guard",
+                    "candidate-burden-bid-cap", "opponent-burden-bid-cap", "deck-pool",
+                    "independent-reference-pool")
                     .contains(key) || result.putIfAbsent(key, arg.substring(equals + 1)) != null)
                 throw new IllegalArgumentException("Unknown or repeated benchmark option: " + key);
         }
@@ -428,7 +523,8 @@ public final class BotBenchmarkMain {
     }
 
     private static BotPolicy configuredPolicy() {
-        return new BotPolicy(FotrStarterBot.configuredTransferGuard(), FotrStarterBot.configuredGenericPassGate());
+        return new BotPolicy(FotrStarterBot.configuredTransferGuard(),
+                FotrStarterBot.configuredGenericPassGate(), FotrStarterBot.configuredMaximumBurdensToBid());
     }
 
     private static Path requiredPath(Map<String, String> options, String key) {
@@ -445,8 +541,27 @@ public final class BotBenchmarkMain {
         return Boolean.parseBoolean(value);
     }
 
+    private static MovieBlockDeckFactory.CultureComposition parseComposition(String value) {
+        try {
+            return MovieBlockDeckFactory.CultureComposition.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("composition must be mixed, focused, or multiculture: " + value, e);
+        }
+    }
+
     private static boolean booleanOption(Map<String, String> options, String key, boolean defaultValue) {
         return options.containsKey(key) ? booleanOption(options, key) : defaultValue;
+    }
+
+    private static int bidCapOption(Map<String, String> options, String key, int defaultValue) {
+        String value = options.get(key);
+        if (value == null)
+            return defaultValue;
+        try {
+            return BurdenTrainer.validateMaximumBurdensToBid(Integer.parseInt(value));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid integer option --" + key + "=" + value, e);
+        }
     }
 
     private static void rejectOptions(Map<String, String> options, String... keys) {
@@ -477,12 +592,20 @@ public final class BotBenchmarkMain {
                     (phase, count) -> passGateVetoesByPhase.merge(phase, count, Integer::sum));
         }
 
+        private long eventCount(String eventType) {
+            return counts.getOrDefault(eventType, 0L);
+        }
+
         private Map<String, Integer> passGateVetoesByPhase() {
             return Map.copyOf(passGateVetoesByPhase);
         }
 
         private int transferGuardConstraints() {
             return Math.toIntExact(counts.getOrDefault("success:transfer-guard-constrained-decision", 0L));
+        }
+
+        private int transferReversals() {
+            return Math.toIntExact(counts.getOrDefault("success:fellowship-transfer-reversal", 0L));
         }
     }
 
@@ -535,7 +658,15 @@ public final class BotBenchmarkMain {
     }
 
     record ModelSnapshot(ModelRegistry registry, Map<String, String> fingerprints) { }
-    record BotPolicy(boolean transferGuardEnabled, boolean genericPassGateEnabled) { }
+    record BotPolicy(boolean transferGuardEnabled, boolean genericPassGateEnabled, int maximumBurdensToBid) {
+        BotPolicy(boolean transferGuardEnabled, boolean genericPassGateEnabled) {
+            this(transferGuardEnabled, genericPassGateEnabled, FotrStarterBot.configuredMaximumBurdensToBid());
+        }
+
+        BotPolicy {
+            BurdenTrainer.validateMaximumBurdensToBid(maximumBurdensToBid);
+        }
+    }
     record CodeVersion(String revision, boolean dirty) { }
     record WinSummary(int wins, int completedGames, int skippedGames, Double winRate,
                       Double wilsonLower95, Double wilsonUpper95) { }
@@ -566,20 +697,37 @@ public final class BotBenchmarkMain {
                    Map<String, Integer> candidatePassGateVetoesAsBot1,
                    Map<String, Integer> candidatePassGateVetoesAsBot2,
                    int candidateTransferGuardConstraintsAsBot1,
-                   int candidateTransferGuardConstraintsAsBot2) { }
+                   int candidateTransferGuardConstraintsAsBot2,
+                   int candidateTransferReversalsAsBot1,
+                   int candidateTransferReversalsAsBot2,
+                   long cycleRecoveriesAsBot1,
+                   long cycleRecoveriesAsBot2,
+                   FotrStarterBot.BurdenBidDiagnostics candidateBidAsBot1,
+                   FotrStarterBot.BurdenBidDiagnostics candidateBidAsBot2,
+                   FotrStarterBot.BurdenBidDiagnostics opponentBidAsBot1,
+                   FotrStarterBot.BurdenBidDiagnostics opponentBidAsBot2) { }
     record FormatResult(String format, SeatResult candidateAsBot1, SeatResult candidateAsBot2,
                         WinSummary combined, SeatingSummary actualSeating,
                         Map<String, Long> events,
                         Map<String, Long> candidatePassGateVetoesByPhase,
                         long candidateTransferGuardConstraints,
+                        long candidateTransferReversals,
+                        long cycleRecoveries,
+                        BidSummary candidateBids,
+                        BidSummary opponentBids,
                         List<Matchup> matchups) { }
+    record BidSummary(long observedGames, long capAssessedGames, long capConstrainedGames,
+                      long engineMinimumExceedsCapGames, Map<String, Long> bidAmounts) { }
     private record PlayResult(String outcome, Map<String, Integer> passGateVetoesByPhase,
-                              int transferGuardConstraints) { }
+                              int transferGuardConstraints, int transferReversals,
+                              long cycleRecoveries, FotrStarterBot.BurdenBidDiagnostics candidateBid,
+                              FotrStarterBot.BurdenBidDiagnostics opponentBid) { }
     record Report(int version, String status, String startedAt, long elapsedMillis, CodeVersion code, String javaVersion,
                   String resourcesPath, String manifestPath, String manifestSha256, String modelDirectory,
                   Map<String, String> modelSha256, long pairingSeed, int pairsPerFormat,
                   boolean candidateTransferGuardEnabled, boolean candidateGenericActionPassGateEnabled,
-                  boolean opponentTransferGuardEnabled, boolean opponentGenericActionPassGateEnabled,
+                  int candidateMaximumBurdensToBid, boolean opponentTransferGuardEnabled,
+                  boolean opponentGenericActionPassGateEnabled, Integer opponentMaximumBurdensToBid,
                   String opponent, String opponentModelDirectory, Map<String, String> opponentModelSha256,
                   String deckPoolSelection, WinSummary combined, List<FormatResult> formats,
                   List<String> limitations) { }
@@ -587,14 +735,20 @@ public final class BotBenchmarkMain {
     enum DeckPoolSelection {
         MIXED,
         STARTER,
-        GENERATED;
+        GENERATED,
+        GENERATED_VS_REFERENCE;
 
         private static DeckPoolSelection parse(String value) {
             try {
-                return valueOf(value.trim().toUpperCase(Locale.ROOT));
+                return valueOf(value.trim().replace('-', '_').toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("deck-pool must be mixed, starter, or generated: " + value, e);
+                throw new IllegalArgumentException(
+                        "deck-pool must be mixed, starter, generated, or generated-vs-reference: " + value, e);
             }
+        }
+
+        private String commandValue() {
+            return name().toLowerCase(Locale.ROOT).replace('_', '-');
         }
     }
 }

@@ -25,7 +25,7 @@ public class FellowshipTransferGuardEngineTest {
         scn.StartGame();
 
         assertTrue(scn.FreepsTransferAvailable(sword));
-        var guard = new FellowshipTransferGuard(TestConstants.P1);
+        var guard = new FellowshipTransferGuard(TestConstants.P1, null);
         var decision = scn.FreepsGetAwaitingDecision();
         guard.observe(scn.gameState(), decision);
         String transfer = scn.GetCardActionId(TestConstants.P1, sword, "Transfer");

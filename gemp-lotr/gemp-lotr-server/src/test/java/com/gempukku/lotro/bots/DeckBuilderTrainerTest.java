@@ -42,7 +42,12 @@ public class DeckBuilderTrainerTest extends AbstractAtTest {
         assertEquals(4, result.accumulatedExamples());
         assertEquals(4, result.recentExamples());
         assertTrue(result.generatedDecks().size() > 0);
-        var dataFile = dataDirectory.resolve("deck-builder-outcomes-v4.jsonl");
+        assertEquals(4, result.pairings().size());
+        assertTrue(result.pairings().stream().allMatch(pairing -> pairing.candidateSeatIndex() == null
+                || pairing.candidateSeatIndex() == 0 || pairing.candidateSeatIndex() == 1));
+        assertTrue(result.pairings().stream().allMatch(pairing -> pairing.candidateStartsFirst() != null
+                || pairing.skipReason() != null));
+        var dataFile = dataDirectory.resolve("deck-builder-outcomes-v5.jsonl");
         var compressedDataFile = dataFile.resolveSibling(dataFile.getFileName() + ".gz");
         assertTrue(Files.isRegularFile(compressedDataFile));
         java.util.List<String> records = new java.util.ArrayList<>();
@@ -50,9 +55,14 @@ public class DeckBuilderTrainerTest extends AbstractAtTest {
                 (source, lineNumber, line) -> records.add(line));
         assertEquals(4, records.size());
         assertTrue(records.stream().map(JSON::parseObject)
-                .allMatch(record -> record.getIntValue("schema") == 4
+                .allMatch(record -> record.getIntValue("schema") == 5
                         && record.getString("deckKey") != null
-                        && record.getJSONArray("features") != null));
+                        && record.getJSONArray("features") != null
+                        && record.getString("playingPolicySha256") != null
+                        && record.getString("referencePoolSha256") != null
+                        && record.getString("referenceDeckKey") != null
+                        && record.getInteger("candidateSeatIndex") != null
+                        && record.getBoolean("candidateStartsFirst") != null));
         assertTrue(!Files.exists(dataFile));
         assertNotNull(DeckBuilderTrainer.createDeck(format, _cardLibrary, result.model(), 2, 123L));
     }

@@ -252,6 +252,23 @@ public class TournamentAdminServiceTest {
     }
 
     @Test
+    public void scheduledTournamentQueuePollingCanBeDisabled() {
+        TournamentService service = newTournamentService(false);
+
+        assertFalse(service.refreshQueues());
+        Mockito.verify(_tournamentDao, Mockito.never()).getUnstartedScheduledTournamentQueues(Mockito.any());
+    }
+
+    @Test
+    public void scheduledTournamentQueuePollingCanBeEnabled() {
+        Mockito.when(_tournamentDao.getUnstartedScheduledTournamentQueues(Mockito.any())).thenReturn(List.of());
+        TournamentService service = newTournamentService(true);
+
+        assertFalse(service.refreshQueues());
+        Mockito.verify(_tournamentDao).getUnstartedScheduledTournamentQueues(Mockito.any());
+    }
+
+    @Test
     public void anEditOfAnUnloadedTournamentLoadsItWhenItIsDueSoon() {
         scheduledRow("later", "Later cup", inMinutes(20 * 24 * 60), false);
         Mockito.when(_tournamentDao.updateScheduledTournament(Mockito.any())).thenReturn(1);
@@ -278,6 +295,14 @@ public class TournamentAdminServiceTest {
         assertNotSame(oldQueue, queue);
         assertEquals("Cup", queue.getTournamentQueueName());
         assertTrue("players can sign up again", queue.isJoinable());
+    }
+
+    private TournamentService newTournamentService(boolean scheduledPollingEnabled) {
+        return new TournamentService(Mockito.mock(CollectionsManager.class), Mockito.mock(ProductLibrary.class),
+                null, _tournamentDao, _playerDao, Mockito.mock(TournamentMatchDAO.class),
+                Mockito.mock(GameHistoryDAO.class), Mockito.mock(LotroCardBlueprintLibrary.class),
+                Mockito.mock(LotroFormatLibrary.class), Mockito.mock(SoloDraftDefinitions.class),
+                Mockito.mock(TableDraftDefinitions.class), null, null, scheduledPollingEnabled);
     }
 
     @Test

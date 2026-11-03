@@ -35,6 +35,15 @@ public class AppConfig {
         return getProperties().getProperty(property);
     }
 
+    public static boolean getBooleanProperty(String property) {
+        String value = getProperty(property);
+        if ("true".equalsIgnoreCase(value))
+            return true;
+        if ("false".equalsIgnoreCase(value))
+            return false;
+        throw new IllegalStateException("Configuration property " + property + " must be set to true or false");
+    }
+
 
     private static boolean AppInIDE() {
         String classPath = System.getProperty("java.class.path");

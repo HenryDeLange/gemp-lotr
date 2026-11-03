@@ -5,6 +5,7 @@ import com.gempukku.lotro.PlayerLock;
 import com.gempukku.lotro.async.HttpProcessingException;
 import com.gempukku.lotro.collection.CollectionsManager;
 import com.gempukku.lotro.collection.TransferDAO;
+import com.gempukku.lotro.common.AppConfig;
 import com.gempukku.lotro.db.PlayerDAO;
 import com.gempukku.lotro.db.vo.CollectionType;
 import com.gempukku.lotro.game.Player;
@@ -33,14 +34,21 @@ public class LotroServerRequestHandler {
     protected LoggedUserHolder _loggedUserHolder;
     private final TransferDAO _transferDAO;
     private final CollectionsManager _collectionManager;
+    private final boolean _leagueNotificationPollingEnabled;
 
     private static final Logger _log = LogManager.getLogger(LotroServerRequestHandler.class);
+    private static final String LEAGUE_NOTIFICATION_POLLING_ENABLED_PROPERTY = "league.notifications.polling.enabled";
 
     public LotroServerRequestHandler(Map<Type, Object> context) {
+        this(context, AppConfig.getBooleanProperty(LEAGUE_NOTIFICATION_POLLING_ENABLED_PROPERTY));
+    }
+
+    protected LotroServerRequestHandler(Map<Type, Object> context, boolean leagueNotificationPollingEnabled) {
         _playerDao = extractObject(context, PlayerDAO.class);
         _loggedUserHolder = extractObject(context, LoggedUserHolder.class);
         _transferDAO = extractObject(context, TransferDAO.class);
         _collectionManager = extractObject(context, CollectionsManager.class);
+        _leagueNotificationPollingEnabled = leagueNotificationPollingEnabled;
     }
 
     private boolean isTest() {
@@ -101,7 +109,7 @@ public class LotroServerRequestHandler {
             headersToAdd.put("Delivery-Service-Announcement", "true");
         }
 
-        if (_transferDAO.hasUndeliveredLeagueNotifications(player)) {
+        if (_leagueNotificationPollingEnabled && _transferDAO.hasUndeliveredLeagueNotifications(player)) {
             headersToAdd.put("Delivery-Service-League", "true");
         }
     }
